@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "fitrova",
+    "slug": "fitrova",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/Logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.jam66.fitrova"
+    },
+    "web": {
+      "favicon": "./assets/Logo.png"
+    }
+  }
+}
