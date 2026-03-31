@@ -110,15 +110,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+      marginBottom:theme.spacing.xxl, 
+      
+   
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
+  
   },
   header: {
     marginBottom: theme.spacing.xl,
+    marginTop: theme.spacing.xl,
   },
   greeting: {
     ...theme.typography.h2,

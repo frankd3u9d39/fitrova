@@ -124,7 +124,7 @@ export const PersonalizationScreen = () => {
         {/* Next Button */}
         <View style={styles.footer}>
           <Button 
-            title="Next Step →" 
+            title="Next Step " 
             onPress={() => navigation.navigate('Main')} 
           />
         </View>
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
+    paddingTop: theme.spacing.xxxl,
     paddingBottom: theme.spacing.xl,
   },
   progressHeader: {
@@ -230,6 +230,7 @@ const styles = StyleSheet.create({
   pillText: {
     ...theme.typography.bodySmall,
     fontWeight: '600',
+    fontSize:13,
     color: theme.colors.textSecondary,
   },
   pillTextSelected: {
