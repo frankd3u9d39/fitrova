@@ -18,6 +18,11 @@ import { WorkoutScreen } from '../screens/workout/WorkoutScreen/WorkoutScreen';
 import { NutritionScreen } from '../screens/nutrition/NutritionScreen/NutritionScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen/ProfileScreen';
 import { AchievementsScreen } from '../screens/profile/AchievementsScreen/AchievementsScreen';
+import { ActiveWorkoutScreen } from '../screens/workout/ActiveWorkoutScreen/ActiveWorkoutScreen';
+import { ScheduleScreen } from '../screens/workout/ScheduleScreen/ScheduleScreen';
+import { FormCheckScreen } from '../screens/workout/FormCheckScreen/FormCheckScreen';
+import { RoutineLibraryScreen } from '../screens/workout/RoutineLibraryScreen/RoutineLibraryScreen';
+import { Workout } from '../services/api/workoutService';
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -47,12 +52,16 @@ export type RootStackParamList = {
     targetDate: string;
     firstName: string;
   };
-  Main: { firstName: string };
+  Main: { firstName: string; userId: number };
   Achievements: undefined;
+  ActiveWorkout: { workout: Workout; userId: number };
+  Schedule: { userId: number };
+  FormCheck: undefined;
+  RoutineLibrary: undefined;
 };
 
 export type MainTabParamList = {
-  Home: { firstName: string };
+  Home: { firstName: string; userId?: number };
   Workout: undefined;
   Nutrition: undefined;
   Profile: undefined;
@@ -63,6 +72,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const MainTabs = ({ route }: any) => {
   const firstName = route.params?.firstName || 'User';
+  const userId = route.params?.userId || 1;
   
   return (
     <Tab.Navigator
@@ -75,7 +85,7 @@ const MainTabs = ({ route }: any) => {
       <Tab.Screen 
         name="Home" 
         component={DashboardScreen} 
-        initialParams={{ firstName }}
+        initialParams={{ firstName, userId }}
       />
       <Tab.Screen name="Workout" component={WorkoutScreen} />
       <Tab.Screen name="Nutrition" component={NutritionScreen} />
@@ -102,6 +112,10 @@ export const AppNavigator = () => {
         <Stack.Screen name="Restrictions" component={RestrictionsScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Achievements" component={AchievementsScreen} />
+        <Stack.Screen name="ActiveWorkout" component={ActiveWorkoutScreen} options={{ presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="Schedule" component={ScheduleScreen} />
+        <Stack.Screen name="FormCheck" component={FormCheckScreen} />
+        <Stack.Screen name="RoutineLibrary" component={RoutineLibraryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

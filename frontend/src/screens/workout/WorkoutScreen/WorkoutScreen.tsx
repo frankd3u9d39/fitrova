@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,96 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../../navigation/AppNavigator';
+import { getWorkoutRecommendations, completeWorkout, WorkoutRecommendation, generateWorkoutDetails } from '../../../services/api/workoutService';
+
+type WorkoutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const WorkoutScreen = () => {
+  const navigation = useNavigation<WorkoutScreenNavigationProp>();
+  const [workoutData, setWorkoutData] = useState<WorkoutRecommendation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const handleToolPress = (toolId: string) => {
+    switch (toolId) {
+      case '1':
+        navigation.navigate('FormCheck' as any);
+        break;
+      case '3':
+        navigation.navigate('Achievements' as any);
+        break;
+      case '4':
+        navigation.navigate('RoutineLibrary' as any);
+        break;
+      default:
+        // 'Plan My Session' could re-trigger loadWorkoutData or show a modal
+        loadWorkoutData();
+        break;
+    }
+  };
+  
+  // TODO: Get userId from auth context
+  const userId = 1;
+
+  useEffect(() => {
+    loadWorkoutData();
+  }, []);
+
+  const loadWorkoutData = async () => {
+    try {
+      setLoading(true);
+      const data = await getWorkoutRecommendations(userId);
+      setWorkoutData(data);
+      setError(null);
+    } catch (err) {
+      // Error is already handled in service with fallback data
+      console.error('Workout data error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartWorkout = () => {
+    if (!workoutData?.todays_workout) return;
+    
+    navigation.navigate('ActiveWorkout', {
+      workout: workoutData.todays_workout,
+      userId: userId
+    });
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={styles.loadingText}>Loading your workout plan...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !workoutData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>{error || 'Unable to load workout data'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadWorkoutData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const aiTools = [
     { id: '1', title: 'Check Form with AI', icon: 'camera-outline' },
     { id: '2', title: 'Plan My Session', icon: 'calendar-outline' },
@@ -18,22 +103,22 @@ export const WorkoutScreen = () => {
     { id: '4', title: 'Find a Routine', icon: 'search-outline' },
   ];
 
-  const upcomingWorkouts = [
-    {
-      id: '1',
-      date: 'TOMORROW • 08:00 AM',
-      title: 'Pull Day B',
-      exercises: '8 Exercises',
-      duration: '65m',
-    },
-    {
-      id: '2',
-      date: 'FRI, OCT 24',
-      title: 'Leg Day',
-      exercises: '5 Exercises',
-      duration: '45m',
-    },
-  ];
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (date.toDateString() === tomorrow.toDateString()) {
+      return 'TOMORROW • 08:00 AM';
+    }
+    
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    }).toUpperCase();
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -46,65 +131,81 @@ export const WorkoutScreen = () => {
         <View style={styles.statusContainer}>
           <View style={styles.statusBadge}>
             <View style={styles.statusDot} />
-            <Text style={styles.statusText}>READY FOR SESSION</Text>
+            <Text style={styles.statusText}>{workoutData.status}</Text>
           </View>
           <View style={styles.recoveryBadge}>
             <Ionicons name="flash" size={16} color="#10B981" />
-            <Text style={styles.recoveryText}>98% Recovery</Text>
+            <Text style={styles.recoveryText}>{workoutData.recovery_score}% Recovery</Text>
           </View>
         </View>
+
+        {/* Missed Workouts Alert */}
+        {(workoutData.missed_workouts || []).length > 0 && (
+          <View style={styles.missedAlert}>
+            <Ionicons name="warning" size={20} color="#F59E0B" />
+            <Text style={styles.missedText}>
+              {(workoutData.missed_workouts || []).length} missed workout(s) rescheduled
+            </Text>
+          </View>
+        )}
 
         {/* Today's Program Card */}
-        <View style={styles.programCard}>
-          <View style={styles.programImageContainer}>
-            <View style={styles.programImage}>
-              <Ionicons name="barbell" size={80} color="#10B981" />
+        {workoutData.todays_workout ? (
+          <View style={styles.programCard}>
+            <View style={styles.programImageContainer}>
+              <View style={styles.programImage}>
+                <Ionicons name="barbell" size={80} color="#10B981" />
+              </View>
             </View>
+            <Text style={styles.programLabel}>TODAY'S PROGRAM</Text>
+            <Text style={styles.programTitle}>{workoutData.todays_workout.name}</Text>
+            <View style={styles.programDetails}>
+              <View style={styles.programDetailItem}>
+                <Ionicons name="fitness-outline" size={18} color="#10B981" />
+                <Text style={styles.programDetailText}>
+                  {workoutData.todays_workout.exercises_count} exercises
+                </Text>
+              </View>
+              <View style={styles.programDetailItem}>
+                <Ionicons name="time-outline" size={18} color="#10B981" />
+                <Text style={styles.programDetailText}>
+                  ~{workoutData.todays_workout.duration} mins
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.startButton} onPress={handleStartWorkout}>
+              <Text style={styles.startButtonText}>START WORKOUT</Text>
+              <Ionicons name="play" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.programLabel}>TODAY'S PROGRAM</Text>
-          <Text style={styles.programTitle}>Push Day A</Text>
-          <View style={styles.programDetails}>
-            <View style={styles.programDetailItem}>
-              <Ionicons name="fitness-outline" size={18} color="#10B981" />
-              <Text style={styles.programDetailText}>6 exercises</Text>
-            </View>
-            <View style={styles.programDetailItem}>
-              <Ionicons name="time-outline" size={18} color="#10B981" />
-              <Text style={styles.programDetailText}>~55 mins</Text>
-            </View>
+        ) : (
+          <View style={styles.restDayCard}>
+            <Ionicons name="bed-outline" size={60} color="#10B981" />
+            <Text style={styles.restDayTitle}>Rest Day</Text>
+            <Text style={styles.restDayText}>Recovery is just as important as training</Text>
           </View>
-          <TouchableOpacity style={styles.startButton}>
-            <Text style={styles.startButtonText}>START WORKOUT</Text>
-            <Ionicons name="play" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* New Achievement */}
-        <TouchableOpacity style={styles.achievementCard}>
-          <View style={styles.achievementLeft}>
-            <View style={styles.achievementIcon}>
-              <Ionicons name="trophy" size={24} color="#10B981" />
-            </View>
-            <View>
-              <Text style={styles.achievementLabel}>NEW ACHIEVEMENT</Text>
-              <Text style={styles.achievementTitle}>
-                New Squat PR: <Text style={styles.achievementValue}>100kg</Text>
-              </Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#6B7280" />
-        </TouchableOpacity>
+        )}
 
         {/* Weekly Goal */}
-        <View style={styles.weeklyGoalCard}>
+        <TouchableOpacity 
+          style={styles.weeklyGoalCard}
+          onPress={() => navigation.navigate('Schedule' as any)}
+        >
           <View style={styles.weeklyGoalHeader}>
             <Text style={styles.weeklyGoalLabel}>WEEKLY GOAL</Text>
-            <Text style={styles.weeklyGoalProgress}>3/4</Text>
+            <Text style={styles.weeklyGoalProgress}>
+              {workoutData.weekly_progress.completed}/{workoutData.weekly_progress.goal}
+            </Text>
           </View>
           <View style={styles.progressBarContainer}>
-            <View style={[styles.progressBar, { width: '75%' }]} />
+            <View 
+              style={[
+                styles.progressBar, 
+                { width: `${(workoutData.weekly_progress.completed / workoutData.weekly_progress.goal) * 100}%` }
+              ]} 
+            />
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* AI Tools */}
         <View style={styles.section}>
@@ -114,7 +215,11 @@ export const WorkoutScreen = () => {
           </View>
           <View style={styles.toolsGrid}>
             {aiTools.map((tool) => (
-              <TouchableOpacity key={tool.id} style={styles.toolCard}>
+              <TouchableOpacity 
+                key={tool.id} 
+                style={styles.toolCard}
+                onPress={() => handleToolPress(tool.id)}
+              >
                 <View style={styles.toolIcon}>
                   <Ionicons name={tool.icon as any} size={24} color="#10B981" />
                 </View>
@@ -128,22 +233,45 @@ export const WorkoutScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Upcoming Workouts</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Schedule' as any)}>
               <Text style={styles.viewScheduleText}>View Schedule</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.workoutsContainer}>
-            {upcomingWorkouts.map((workout) => (
-              <TouchableOpacity key={workout.id} style={styles.workoutCard}>
+            {(workoutData.upcoming_workouts || []).map((workout, index) => (
+              <TouchableOpacity 
+                key={index} 
+                style={styles.workoutCard}
+                onPress={async () => {
+                  if (workout && (workout as any).exercises) {
+                    navigation.navigate('ActiveWorkout' as any, { workout, userId });
+                  } else {
+                    // Start generation flow
+                    try {
+                      setLoading(true);
+                      const fullWorkout = await generateWorkoutDetails(userId, (workout as any).name || 'Daily Focus');
+                      if (fullWorkout) {
+                        navigation.navigate('ActiveWorkout' as any, { workout: fullWorkout, userId });
+                      } else {
+                        Alert.alert("Error", "Could not generate session. Please check your connection.");
+                      }
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                }}
+              >
                 <View style={styles.workoutLeft}>
                   <View style={styles.workoutIconContainer}>
                     <Ionicons name="calendar-outline" size={24} color="#6B7280" />
                   </View>
                   <View style={styles.workoutInfo}>
-                    <Text style={styles.workoutDate}>{workout.date}</Text>
-                    <Text style={styles.workoutTitle}>{workout.title}</Text>
+                    <Text style={styles.workoutDate}>
+                      {workout.scheduled_date ? formatDate(workout.scheduled_date) : 'TBD'}
+                    </Text>
+                    <Text style={styles.workoutTitle}>{workout.name}</Text>
                     <Text style={styles.workoutDetails}>
-                      {workout.exercises} • {workout.duration}
+                      {workout.exercises_count} Exercises • {workout.duration}m
                     </Text>
                   </View>
                 </View>
@@ -165,6 +293,79 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  missedAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  missedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92400E',
+    flex: 1,
+  },
+  restDayCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 32,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  restDayTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  restDayText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,

@@ -1,15 +1,70 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, ImageBackground } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { MainTabParamList } from '../../../navigation/AppNavigator';
+import { getDashboardData, DashboardData } from '../../../services/api/dashboardService';
 
 type DashboardRouteProp = RouteProp<MainTabParamList, 'Home'>;
 
 export const DashboardScreen = () => {
   const route = useRoute<DashboardRouteProp>();
-  const firstName = route.params?.firstName || 'User';
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Get userId from route params or use default (you should pass this from login)
+  const userId = route.params?.userId || 1; // TODO: Get from auth context
+  
+  useEffect(() => {
+    loadDashboardData();
+  }, [userId]);
+  
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getDashboardData(userId);
+      setDashboardData(data);
+    } catch (err) {
+      setError('Failed to load dashboard data');
+      console.error('Dashboard error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading your dashboard...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  if (error || !dashboardData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
+          <Text style={styles.errorText}>{error || 'Unable to load data'}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  const firstName = dashboardData.user.first_name;
+  const healthScore = dashboardData.health_score;
+  const caloriesConsumed = dashboardData.calories.consumed;
+  const caloriesGoal = dashboardData.calories.goal;
+  const currentWeight = dashboardData.weight.current || 0;
+  const weightHistory = dashboardData.weight.history;
+  const todayWorkout = dashboardData.today_workout;
+  const insight = dashboardData.insight;
   
   return (
     <SafeAreaView style={styles.container}>
@@ -32,7 +87,7 @@ export const DashboardScreen = () => {
             </View>
             <View style={styles.healthScoreContent}>
               <View style={styles.scoreCircle}>
-                <Text style={styles.scoreNumber}>82</Text>
+                <Text style={styles.scoreNumber}>{healthScore}</Text>
               </View>
               <View style={styles.scoreDetails}>
                  <Text style={styles.scoreChange}>↗ +5 pts</Text>
@@ -48,8 +103,8 @@ export const DashboardScreen = () => {
                <View style={styles.fireIconContainer}>
                  <Ionicons name="flame" size={20} color="#FF6B35" />
                </View>
-               <Text style={styles.calorieValue}>1,240</Text>
-               <Text style={styles.calorieTarget}>/ 1,800</Text>
+               <Text style={styles.calorieValue}>{caloriesConsumed.toLocaleString()}</Text>
+               <Text style={styles.calorieTarget}>/ {caloriesGoal.toLocaleString()}</Text>
              </View>
           </View>
 
@@ -59,11 +114,17 @@ export const DashboardScreen = () => {
         <View style={styles.workoutCard}>
           <View style={styles.workoutCardOverlay}>
              <Text style={styles.workoutSubtitle}>TODAY'S WORKOUT</Text>
-             <Text style={styles.workoutTitle}>Lower Body{'\n'}Power</Text>
-             <View style={styles.durationBadge}>
-               <Ionicons name="time-outline" size={12} color="#fff" />
-               <Text style={styles.durationText}> 45 min</Text>
-             </View>
+             {todayWorkout ? (
+               <>
+                 <Text style={styles.workoutTitle}>{todayWorkout.name}</Text>
+                 <View style={styles.durationBadge}>
+                   <Ionicons name="time-outline" size={12} color="#fff" />
+                   <Text style={styles.durationText}> {todayWorkout.duration} min</Text>
+                 </View>
+               </>
+             ) : (
+               <Text style={styles.workoutTitle}>No workout{'\n'}scheduled</Text>
+             )}
           </View>
         </View>
 
@@ -71,42 +132,80 @@ export const DashboardScreen = () => {
         <View style={styles.trendSection}>
            <View style={styles.trendHeader}>
               <Text style={styles.trendTitle}>WEIGHT TREND</Text>
-              <Text style={styles.trendValue}>72.4 <Text style={styles.trendUnit}>kg</Text></Text>
+              <Text style={styles.trendValue}>
+                {currentWeight > 0 ? currentWeight.toFixed(1) : '--'} <Text style={styles.trendUnit}>kg</Text>
+              </Text>
            </View>
            
            <View style={styles.chartContainer}>
-             {/* Mocking a bar chart */}
              <View style={styles.chartBars}>
-                <View style={[styles.barContainer, { height: '50%' }]}><View style={styles.barFill}/></View>
-                <View style={[styles.barContainer, { height: '55%' }]}><View style={styles.barFill}/></View>
-                <View style={[styles.barContainer, { height: '48%' }]}><View style={styles.barFill}/></View>
-                <View style={[styles.barContainer, { height: '45%' }]}><View style={styles.barFill}/></View>
-                <View style={[styles.barContainer, { height: '40%' }]}><View style={styles.barFill}/></View>
-                <View style={[styles.barContainer, { height: '35%' }]}><View style={styles.barFill}/></View>
-                <View style={[styles.barContainer, { height: '32%' }]}><View style={[styles.barFill, styles.barFillActive]}/></View>
-             </View>
-             <View style={styles.chartLabels}>
-                <Text style={styles.chartLabel}>MON</Text>
-                <Text style={styles.chartLabel}>TUE</Text>
-                <Text style={styles.chartLabel}>WED</Text>
-                <Text style={styles.chartLabel}>THU</Text>
-                <Text style={styles.chartLabel}>FRI</Text>
-                <Text style={styles.chartLabel}>SAT</Text>
-                <Text style={[styles.chartLabel, styles.chartLabelActive]}>SUN</Text>
+                {(() => {
+                  // Get last 7 days including today
+                  const last7Days = [];
+                  const today = new Date();
+                  
+                  for (let i = 6; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    
+                    // Find weight entry for this date
+                    const entry = weightHistory.find(w => w.recorded_date === dateStr);
+                    
+                    last7Days.push({
+                      date: dateStr,
+                      dayName: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][date.getDay()],
+                      weight: entry ? Number(entry.weight) : null,
+                      isToday: i === 0
+                    });
+                  }
+                  
+                  // Calculate max weight for scaling
+                  const weights = last7Days.filter(d => d.weight !== null).map(d => d.weight!);
+                  const maxWeight = weights.length > 0 ? Math.max(...weights) : 100;
+                  const minWeight = weights.length > 0 ? Math.min(...weights) : 0;
+                  const range = maxWeight - minWeight || 10;
+                  
+                  return last7Days.map((day, index) => {
+                    const height = day.weight 
+                      ? ((day.weight - minWeight) / range) * 70 + 30 // Scale between 30-100%
+                      : 20; // Show small bar if no data
+                    
+                    return (
+                      <View key={index} style={styles.barWrapper}>
+                        <View style={styles.barContainer}>
+                          <View 
+                            style={[
+                              styles.barFill, 
+                              day.isToday && styles.barFillActive,
+                              !day.weight && styles.barFillEmpty,
+                              { height: `${height}%` }
+                            ]}
+                          />
+                        </View>
+                        <Text style={[styles.chartLabel, day.isToday && styles.chartLabelActive]}>
+                          {day.dayName}
+                        </Text>
+                      </View>
+                    );
+                  });
+                })()}
              </View>
            </View>
         </View>
 
         {/* AI Insight */}
-        <View style={styles.insightBanner}>
-           <View style={styles.insightIconContainer}>
-             <Ionicons name="bulb" size={20} color="#fff" />
-           </View>
-           <View style={styles.insightTextContent}>
-             <Text style={styles.insightTitle}>AI INSIGHT</Text>
-             <Text style={styles.insightBody}>You're <Text style={styles.insightHighlight}>15% more consistent</Text> this week. Keep it up!</Text>
-           </View>
-        </View>
+        {insight && (
+          <View style={styles.insightBanner}>
+             <View style={styles.insightIconContainer}>
+               <Ionicons name="bulb" size={20} color="#fff" />
+             </View>
+             <View style={styles.insightTextContent}>
+               <Text style={styles.insightTitle}>AI INSIGHT</Text>
+               <Text style={styles.insightBody}>{insight.text}</Text>
+             </View>
+          </View>
+        )}
 
       </ScrollView>
     </SafeAreaView>
@@ -117,9 +216,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-      marginBottom:theme.spacing.xxl, 
-      
-   
+    marginBottom:theme.spacing.xxl, 
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  loadingText: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  errorText: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
   scrollContent: {
     flexGrow: 1,
@@ -300,28 +419,38 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
-    height: 140,
-    justifyContent: 'space-between',
+    paddingBottom: theme.spacing.md,
   },
   chartBars: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
+    height: 120,
     marginBottom: theme.spacing.sm,
   },
-  barContainer: {
-    width: 24,
+  barWrapper: {
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'flex-end',
+    height: '100%',
+  },
+  barContainer: {
+    width: '70%',
+    height: '85%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   barFill: {
     width: '100%',
     backgroundColor: theme.colors.border,
     borderRadius: 4,
-    height: '100%',
+    minHeight: 8,
   },
   barFillActive: {
     backgroundColor: theme.colors.primary,
+  },
+  barFillEmpty: {
+    backgroundColor: 'rgba(229, 231, 235, 0.3)',
   },
   chartLabels: {
     flexDirection: 'row',

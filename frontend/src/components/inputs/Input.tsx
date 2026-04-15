@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: theme.colors.border,
     height: 56,

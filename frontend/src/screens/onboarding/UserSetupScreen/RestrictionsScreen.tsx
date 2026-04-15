@@ -108,7 +108,7 @@ export const RestrictionsScreen = () => {
       const data = await response.json();
 
       if (response.ok && data.status === 'success') {
-        navigation.navigate('Main', { firstName: params.firstName });
+        navigation.navigate('Main', { firstName: params.firstName, userId: params.userId });
       } else {
         Alert.alert('Error', data.message || 'Failed to save profile');
       }

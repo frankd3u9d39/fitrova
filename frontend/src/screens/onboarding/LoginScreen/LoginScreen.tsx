@@ -40,7 +40,7 @@ export const LoginScreen = () => {
         const { id, firstName, surveyStep, profile } = data.user;
         
         if (surveyStep === 'Complete') {
-          navigation.navigate('Main', { firstName });
+          navigation.navigate('Main', { firstName, userId: id });
         } else if (surveyStep === 'Personalization') {
           navigation.navigate('Personalization', { userId: id, firstName });
         } else if (surveyStep === 'GoalSetting') {
