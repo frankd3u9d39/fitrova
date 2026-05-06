@@ -1,13 +1,14 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
+  
   ScrollView,
   TouchableOpacity,
-  Alert,
-} from 'react-native';
+  Alert} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/AppNavigator';
@@ -110,10 +111,10 @@ export const RestrictionsScreen = () => {
       if (response.ok && data.status === 'success') {
         navigation.navigate('Main', { firstName: params.firstName, userId: params.userId });
       } else {
-        Alert.alert('Error', data.message || 'Failed to save profile');
+        CustomAlert.alert('Error', data.message || 'Failed to save profile');
       }
     } catch (error) {
-      Alert.alert('Network Error', 'Could not connect to the server.');
+      CustomAlert.alert('Network Error', 'Could not connect to the server.');
       console.error(error);
     } finally {
       setIsLoading(false);

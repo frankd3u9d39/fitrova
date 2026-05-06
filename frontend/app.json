@@ -12,7 +12,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-       "supportsTablet": true
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -28,6 +28,24 @@
       "eas": {
         "projectId": "4fe327f8-74ad-4fb1-9613-ee0e6380e330"
       }
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Fitrova to use the camera to analyze your workout form.",
+          "microphonePermission": "Allow Fitrova to use the microphone for recording video form checks.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Fitrova to access your photos for form analysis.",
+          "cameraPermission": "Allow Fitrova to use the camera to analyze your workout form."
+        }
+      ],
+      "expo-video"
+    ]
   }
 }

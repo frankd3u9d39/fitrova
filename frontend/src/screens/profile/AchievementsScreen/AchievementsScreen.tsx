@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
+  
   ScrollView,
   TouchableOpacity,
-} from 'react-native';
+  ActivityIndicator,
+  RefreshControl,
+  Share} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AchievementCard } from '../../../components/cards';
+import { getAchievements, Achievement, Category } from '../../../services/api/achievementService';
+import { MainTabParamList } from '../../../navigation/AppNavigator';
 
 type Category = 'Training' | 'Nutrition' | 'Milestones';
 
@@ -23,27 +28,54 @@ interface Achievement {
   color: string;
 }
 
+type AchievementsRouteProp = RouteProp<MainTabParamList, 'Profile'>; // Assuming it's under Profile
+
 export const AchievementsScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute<AchievementsRouteProp>();
   const [selectedCategory, setSelectedCategory] = useState<Category>('Training');
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const achievements: Achievement[] = [
-    // Training
-    { id: '1', title: '7-Day Streak', description: 'Consistency King', icon: 'flash', category: 'Training', unlocked: true, color: '#D1FAE5' },
-    { id: '2', title: 'Iron Will', description: '50 Heavy Sessions', icon: 'barbell', category: 'Training', unlocked: true, color: '#D1FAE5' },
-    { id: '3', title: 'IRON WILL', description: 'Locked', icon: 'lock-closed', category: 'Training', unlocked: false, color: '#E5E7EB' },
-    { id: '4', title: 'Sprint Master', description: 'Max Velocity Hit', icon: 'speedometer', category: 'Training', unlocked: true, color: '#D1FAE5' },
-    
-    // Nutrition
-    { id: '5', title: 'Protein Pro', description: 'Macro Precision', icon: 'restaurant', category: 'Nutrition', unlocked: true, color: '#D1FAE5' },
-    { id: '6', title: 'Water God', description: 'Locked', icon: 'lock-closed', category: 'Nutrition', unlocked: false, color: '#E5E7EB' },
-    { id: '7', title: 'Leafy Legend', description: 'Locked', icon: 'lock-closed', category: 'Nutrition', unlocked: false, color: '#E5E7EB' },
-    
-    // Milestones
-    { id: '8', title: 'First Step', description: 'Journey Begun', icon: 'footsteps', category: 'Milestones', unlocked: true, color: '#D1FAE5' },
-    { id: '9', title: 'Month Strong', description: '30 Days Active', icon: 'calendar', category: 'Milestones', unlocked: true, color: '#D1FAE5' },
-    { id: '10', title: 'Year Warrior', description: 'Locked', icon: 'lock-closed', category: 'Milestones', unlocked: false, color: '#E5E7EB' },
-  ];
+  const userId = (route.params as any)?.userId || 1; // Default to 1 for now
+
+  const loadAchievements = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      setError(null);
+      const data = await getAchievements(userId);
+      setAchievements(data);
+    } catch (err) {
+      setError('Failed to load achievements');
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    loadAchievements();
+  }, [loadAchievements]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadAchievements(false);
+  };
+
+  const handleShare = async () => {
+    try {
+      const message = `I just unlocked ${totalBadges} badges on Fitrova! 🏆\nMy top achievement: ${filteredAchievements[0]?.title || 'Staying Consistent'}\n\nJoin me on my fitness journey! #Fitrova #FitnessGoals`;
+      await Share.share({
+        message,
+        title: 'My Fitrova Progress',
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
 
   const filteredAchievements = achievements.filter(
     (achievement) => achievement.category === selectedCategory
@@ -60,6 +92,9 @@ export const AchievementsScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -122,22 +157,39 @@ export const AchievementsScreen = () => {
 
         {/* Achievements Grid */}
         <View style={styles.achievementsGrid}>
-          {filteredAchievements.map((achievement) => (
-            <AchievementCard
-              key={achievement.id}
-              title={achievement.title}
-              description={achievement.description}
-              icon={achievement.icon}
-              color={achievement.color}
-              unlocked={achievement.unlocked}
-              size="small"
-              style={styles.achievementCard}
-            />
-          ))}
+          {loading ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color="#10B981" />
+            </View>
+          ) : error ? (
+            <View style={styles.centerContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity onPress={() => loadAchievements()} style={styles.retryButton}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : filteredAchievements.length === 0 ? (
+            <View style={styles.centerContainer}>
+              <Text style={styles.noDataText}>No achievements found in this category.</Text>
+            </View>
+          ) : (
+            filteredAchievements.map((achievement) => (
+              <AchievementCard
+                key={achievement.id}
+                title={achievement.title}
+                description={achievement.description}
+                icon={achievement.unlocked ? achievement.icon : 'lock-closed'}
+                color={achievement.unlocked ? achievement.color : '#E5E7EB'}
+                unlocked={achievement.unlocked}
+                size="small"
+                style={styles.achievementCard}
+              />
+            ))
+          )}
         </View>
 
         {/* Share Button */}
-        <TouchableOpacity style={styles.shareButton}>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
           <Ionicons name="share-social" size={20} color="#FFFFFF" />
           <Text style={styles.shareButtonText}>Share Your Progress</Text>
         </TouchableOpacity>
@@ -295,5 +347,30 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 100,
+  },
+  centerContainer: {
+    width: '100%',
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    color: '#EF4444',
+    marginBottom: 12,
+    fontWeight: '600',
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#1F2937',
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  noDataText: {
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });

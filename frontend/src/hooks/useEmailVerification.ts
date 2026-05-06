@@ -17,6 +17,14 @@ export const useEmailVerification = () => {
     try {
       const result = await verifyEmail(email);
 
+      // 1. Check if email already exists in our database
+      if (result.exists) {
+        setVerificationError('This email is already associated with an account. Please use a different email or try logging in.');
+        setIsVerifying(false);
+        return false;
+      }
+
+      // 2. Check deliverability and quality
       if (!result.isValid) {
         setVerificationError('Invalid email format');
         setIsVerifying(false);
@@ -44,8 +52,9 @@ export const useEmailVerification = () => {
       setIsVerifying(false);
       return true;
     } catch (error) {
-      console.error('Email verification failed:', error);
+      console.warn('Email verification process encountered an issue:', error);
       setIsVerifying(false);
+      // We return true as a fallback to let the user proceed if the verification service is down
       return true;
     }
   }, []);

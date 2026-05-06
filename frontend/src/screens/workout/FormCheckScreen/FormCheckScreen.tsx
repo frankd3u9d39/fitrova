@@ -1,9 +1,11 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView, 
+   
   TouchableOpacity, 
   Image, 
   ActivityIndicator, 
@@ -14,8 +16,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Video, Audio } from 'expo-av';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { theme } from '../../../theme';
@@ -25,13 +27,16 @@ const { width, height } = Dimensions.get('window');
 
 export const FormCheckScreen = () => {
   const navigation = useNavigation();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const cameraRef = useRef<CameraView>(null);
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [capturedVideo, setCapturedVideo] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -49,17 +54,20 @@ export const FormCheckScreen = () => {
     }
   }, [isAnalyzing]);
 
-  if (!permission) {
+  if (!cameraPermission || !micPermission) {
     return <View style={styles.centered}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
   }
 
-  if (!permission.granted) {
+  if (!cameraPermission.granted || !micPermission.granted) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>We need your permission to show the camera</Text>
-          <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
-            <Text style={styles.permissionBtnText}>Grant Permission</Text>
+          <Text style={styles.permissionText}>We need your permission to use the camera and microphone for analysis</Text>
+          <TouchableOpacity style={styles.permissionBtn} onPress={async () => {
+            if (!cameraPermission.granted) await requestCameraPermission();
+            if (!micPermission.granted) await requestMicPermission();
+          }}>
+            <Text style={styles.permissionBtnText}>Grant Permissions</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -80,7 +88,7 @@ export const FormCheckScreen = () => {
       if (count === 0) {
         clearInterval(interval);
         setIsCountingDown(false);
-        captureAndAnalyze();
+        recordAndAnalyze();
       }
     }, 1000);
   };
@@ -89,43 +97,52 @@ export const FormCheckScreen = () => {
     Speech.speak(text, { pitch: 1.0, rate: 0.9 });
   };
 
-  const captureAndAnalyze = async () => {
+  const recordAndAnalyze = async () => {
     if (!cameraRef.current) return;
     
     try {
-      setIsAnalyzing(true);
+      setIsRecording(true);
       
-      const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.5,
+      // Start recording - it will automatically stop after 5 seconds
+      const recordingPromise = cameraRef.current.recordAsync({
+        maxDuration: 5,
       });
 
-      if (!photo?.base64) throw new Error("Failed to capture image");
+      const video = await recordingPromise;
+      setIsRecording(false);
+      setIsAnalyzing(true);
       
-      setCapturedImage(photo.uri);
+      if (!video?.uri) throw new Error("Failed to capture video");
+      
+      setCapturedVideo(video.uri);
 
-      const response = await fetch(`${API_BASE_URL}/ai_form_analyzer.php`, {
+      // Convert to blob or send as FormData
+      const formData = new FormData();
+      formData.append('video', {
+        uri: video.uri,
+        name: 'workout.mp4',
+        type: 'video/mp4',
+      } as any);
+      formData.append('user_id', '1');
+      formData.append('exercise', 'Detect automatically');
+
+      const response = await fetch(`${API_BASE_URL}/app/controllers/ai/ai_form_analyzer.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: 1,
-          image: photo.base64,
-          exercise: 'Detect automatically' 
-        }),
+        body: formData,
       });
 
       const result = await response.json();
       setAnalysisResult(result);
       
-      // Auto-speak the summary for a hands-free experience
       if (result.summary) {
         speakResult(result.summary);
       }
       
     } catch (error) {
       console.error('Analysis error:', error);
-      Alert.alert("Analysis Failed", "Could not connect to the AI trainer.");
+      CustomAlert.alert("Analysis Failed", "Could not connect to the AI trainer.");
     } finally {
+      setIsRecording(false);
       setIsAnalyzing(false);
     }
   };
@@ -147,14 +164,26 @@ export const FormCheckScreen = () => {
 
       <View style={styles.content}>
         <View style={styles.cameraFrame}>
-          {!analysisResult && !capturedImage ? (
+          {!analysisResult && !capturedVideo && !capturedImage ? (
             <CameraView 
               ref={cameraRef}
               style={StyleSheet.absoluteFill} 
               facing="front"
+              mode="video"
             />
           ) : (
-            <Image source={{ uri: capturedImage! }} style={StyleSheet.absoluteFill} />
+            capturedVideo ? (
+              <VideoPlayerView uri={capturedVideo} />
+            ) : (
+              <Image source={{ uri: capturedImage! }} style={StyleSheet.absoluteFill} />
+            )
+          )}
+
+          {isRecording && (
+            <View style={styles.recordingOverlay}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingText}>RECORDING</Text>
+            </View>
           )}
 
           {isAnalyzing && (
@@ -169,7 +198,7 @@ export const FormCheckScreen = () => {
           )}
 
           {/* AI Decorative Overlays */}
-          {!analysisResult && !isCountingDown && !isAnalyzing && (
+          {!analysisResult && !isCountingDown && !isAnalyzing && !isRecording && (
             <View style={styles.skeletonFrame}>
                <View style={[styles.skeletonJoint, { top: '30%', left: '48%' }]} />
                <View style={[styles.skeletonJoint, { top: '45%', left: '40%' }]} />
@@ -204,7 +233,7 @@ export const FormCheckScreen = () => {
               )}
             </View>
 
-            <TouchableOpacity style={styles.retryBtn} onPress={() => { setAnalysisResult(null); setCapturedImage(null); }}>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => { setAnalysisResult(null); setCapturedImage(null); setCapturedVideo(null); }}>
               <Text style={styles.retryBtnText}>CHECK AGAIN</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -212,30 +241,34 @@ export const FormCheckScreen = () => {
           <>
             <View style={styles.instructions}>
               <Text style={styles.instructionTitle}>
-                {isAnalyzing ? "Analyzing Form..." : "Prepare for Scan"}
+                {isAnalyzing ? "Analyzing Form..." : isRecording ? "Recording Movement..." : "Prepare for Scan"}
               </Text>
               <Text style={styles.instructionText}>
                 {isAnalyzing 
                   ? "Our AI is analyzing your joint alignment and range of motion. Please wait."
-                  : "Position yourself 5-7 feet away. The AI will capture your movement in 5 seconds."}
+                  : isRecording
+                  ? "Keep moving! The AI is capturing your 5-second movement session."
+                  : "Position yourself 5-7 feet away. The AI will record your movement for 5 seconds."}
               </Text>
             </View>
 
-            {!isAnalyzing && !isCountingDown && (
+            {!isAnalyzing && !isCountingDown && !isRecording && (
               <TouchableOpacity 
                 style={styles.startButton} 
                 onPress={startAnalysis}
-                disabled={isAnalyzing || isCountingDown}
+                disabled={isAnalyzing || isCountingDown || isRecording}
               >
                 <Text style={styles.startButtonText}>START SCAN</Text>
-                <Ionicons name="sparkles" size={20} color="#fff" />
+                <Ionicons name="videocam" size={20} color="#fff" />
               </TouchableOpacity>
             )}
             
-            {(isAnalyzing || isCountingDown) && (
+            {(isAnalyzing || isCountingDown || isRecording) && (
               <View style={styles.loadingBar}>
                 <ActivityIndicator color={theme.colors.primary} />
-                <Text style={styles.loadingInfo}>{isCountingDown ? "Waiting for snap..." : "Processing AI Vision..."}</Text>
+                <Text style={styles.loadingInfo}>
+                  {isCountingDown ? "Waiting for start..." : isRecording ? "Recording..." : "Processing AI Vision..."}
+                </Text>
               </View>
             )}
           </>
@@ -453,5 +486,45 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  recordingOverlay: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 8,
+  },
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
+  },
+  recordingText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
   }
 });
+
+const VideoPlayerView = ({ uri }: { uri: string }) => {
+  const player = useVideoPlayer(uri, (player) => {
+    player.loop = true;
+    player.play();
+  });
+
+  return (
+    <VideoView
+      style={StyleSheet.absoluteFill}
+      player={player}
+      allowsFullscreen
+      allowsPictureInPicture
+    />
+  );
+};

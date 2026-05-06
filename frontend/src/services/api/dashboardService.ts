@@ -30,7 +30,7 @@ export interface DashboardData {
 
 export const getDashboardData = async (userId: number): Promise<DashboardData> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/get_dashboard_data.php`, {
+    const response = await fetch(`${API_BASE_URL}/app/controllers/workout/get_dashboard_data.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

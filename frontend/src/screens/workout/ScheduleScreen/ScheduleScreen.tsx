@@ -1,5 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet,  TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -35,11 +37,11 @@ export const ScheduleScreen = () => {
         if (fullWorkout) {
           navigation.navigate('ActiveWorkout', { workout: fullWorkout, userId });
         } else {
-          Alert.alert("Notice", "We couldn't generate this session. Try again later.");
+          CustomAlert.alert("Notice", "We couldn't generate this session. Try again later.");
         }
       } catch (err) {
         console.error('Generation error:', err);
-        Alert.alert("Error", "Workout generation failed.");
+        CustomAlert.alert("Error", "Workout generation failed.");
       } finally {
         setLoading(false);
       }

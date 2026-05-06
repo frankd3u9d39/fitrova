@@ -1,5 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Dimensions, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet,  ScrollView, TouchableOpacity, Dimensions, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,7 +28,7 @@ export const PersonalizationScreen = () => {
   const [weight, setWeight] = useState('72');
   const [gender, setGender] = useState('M');
   const [activity, setActivity] = useState('Moderate');
-  const [goal, setGoal] = useState('Gain Muscle');
+  const [hasEquipment, setHasEquipment] = useState(true);
 
   const renderPill = (label: string, value: string, currentValue: string, setter: (val: string) => void) => {
     const isSelected = value === currentValue;
@@ -46,19 +48,19 @@ export const PersonalizationScreen = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId, age, gender, height, weight, activityLevel: activity, selectedGoal: goal, survey_step: 'GoalSetting', firstName
+          userId, age, gender, height, weight, activityLevel: activity, hasEquipment, survey_step: 'GoalSetting', firstName
         }),
       });
       const data = await response.json();
       if (response.ok && data.status === 'success') {
         navigation.navigate('GoalSetting', {
-          userId, age, gender, height, weight, activityLevel: activity, goal, firstName
+          userId, age, gender, height, weight, activityLevel: activity, firstName, hasEquipment
         });
       } else {
-        Alert.alert('Error', data.message || 'Failed to save progress');
+        CustomAlert.alert('Error', data.message || 'Failed to save progress');
       }
     } catch (e) {
-      Alert.alert('Error', 'Network request failed');
+      CustomAlert.alert('Error', 'Network request failed');
     }
   };
 
@@ -155,27 +157,33 @@ export const PersonalizationScreen = () => {
           </View>
         </View>
 
-        {/* Fitness Goal */}
+        
+        {/* Equipment Status */}
         <View style={styles.section}>
-          <Text style={styles.label}>FITNESS GOAL</Text>
-          
-          <TouchableOpacity 
-            style={[styles.goalCard, goal === 'Lose Weight' && styles.goalCardSelected]}
-            onPress={() => setGoal('Lose Weight')}
-          >
-            <View style={styles.goalIconContainer}><Ionicons name="trending-down" size={20} color={theme.colors.text} /></View>
-            <Text style={styles.goalText}>Lose Weight</Text>
-            {goal === 'Lose Weight' && <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />}
-          </TouchableOpacity>
+          <Text style={styles.label}>DO YOU HAVE EQUIPMENT?</Text>
+          <View style={styles.equipmentRow}>
+            <TouchableOpacity 
+              style={[styles.equipmentCard, !hasEquipment && styles.equipmentCardSelected]}
+              onPress={() => setHasEquipment(false)}
+            >
+              <Ionicons name="body" size={24} color={!hasEquipment ? theme.colors.primary : theme.colors.textSecondary} />
+              <View style={styles.equipmentTextContainer}>
+                <Text style={[styles.equipmentTitle, !hasEquipment && styles.equipmentTitleSelected]}>Bodyweight Only</Text>
+                <Text style={styles.equipmentSubtitle}>No tools needed</Text>
+              </View>
+            </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.goalCard, goal === 'Gain Muscle' && styles.goalCardSelected]}
-            onPress={() => setGoal('Gain Muscle')}
-          >
-           <View style={[styles.goalIconContainer, goal === 'Gain Muscle' && styles.goalIconContainerSelected]}><Ionicons name="barbell-outline" size={20} color={theme.colors.text} /></View>
-            <Text style={styles.goalText}>Gain Muscle</Text>
-            {goal === 'Gain Muscle' && <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />}
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.equipmentCard, hasEquipment && styles.equipmentCardSelected]}
+              onPress={() => setHasEquipment(true)}
+            >
+              <Ionicons name="barbell" size={24} color={hasEquipment ? theme.colors.primary : theme.colors.textSecondary} />
+              <View style={styles.equipmentTextContainer}>
+                <Text style={[styles.equipmentTitle, hasEquipment && styles.equipmentTitleSelected]}>Full Access</Text>
+                <Text style={styles.equipmentSubtitle}>Dumbbells, etc.</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Next Button */}
@@ -373,6 +381,41 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     fontWeight: '600',
     flex: 1,
+  },
+  equipmentRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  equipmentCard: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    gap: 8,
+  },
+  equipmentCardSelected: {
+    backgroundColor: theme.colors.background,
+    borderColor: theme.colors.primary,
+  },
+  equipmentTextContainer: {
+    alignItems: 'center',
+  },
+  equipmentTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  equipmentTitleSelected: {
+    color: theme.colors.text,
+  },
+  equipmentSubtitle: {
+    fontSize: 10,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
   footer: {
     marginTop: theme.spacing.xs,

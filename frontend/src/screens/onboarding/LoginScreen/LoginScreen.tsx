@@ -1,5 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet,  KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/AppNavigator';
@@ -20,7 +22,7 @@ export const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter your email and password');
+      CustomAlert.alert('Error', 'Please enter your email and password');
       return;
     }
 
@@ -70,10 +72,10 @@ export const LoginScreen = () => {
           });
         }
       } else {
-        Alert.alert('Login Failed', data.message || 'Invalid credentials');
+        CustomAlert.alert('Login Failed', data.message || 'Invalid credentials');
       }
     } catch (error) {
-      Alert.alert('Error', 'Could not connect to the server. Please check your network.');
+      CustomAlert.alert('Error', 'Could not connect to the server. Please check your network.');
       console.error(error);
     } finally {
       setIsLoading(false);

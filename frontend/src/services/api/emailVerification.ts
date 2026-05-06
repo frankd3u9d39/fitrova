@@ -1,7 +1,4 @@
-// Email verification service using Abstract API
-// Get your free API key from: https://www.abstractapi.com/api/email-verification-validation-api
-
-const ABSTRACT_API_KEY = '6ea8da050ed2489cbc0ab07df4b4602a'; // Your API key
+import { endpoints } from './apiClient';
 
 export interface EmailVerificationResult {
   isValid: boolean;
@@ -9,47 +6,61 @@ export interface EmailVerificationResult {
   isFreeEmail: boolean;
   deliverable: string; // 'DELIVERABLE', 'UNDELIVERABLE', 'UNKNOWN'
   qualityScore: number; // 0.0 to 1.0
+  exists?: boolean; // New: track if email already exists in DB
 }
 
 export const verifyEmail = async (email: string): Promise<EmailVerificationResult> => {
   try {
-    const response = await fetch(
-      `https://emailreputation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${encodeURIComponent(email)}`
-    );
+    const response = await fetch(endpoints.checkEmail, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
 
     if (!response.ok) {
-      throw new Error('Email verification failed');
+      throw new Error('Email verification request failed');
     }
 
     const data = await response.json();
+    
+    // The backend now returns both existence and verification details
+    if (data.exists) {
+      return {
+        isValid: true,
+        isDisposable: false,
+        isFreeEmail: false,
+        deliverable: 'DELIVERABLE',
+        qualityScore: 1.0,
+        exists: true
+      };
+    }
 
-    // Parse the actual API structure
-    const deliverability = data.email_deliverability?.status || 'unknown';
-    const quality = data.email_quality || {};
+    const verification = data.verification || {};
     
-    const result = {
-      isValid: data.email_deliverability?.is_format_valid !== false,
-      isDisposable: quality.is_disposable === true,
-      isFreeEmail: quality.is_free_email === true,
-      deliverable: deliverability === 'deliverable' ? 'DELIVERABLE' : 
-                   deliverability === 'undeliverable' ? 'UNDELIVERABLE' : 'UNKNOWN',
-      qualityScore: quality.score !== undefined ? quality.score : 0.5,
+    return {
+      isValid: verification.isValid !== false,
+      isDisposable: verification.isDisposable === true,
+      isFreeEmail: verification.isFreeEmail === true,
+      deliverable: verification.deliverable || 'UNKNOWN',
+      qualityScore: verification.qualityScore !== undefined ? verification.qualityScore : 0.5,
+      exists: false
     };
-    
-    return result;
   } catch (error) {
-    console.error('Email verification error:', error);
+    console.warn('Email verification fallback used due to error:', error);
     return {
       isValid: true,
       isDisposable: false,
       isFreeEmail: false,
       deliverable: 'UNKNOWN',
       qualityScore: 0.5,
+      exists: false
     };
   }
 };
 
-// Simple regex validation (instant, no API call)
+// Simple regex validation (instant, no network call)
 export const validateEmailFormat = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);

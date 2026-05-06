@@ -1,28 +1,33 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../../navigation/AppNavigator';
 import { getWorkoutRecommendations, completeWorkout, WorkoutRecommendation, generateWorkoutDetails } from '../../../services/api/workoutService';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList, MainTabParamList } from '../../../navigation/AppNavigator';
 
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type WorkoutScreenRouteProp = RouteProp<MainTabParamList, 'Workout'>;
 
 export const WorkoutScreen = () => {
   const navigation = useNavigation<WorkoutScreenNavigationProp>();
+  const route = useRoute<WorkoutScreenRouteProp>();
   const [workoutData, setWorkoutData] = useState<WorkoutRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  const userId = route.params?.userId || 1;
+
   const handleToolPress = (toolId: string) => {
     switch (toolId) {
       case '1':
@@ -40,9 +45,6 @@ export const WorkoutScreen = () => {
         break;
     }
   };
-  
-  // TODO: Get userId from auth context
-  const userId = 1;
 
   useEffect(() => {
     loadWorkoutData();
@@ -134,22 +136,11 @@ export const WorkoutScreen = () => {
             <Text style={styles.statusText}>{workoutData.status}</Text>
           </View>
           <View style={styles.recoveryBadge}>
-            <Ionicons name="flash" size={16} color="#10B981" />
-            <Text style={styles.recoveryText}>{workoutData.recovery_score}% Recovery</Text>
+            <Ionicons name="flash" size={14} color="#10B981" />
+            <Text style={styles.recoveryText}>Ready</Text>
           </View>
         </View>
 
-        {/* Missed Workouts Alert */}
-        {(workoutData.missed_workouts || []).length > 0 && (
-          <View style={styles.missedAlert}>
-            <Ionicons name="warning" size={20} color="#F59E0B" />
-            <Text style={styles.missedText}>
-              {(workoutData.missed_workouts || []).length} missed workout(s) rescheduled
-            </Text>
-          </View>
-        )}
-
-        {/* Today's Program Card */}
         {workoutData.todays_workout ? (
           <View style={styles.programCard}>
             <View style={styles.programImageContainer}>
@@ -253,7 +244,7 @@ export const WorkoutScreen = () => {
                       if (fullWorkout) {
                         navigation.navigate('ActiveWorkout' as any, { workout: fullWorkout, userId });
                       } else {
-                        Alert.alert("Error", "Could not generate session. Please check your connection.");
+                        CustomAlert.alert("Error", "Could not generate session. Please check your connection.");
                       }
                     } finally {
                       setLoading(false);
@@ -275,9 +266,9 @@ export const WorkoutScreen = () => {
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.workoutMenu}>
+                <View style={styles.workoutMenu}>
                   <Ionicons name="ellipsis-horizontal" size={20} color="#6B7280" />
-                </TouchableOpacity>
+                </View>
               </TouchableOpacity>
             ))}
           </View>

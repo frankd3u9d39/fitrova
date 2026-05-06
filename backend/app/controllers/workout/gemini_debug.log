@@ -1,0 +1,43 @@
+2026-04-29 15:36:13 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-04-29 15:36:15 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-04-29 15:36:17 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-04-29 15:36:20 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-04-29 15:48:24 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-04-29 15:48:25 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-04-29 15:48:29 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-04-29 15:48:32 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-04-29 15:54:09 (Trying gemini-2.5-flash) HTTP: 200 | CurlErr: 
+2026-04-30 14:52:02 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-04-30 14:52:03 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-04-30 14:52:04 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-04-30 14:52:05 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-04-30 14:53:10 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-04-30 14:53:12 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-04-30 14:53:13 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-04-30 14:53:14 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-04-30 14:56:02 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-04-30 14:56:04 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-04-30 14:56:05 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-04-30 14:56:06 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-04-30 22:28:00 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-04-30 22:28:02 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-04-30 22:28:03 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-04-30 22:28:14 (Trying gemini-pro) HTTP: 0 | CurlErr: SSL connection timeout
+2026-05-05 14:29:37 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-05-05 14:29:38 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-05-05 14:29:39 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-05-05 14:29:40 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-05-05 15:11:08 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-05-05 15:11:09 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-05-05 15:11:10 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-05-05 15:11:11 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-05-05 16:11:23 (Trying gemini-2.5-flash) HTTP: 0 | CurlErr: Operation timed out after 20001 milliseconds with 0 bytes received
+2026-05-05 16:11:27 (Trying gemini-2.0-flash) HTTP: 0 | CurlErr: Failed to connect to generativelanguage.googleapis.com port 443 after 3761 ms: Couldn't connect to server
+2026-05-05 16:11:27 (Trying gemini-1.5-flash) HTTP: 0 | CurlErr: Could not resolve host: generativelanguage.googleapis.com
+2026-05-05 16:11:27 (Trying gemini-pro) HTTP: 0 | CurlErr: Could not resolve host: generativelanguage.googleapis.com
+2026-05-05 19:06:24 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-05-05 19:06:25 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-05-05 19:06:26 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-05-05 19:06:27 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-05-05 19:07:59 (Trying gemini-2.5-flash) HTTP: 200 | CurlErr: 
+2026-05-06 04:06:39 (Trying gemini-2.5-flash) HTTP: 200 | CurlErr: 

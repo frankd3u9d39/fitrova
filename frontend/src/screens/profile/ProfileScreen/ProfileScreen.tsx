@@ -1,22 +1,27 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
+  
   ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+  TouchableOpacity} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList, MainTabParamList } from '../../../navigation/AppNavigator';
 import { StatCard, AchievementCard, ActivityCard } from '../../../components/cards';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type ProfileRouteProp = RouteProp<MainTabParamList, 'Profile'>;
 
 export const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<ProfileRouteProp>();
+  const userId = route.params?.userId || 1;
+  const firstName = route.params?.firstName || 'User';
+
   const stats = [
     { label: 'WORKOUTS', value: '24' },
     { label: 'AVG\nDURATION', value: '45', unit: 'm' },
@@ -66,7 +71,10 @@ export const ProfileScreen = () => {
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity style={styles.settingsButton}>
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate('Settings' as never)}
+          >
             <Ionicons name="settings-outline" size={24} color="#1F2937" />
           </TouchableOpacity>
         </View>
@@ -81,7 +89,7 @@ export const ProfileScreen = () => {
               <Ionicons name="pencil" size={16} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>Alex Rivera</Text>
+          <Text style={styles.userName}>{firstName}</Text>
           <Text style={styles.userMotto}>Striving for 1% better every day</Text>
         </View>
 

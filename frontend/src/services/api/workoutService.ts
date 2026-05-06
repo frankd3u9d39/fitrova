@@ -10,7 +10,7 @@ export interface Exercise {
   duration?: number;
   image_url?: string;
   video_url?: string;
-  instructions?: string;
+  instructions?: string | string[];
 }
 
 export interface Workout {
@@ -117,11 +117,11 @@ export const getWorkoutRecommendations = async (userId: number): Promise<Workout
     
     // Create a timeout promise to give Gemini AI enough time to generate the JSON (up to 45s)
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 45000); // 45 second timeout for AI
+      setTimeout(() => reject(new Error('Request timeout')), 90000); // 90 second timeout for AI
     });
     
     // Create the fetch promise - using Gemini AI endpoint
-    const fetchPromise = fetch(`${AI_SERVICE_URL}/ai_workout_gemini.php`, {
+    const fetchPromise = fetch(`${AI_SERVICE_URL}/app/controllers/workout/ai_workout_gemini.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -187,7 +187,7 @@ export const completeWorkout = async (
       setTimeout(() => reject(new Error('Request timeout')), 5000);
     });
     
-    const fetchPromise = fetch(`${AI_SERVICE_URL}/complete_workout.php`, {
+    const fetchPromise = fetch(`${AI_SERVICE_URL}/app/controllers/workout/complete_workout.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -216,7 +216,7 @@ export const completeWorkout = async (
 
 export const getWorkoutSchedule = async (userId: number): Promise<any[]> => {
   try {
-    const response = await fetch(`${AI_SERVICE_URL}/get_schedule.php?user_id=${userId}`);
+    const response = await fetch(`${AI_SERVICE_URL}/app/controllers/workout/get_schedule.php?user_id=${userId}`);
     const result = await response.json();
     if (result.status === 'success') {
       return result.schedule;
@@ -230,7 +230,7 @@ export const getWorkoutSchedule = async (userId: number): Promise<any[]> => {
 
 export const getRoutineLibrary = async (userId: number): Promise<any[]> => {
   try {
-    const response = await fetch(`${AI_SERVICE_URL}/get_library.php?user_id=${userId}`);
+    const response = await fetch(`${AI_SERVICE_URL}/app/controllers/workout/get_library.php?user_id=${userId}`);
     const result = await response.json();
     if (result.status === 'success') {
       return result.library;
@@ -243,7 +243,7 @@ export const getRoutineLibrary = async (userId: number): Promise<any[]> => {
 };
 export const generateWorkoutDetails = async (userId: number, workoutName: string): Promise<Workout | null> => {
   try {
-    const response = await fetch(`${AI_SERVICE_URL}/generate_workout_detail.php`, {
+    const response = await fetch(`${AI_SERVICE_URL}/app/controllers/workout/generate_workout_detail.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

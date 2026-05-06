@@ -1,16 +1,17 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
+  
   ScrollView,
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-} from 'react-native';
+  Alert} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/AppNavigator';
@@ -77,7 +78,8 @@ export const GoalSettingScreen = () => {
           targetWeight,
           targetDate,
           survey_step: 'Restrictions',
-          firstName: params.firstName
+          firstName: params.firstName,
+          hasEquipment: params.hasEquipment
         }),
       });
 
@@ -89,13 +91,14 @@ export const GoalSettingScreen = () => {
           selectedGoal,
           targetWeight,
           targetDate,
-          firstName: params.firstName
+          firstName: params.firstName,
+          hasEquipment: params.hasEquipment
         });
       } else {
-        Alert.alert('Error', data.message || 'Failed to save progress');
+        CustomAlert.alert('Error', data.message || 'Failed to save progress');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network request failed');
+      CustomAlert.alert('Error', 'Network request failed');
     }
   };
 

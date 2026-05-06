@@ -7,7 +7,7 @@ export interface EmailCheckResult {
 
 export const checkEmailExists = async (email: string): Promise<EmailCheckResult> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/check_email.php`, {
+    const response = await fetch(`${API_BASE_URL}/app/controllers/auth/check_email.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

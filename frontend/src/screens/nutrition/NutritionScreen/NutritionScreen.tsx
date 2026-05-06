@@ -1,62 +1,39 @@
-import React, { useState, useRef } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   TextInput,
   Animated,
   PanResponder,
   Dimensions,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { MainTabParamList, RootStackParamList } from '../../../navigation/AppNavigator';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../../../theme';
+import { nutritionService, NutritionData } from '../../../services/api/nutritionService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-interface Meal {
-  id: string;
-  name: string;
-  time: string;
-  icon: string;
-  calories: number;
-  items: FoodItem[];
-}
-
-interface FoodItem {
-  name: string;
-  amount: string;
-  calories: number;
-}
+type NutritionRouteProp = RouteProp<MainTabParamList, 'Nutrition'>;
 
 export const NutritionScreen = () => {
-  const [meals] = useState<Meal[]>([
-    {
-      id: '1',
-      name: 'Breakfast',
-      time: '8:30 AM',
-      icon: 'sunny',
-      calories: 420,
-      items: [
-        { name: 'Greek Yogurt with Berries', amount: '250g', calories: 185 },
-        { name: 'Black Coffee', amount: '1 cup', calories: 2 },
-        { name: 'Almonds', amount: '20g', calories: 233 },
-      ],
-    },
-    {
-      id: '2',
-      name: 'Lunch',
-      time: '12:30 PM',
-      icon: 'partly-sunny',
-      calories: 820,
-      items: [],
-    },
-  ]);
+  const route = useRoute<NutritionRouteProp>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const userId = route.params?.userId || 1;
+  
+  const [loading, setLoading] = useState(true);
+  const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
 
   // Draggable button state
-  const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 84, y: SCREEN_HEIGHT - 180 })).current;
+  const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 84, y: SCREEN_HEIGHT - 240 })).current;
   const [isDragging, setIsDragging] = useState(false);
 
   const panResponder = useRef(
@@ -100,17 +77,86 @@ export const NutritionScreen = () => {
     })
   ).current;
 
-  const caloriesRemaining = 560;
-  const caloriesGoal = 2000;
-  const proteinCurrent = 124;
-  const proteinGoal = 160;
-  const carbsCurrent = 185;
-  const carbsGoal = 220;
-  const fatsCurrent = 42;
-  const fatsGoal = 65;
+  const fetchNutritionData = async () => {
+    try {
+      setLoading(true);
+      const data = await nutritionService.getNutritionData(userId);
+      setNutritionData(data);
+    } catch (error) {
+      console.error('Fetch error:', error);
+      Alert.alert('Error', 'Failed to load nutrition data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const totalCalories = meals.reduce((sum, meal) => sum + meal.calories, 0);
+  useEffect(() => {
+    fetchNutritionData();
+  }, [userId]);
+
+  const getMealIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'breakfast': return 'sunny';
+      case 'lunch': return 'partly-sunny';
+      case 'dinner': return 'moon';
+      case 'snack': return 'nutrition';
+      default: return 'restaurant';
+    }
+  };
+
+  const getMealColor = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'breakfast': return '#F59E0B'; // Orange
+      case 'lunch': return '#10B981'; // Green
+      case 'dinner': return '#6366F1'; // Blue
+      case 'snack': return '#EC4899'; // Pink
+      default: return '#9CA3AF';
+    }
+  };
+
+  const formatDate = () => {
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short' };
+    return `TODAY, ${new Date().toLocaleDateString('en-GB', options).toUpperCase()}`;
+  };
+
+  const caloriesGoal = nutritionData?.goals.calories || 2000;
+  const totalCalories = nutritionData?.totals.calories || 0;
+  const caloriesRemaining = nutritionData?.remaining.calories || caloriesGoal;
+  
+  const proteinCurrent = nutritionData?.totals.protein || 0;
+  const proteinGoal = nutritionData?.goals.protein || 160;
+  
+  const carbsCurrent = nutritionData?.totals.carbs || 0;
+  const carbsGoal = nutritionData?.goals.carbs || 220;
+  
+  const fatsCurrent = nutritionData?.totals.fats || 0;
+  const fatsGoal = nutritionData?.goals.fats || 65;
+
   const progress = (totalCalories / caloriesGoal) * 100;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#10B981" />
+        <Text style={{ marginTop: 10, color: '#9CA3AF' }}>Loading nutrition data...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const MacroBar = ({ label, current, goal, color }: { label: string, current: number, goal: number, color: string }) => {
+    const percentage = Math.min((current / goal) * 100, 100);
+    return (
+      <View style={styles.macroItem}>
+        <View style={styles.macroHeader}>
+          <Text style={styles.macroLabel}>{label.toUpperCase()}</Text>
+          <Text style={styles.macroValue}>{current}g / {goal}g</Text>
+        </View>
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: color }]} />
+        </View>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -136,119 +182,114 @@ export const NutritionScreen = () => {
                 <Text style={styles.caloriesUnit}>kcal</Text>
               </View>
             </View>
-            <View style={styles.circularProgress}>
-              <Ionicons name="restaurant" size={28} color="#10B981" />
+            <View style={styles.circularProgressContainer}>
+              <View style={[styles.circularProgress, { borderColor: progress > 100 ? '#EF4444' : '#10B981' }]}>
+                <Ionicons name="restaurant" size={24} color={progress > 100 ? '#EF4444' : '#10B981'} />
+              </View>
             </View>
           </View>
 
-          {/* Macros */}
           <View style={styles.macrosContainer}>
-            {/* Protein */}
-            <View style={styles.macroRow}>
-              <Text style={styles.macroLabel}>PROTEIN</Text>
-              <Text style={styles.macroValue}>
-                {proteinCurrent}G / {proteinGoal}G
-              </Text>
-            </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  styles.progressProtein,
-                  { width: `${(proteinCurrent / proteinGoal) * 100}%` }
-                ]} 
-              />
-            </View>
-
-            {/* Carbs */}
-            <View style={styles.macroRow}>
-              <Text style={styles.macroLabel}>CARBS</Text>
-              <Text style={styles.macroValue}>
-                {carbsCurrent}G / {carbsGoal}G
-              </Text>
-            </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  styles.progressCarbs,
-                  { width: `${(carbsCurrent / carbsGoal) * 100}%` }
-                ]} 
-              />
-            </View>
-
-            {/* Fats */}
-            <View style={styles.macroRow}>
-              <Text style={styles.macroLabel}>FATS</Text>
-              <Text style={styles.macroValue}>
-                {fatsCurrent}G / {fatsGoal}G
-              </Text>
-            </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  styles.progressFats,
-                  { width: `${(fatsCurrent / fatsGoal) * 100}%` }
-                ]} 
-              />
-            </View>
+            <MacroBar label="Protein" current={proteinCurrent} goal={proteinGoal} color="#3B82F6" />
+            <MacroBar label="Carbs" current={carbsCurrent} goal={carbsGoal} color="#F59E0B" />
+            <MacroBar label="Fats" current={fatsCurrent} goal={fatsGoal} color="#EF4444" />
           </View>
         </View>
 
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
+        {/* <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#9CA3AF" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search food or brand..."
             placeholderTextColor="#9CA3AF"
           />
-        </View>
+        </View> */}
 
         {/* Scan Button */}
-        <TouchableOpacity style={styles.scanButton}>
-          <Ionicons name="scan" size={24} color="#10B981" />
-          <Text style={styles.scanButtonText}>Scan Meal with Camera</Text>
-          <Ionicons name="sparkles" size={20} color="#10B981" />
-        </TouchableOpacity>
+        <View style={styles.scanContainer}>
+          <TouchableOpacity 
+            style={styles.scanButton} 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('FoodScan', { userId })}
+          >
+            <View style={styles.scanButtonContent}>
+              <View style={styles.scanIconWrapper}>
+                <Ionicons name="scan-outline" size={24} color="#fff" />
+              </View>
+              <Text style={styles.scanButtonText}>Scan Meal with AI Camera</Text>
+              <Ionicons name="sparkles" size={18} color="#10B981" />
+            </View>
+          </TouchableOpacity>
+        </View>
 
         {/* Logged Meals Section */}
         <View style={styles.loggedMealsHeader}>
           <Text style={styles.loggedMealsTitle}>LOGGED MEALS</Text>
-          <Text style={styles.loggedMealsDate}>TODAY, 24 OCT</Text>
+          <Text style={styles.loggedMealsDate}>{formatDate()}</Text>
         </View>
 
         {/* Meals List */}
-        {meals.map((meal) => (
-          <View key={meal.id} style={styles.mealCard}>
-            <View style={styles.mealHeader}>
-              <View style={styles.mealHeaderLeft}>
-                <View style={styles.mealIconContainer}>
-                  <Ionicons name={meal.icon as any} size={24} color="#10B981" />
-                </View>
-                <View>
-                  <Text style={styles.mealName}>{meal.name}</Text>
-                  <Text style={styles.mealTime}>{meal.time}</Text>
-                </View>
-              </View>
-              <Text style={styles.mealCalories}>
-                {meal.calories}
-                <Text style={styles.mealCaloriesUnit}>kcal</Text>
-              </Text>
+        {nutritionData?.meals.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="restaurant-outline" size={40} color="#9CA3AF" />
             </View>
+            <Text style={styles.emptyText}>No meals logged today</Text>
+            <Text style={styles.emptySubtext}>Scan your first meal to start tracking!</Text>
+          </View>
+        ) : (
+          <>
+            {nutritionData?.meals.slice(0, 3).map((meal) => (
+              <View key={meal.id} style={styles.mealCard}>
+                <View style={styles.mealHeader}>
+                  <View style={styles.mealHeaderLeft}>
+                    <View style={[styles.mealIconContainer, { backgroundColor: getMealColor(meal.meal_type) }]}>
+                      <Ionicons name={getMealIcon(meal.meal_type) as any} size={20} color="#fff" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.mealName} numberOfLines={1}>
+                        {meal.meal_name}
+                      </Text>
+                      <Text style={styles.mealTime}>{meal.meal_time}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.mealCaloriesContainer}>
+                    <Text style={styles.mealCalories}>{meal.calories}</Text>
+                    <Text style={styles.mealCaloriesUnit}>kcal</Text>
+                  </View>
+                </View>
 
-            {/* Food Items */}
-            {meal.items.map((item, index) => (
-              <View key={index} style={styles.foodItem}>
-                <Text style={styles.foodItemName}>{item.name}</Text>
-                <Text style={styles.foodItemDetails}>
-                  {item.amount} • {item.calories} kcal
-                </Text>
+                <View style={styles.macroSummary}>
+                  <View style={styles.macroPill}>
+                    <Text style={[styles.macroPillLabel, { color: '#3B82F6' }]}>P</Text>
+                    <Text style={styles.macroPillValue}>{meal.protein || 24}g</Text>
+                  </View>
+                  <View style={styles.macroPill}>
+                    <Text style={[styles.macroPillLabel, { color: '#F59E0B' }]}>C</Text>
+                    <Text style={styles.macroPillValue}>{meal.carbs || 45}g</Text>
+                  </View>
+                  <View style={styles.macroPill}>
+                    <Text style={[styles.macroPillLabel, { color: '#EF4444' }]}>F</Text>
+                    <Text style={styles.macroPillValue}>{meal.fats || 12}g</Text>
+                  </View>
+                </View>
               </View>
             ))}
-          </View>
-        ))}
+
+            {(nutritionData?.meals.length || 0) > 3 && (
+              <TouchableOpacity 
+                style={styles.viewMoreButton}
+                onPress={() => navigation.navigate('NutritionHistory', { userId })}
+              >
+                <Text style={styles.viewMoreText}>
+                  History ({(nutritionData?.meals.length || 0) - 3} more)
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color="#10B981" />
+              </TouchableOpacity>
+            )}
+          </>
+        )}
 
         {/* Add Button Spacing */}
         <View style={styles.bottomSpacer} />
@@ -288,7 +329,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 50,
-    paddingBottom: 100,
+    paddingBottom: 160,
   },
   header: {
     marginBottom: 20,
@@ -336,56 +377,37 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginLeft: 4,
   },
-  circularProgress: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 4,
-    borderColor: '#10B981',
-    borderTopColor: 'transparent',
-    borderLeftColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    transform: [{ rotate: '45deg' }],
-  },
   macrosContainer: {
     gap: 16,
   },
-  macroRow: {
+  macroItem: {
+    gap: 8,
+  },
+  macroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
   },
   macroLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#9CA3AF',
     letterSpacing: 1,
-    color:'#ffff'
   },
   macroValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#E5E7EB',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#374151',
-    borderRadius: 3,
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 4,
     overflow: 'hidden',
   },
-  progressFill: {
+  progressBarFill: {
     height: '100%',
-    borderRadius: 3,
-  },
-  progressProtein: {
-    backgroundColor: '#3B82F6',
-  },
-  progressCarbs: {
-    backgroundColor: '#F59E0B',
-  },
-  progressFats: {
-    backgroundColor: '#EF4444',
+    borderRadius: 4,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -402,105 +424,213 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
   },
+  scanContainer: {
+    marginBottom: 32,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
   scanButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#D1FAE5',
+  },
+  scanButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#D1FAE5',
+    padding: 16,
+    gap: 16,
+  },
+  scanIconWrapper: {
+    width: 48,
+    height: 48,
     borderRadius: 16,
-    paddingVertical: 18,
-    marginBottom: 24,
-    gap: 8,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scanButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#065F46',
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1F2937',
   },
   loggedMealsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   loggedMealsTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     color: '#9CA3AF',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
   loggedMealsDate: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#10B981',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#F3F4F6',
+    borderStyle: 'dashed',
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
   mealCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.04,
+    shadowRadius: 15,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   mealHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    flex: 1,
+    gap: 14,
   },
   mealIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#D1FAE5',
+    width: 52,
+    height: 52,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   mealName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 2,
   },
   mealTime: {
     fontSize: 14,
+    fontWeight: '600',
     color: '#9CA3AF',
-    marginTop: 2,
+  },
+  mealCaloriesContainer: {
+    alignItems: 'flex-end',
   },
   mealCalories: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#111827',
   },
   mealCaloriesUnit: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#9CA3AF',
+    marginTop: -2,
+    textTransform: 'uppercase',
   },
-  foodItem: {
+  circularProgressContainer: {
+    width: 72,
+    height: 72,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circularProgress: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  macroSummary: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  macroPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
     paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderRadius: 12,
+    gap: 6,
   },
-  foodItemName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  foodItemDetails: {
+  macroPillLabel: {
     fontSize: 13,
-    color: '#9CA3AF',
+    fontWeight: '900',
+  },
+  macroPillValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
   },
   bottomSpacer: {
-    height: 20,
+    height: 40,
+  },
+  viewMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+    marginBottom: 16,
+    gap: 8,
+  },
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#10B981',
   },
   addButton: {
     position: 'absolute',

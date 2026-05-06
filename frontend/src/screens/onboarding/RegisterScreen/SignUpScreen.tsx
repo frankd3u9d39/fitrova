@@ -1,6 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet,  KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/AppNavigator';
 import { Button } from '../../../components/buttons/Button';
@@ -10,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
 import { endpoints } from '../../../services/api/apiClient';
 import { useEmailVerification } from '../../../hooks/useEmailVerification';
-import { checkEmailExists } from '../../../services/api/userValidation';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -25,55 +26,56 @@ export const SignUpScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { verifyEmailAddress, isVerifying, verificationError, clearError } = useEmailVerification();
 
+  const route = useRoute<any>();
+
+  React.useEffect(() => {
+    if (route.params?.verified && step === 1) {
+      setStep(2);
+    }
+  }, [route.params?.verified]);
+
   const handleContinue = async () => {
     if (step === 1) {
       if (!email) {
-        Alert.alert('Error', 'Please enter your email');
-        return;
-      }
-      
-      const isValid = await verifyEmailAddress(email);
-      
-      if (!isValid) {
-        Alert.alert('Invalid Email', verificationError || 'Please enter a valid email address');
+        CustomAlert.alert('Error', 'Please enter your email');
         return;
       }
       
       setIsLoading(true);
-      const emailCheck = await checkEmailExists(email);
-      setIsLoading(false);
-      
-      if (emailCheck.exists) {
-        Alert.alert(
-          'Email Already Registered', 
-          'This email is already associated with an account. Please use a different email or try logging in.',
-          [{ text: 'OK' }]
-        );
-        return;
+      try {
+        const response = await fetch(endpoints.sendCode, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'success') {
+          navigation.navigate('EmailVerification', { email, firstName: '', signupFlow: true } as any);
+        } else {
+          CustomAlert.alert('Error', data.message || 'Failed to send verification code');
+        }
+      } catch (error) {
+        CustomAlert.alert('Error', 'Could not connect to server');
+      } finally {
+        setIsLoading(false);
       }
-      
-      setStep(2);
     } else if (step === 2) {
       if (!firstName || !lastName) {
-        Alert.alert('Error', 'Please enter your full name');
+        CustomAlert.alert('Error', 'Please enter your full name');
         return;
       }
       setStep(3);
     } else if (step === 3) {
       if (!password || password !== confirmPassword) {
-        Alert.alert('Error', 'Passwords must match and cannot be empty');
+        CustomAlert.alert('Error', 'Passwords must match and cannot be empty');
         return;
       }
-      
-      console.log('=== REGISTRATION STARTED ===');
-      console.log('Email:', email);
-      console.log('Name:', firstName, lastName);
-      console.log('API Endpoint:', endpoints.register);
       
       setIsLoading(true);
       try {
         const requestBody = { email, firstName, lastName, password };
-        console.log('Request body:', JSON.stringify({ ...requestBody, password: '***' }));
         
         const response = await fetch(endpoints.register, {
           method: 'POST',
@@ -81,26 +83,15 @@ export const SignUpScreen = () => {
           body: JSON.stringify(requestBody),
         });
         
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        
         const data = await response.json();
-        console.log('Response data:', JSON.stringify(data, null, 2));
         
         if (response.ok && data.status === 'success') {
-          console.log('=== REGISTRATION SUCCESS ===');
-          console.log('User ID:', data.user?.id);
-          Alert.alert('Success', 'Account created successfully!');
           navigation.navigate('Personalization', { userId: data.user.id, firstName: firstName });
         } else {
-          console.log('=== REGISTRATION FAILED ===');
-          console.log('Error message:', data.message);
-          Alert.alert('Registration Failed', data.message || 'Failed to create account');
+          CustomAlert.alert('Registration Failed', data.message || 'Failed to create account');
         }
       } catch (error) {
-        console.log('=== REGISTRATION ERROR ===');
-        console.error('Error:', error);
-        Alert.alert('Network Error', 'Could not connect to the server. Please check your network.');
+        CustomAlert.alert('Network Error', 'Could not connect to the server. Please check your network.');
       } finally {
         setIsLoading(false);
       }

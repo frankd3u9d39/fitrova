@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet,  ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
 import { useRoute, RouteProp } from '@react-navigation/native';
@@ -132,9 +133,10 @@ export const DashboardScreen = () => {
         <View style={styles.trendSection}>
            <View style={styles.trendHeader}>
               <Text style={styles.trendTitle}>WEIGHT TREND</Text>
-              <Text style={styles.trendValue}>
-                {currentWeight > 0 ? currentWeight.toFixed(1) : '--'} <Text style={styles.trendUnit}>kg</Text>
-              </Text>
+                <Text style={styles.trendValue}>
+                  {`${currentWeight > 0 ? currentWeight.toFixed(1) : '--'} `}
+                  <Text style={styles.trendUnit}>kg</Text>
+                </Text>
            </View>
            
            <View style={styles.chartContainer}>

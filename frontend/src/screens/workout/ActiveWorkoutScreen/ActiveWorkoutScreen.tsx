@@ -1,3 +1,4 @@
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -14,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { Video, ResizeMode, Audio } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/AppNavigator';
@@ -40,7 +41,7 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
   // Premium UX: Rest Mode
   const [isRestMode, setIsRestMode] = useState(false);
   const [restTimeLeft, setRestTimeLeft] = useState(30); // 30s default
-
+  
   // Guard against missing workout or exercises data
   if (!workout || !workout.exercises) {
     return (
@@ -65,7 +66,7 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
   // Reset timer whenever the exercise changes
   useEffect(() => {
     setIsTimerRunning(false);
-    setVideoError(false); // Reset video error state for the new exercise
+    setVideoError(false); 
     const fallback = typeof currentExercise !== 'string' && currentExercise.duration ? currentExercise.duration : 60;
     setTimeLeft(fallback);
   }, [currentIndex, currentExercise]);
@@ -95,7 +96,7 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
     } else if (timeLeft === 0 && isTimerRunning) {
       setIsTimerRunning(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      handleNext(); // Automated flow
+      handleNext(); 
     }
 
     return () => {
@@ -123,25 +124,30 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
     ? currentExercise.video_url
     : null;
 
+  const player = useVideoPlayer(videoUrl || '', player => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
+
   const handleNext = async () => {
     if (isLastExercise) {
       try {
         setLoading(true);
         await completeWorkout(userId || 1, workout.name, workout.duration);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Success', 'Workout completed! Great job! 💪', [
+        CustomAlert.alert('Success', 'Workout completed! Great job! 💪', [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } catch (err) {
         console.warn('AI service unavailable for logging', err);
-        Alert.alert('Success', 'Workout completed! Great job! 💪\n\n(Offline mode)', [
+        CustomAlert.alert('Success', 'Workout completed! Great job! 💪\n\n(Offline mode)', [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } finally {
         setLoading(false);
       }
     } else {
-      // Premium UX: Transition to Rest Mode
       setIsRestMode(true);
       setRestTimeLeft(30);
       setCurrentIndex((prev) => prev + 1);
@@ -169,25 +175,18 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
     <View style={[styles.restContainer, { paddingTop: insets.top }]}>
       <View style={styles.restHeader}>
         <Text style={styles.restLabel}>TAKE A BREATH</Text>
-        <Text style={styles.restTimer}>{restTimeLeft}s</Text>
+        <Text style={styles.restTimer}>{`${restTimeLeft}s`}</Text>
       </View>
-
       <View style={styles.upNextCard}>
         <Text style={styles.upNextLabel}>UP NEXT</Text>
         <Image source={{ uri: imageUrl }} style={styles.upNextImage} />
-        <Text style={styles.upNextTitle}>
-          {typeof currentExercise === 'string' ? currentExercise : currentExercise.name}
-        </Text>
+        <Text style={styles.upNextTitle}>{typeof currentExercise === 'string' ? currentExercise : currentExercise.name}</Text>
         <Text style={styles.upNextDetails}>
-          {typeof currentExercise !== 'string' && currentExercise.sets ? `${currentExercise.sets} Sets • ` : ''}
-          {typeof currentExercise !== 'string' && currentExercise.reps ? `${currentExercise.reps} Reps` : ''}
+          {typeof currentExercise !== 'string' && currentExercise.sets ? `${currentExercise.sets} Sets • ` : null}
+          {typeof currentExercise !== 'string' && currentExercise.reps ? `${currentExercise.reps} Reps` : null}
         </Text>
       </View>
-
-      <TouchableOpacity 
-        style={styles.skipRestBtn}
-        onPress={() => setIsRestMode(false)}
-      >
+      <TouchableOpacity style={styles.skipRestBtn} onPress={() => setIsRestMode(false)}>
         <Text style={styles.skipRestText}>SKIP REST</Text>
         <Ionicons name="play-skip-forward" size={18} color="#10B981" />
       </TouchableOpacity>
@@ -199,127 +198,95 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-
-      {/* Static Header fixed at top above everything */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) + 10 }]}>
         <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
           <Ionicons name="close" size={24} color="#1E293B" />
         </TouchableOpacity>
         <View style={styles.progressPill}>
-          <Text style={styles.progressText}>
-            {currentIndex + 1} of {workout.exercises.length}
-          </Text>
+          <Text style={styles.progressText}>{`${currentIndex + 1} of ${workout.exercises.length}`}</Text>
         </View>
         <View style={{ width: 44 }} />
       </View>
-
-      {/* Scrollable Container so the image stays visible but scrolls naturally */}
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.heroWrapper}>
-          {videoUrl && !videoError ? (
-            <Video
-              source={{ uri: videoUrl }}
-              style={styles.heroImage}
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay={true}
-              isLooping={true}
-              isMuted={true}
-              onError={(error) => {
-                console.error('❌ VIDEO PLAYBACK FAILED');
-                console.error('🔗 URL Attempted:', videoUrl);
-                console.error('🔍 Internal Error:', error);
-                setVideoError(true);
-              }}
-            />
+          {videoUrl ? (
+            <VideoView style={styles.heroImage} player={player} contentFit="cover" nativeControls={false} />
           ) : (
-            <Image source={{ uri: imageUrl }} style={styles.heroImage} resizeMode="contain" />
+            <Image source={{ uri: imageUrl }} style={styles.heroImage} />
           )}
         </View>
-
         <View style={styles.surface}>
-
           <View style={styles.titleWrapper}>
-            <Text style={styles.exerciseName}>
-              {typeof currentExercise === 'string' ? currentExercise : currentExercise.name}
-            </Text>
+            <Text style={styles.exerciseName}>{typeof currentExercise === 'string' ? currentExercise : currentExercise.name}</Text>
           </View>
-
           <View style={styles.metricsRow}>
-            {typeof currentExercise !== 'string' && Boolean(currentExercise.sets) ? (
-              <View style={styles.metricCard}>
-                <Ionicons name="layers-outline" size={20} color="#10B981" />
-                <Text style={styles.metricVal}>{currentExercise.sets}</Text>
-                <Text style={styles.metricLabel}>SETS</Text>
-              </View>
-            ) : null}
-            {typeof currentExercise !== 'string' && Boolean(currentExercise.reps) ? (
-              <View style={styles.metricCard}>
-                <Ionicons name="repeat-outline" size={20} color="#10B981" />
-                <Text style={styles.metricVal}>{currentExercise.reps}</Text>
-                <Text style={styles.metricLabel}>REPS</Text>
-              </View>
-            ) : null}
+            <View style={styles.metricCard}>
+              <Text style={styles.metricVal}>{typeof currentExercise !== 'string' && currentExercise.sets ? currentExercise.sets : '-'}</Text>
+              <Text style={styles.metricLabel}>SETS</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricVal}>{typeof currentExercise !== 'string' && currentExercise.reps ? currentExercise.reps : '-'}</Text>
+              <Text style={styles.metricLabel}>REPS</Text>
+            </View>
           </View>
-
-          {/* Interactive Timer Section */}
           <View style={styles.timerContainer}>
             <Text style={styles.timerDisplay}>{formatTime(timeLeft)}</Text>
-
-            <TouchableOpacity
-              style={[styles.timerButton, isTimerRunning ? styles.timerButtonActive : styles.timerButtonIdle]}
-              onPress={toggleTimer}
-            >
+            <TouchableOpacity style={[styles.timerButton, isTimerRunning ? styles.timerButtonActive : styles.timerButtonIdle]} onPress={toggleTimer}>
               <Ionicons name={isTimerRunning ? "pause" : "play"} size={20} color="#FFFFFF" />
-              <Text style={styles.timerButtonText}>
-                {isTimerRunning ? "PAUSE TIMER" : (timeLeft === 0 ? "RESTART TIMER" : "START TIMER")}
-              </Text>
+              <Text style={styles.timerButtonText}>{isTimerRunning ? "PAUSE" : "START"}</Text>
             </TouchableOpacity>
           </View>
-
-          {typeof currentExercise !== 'string' && Boolean(currentExercise.instructions) ? (
-            <View style={styles.instructionsWrapper}>
-              <View style={styles.instructionsHeader}>
-                <Ionicons name="school-outline" size={20} color="#10B981" />
-                <Text style={styles.instructionsTitle}>How to Perform</Text>
-              </View>
-              <Text style={styles.instructionsText}>{currentExercise.instructions}</Text>
+          <View style={styles.formCheckBanner}>
+            <View style={styles.formCheckTextContent}>
+              <Text style={styles.formCheckTitle}>AI Form Check</Text>
+              <Text style={styles.formCheckSubtext}>Record your form for instant AI analysis</Text>
             </View>
-          ) : null}
-
-          {/* Spacer so the user can comfortably scroll to bottom above footer */}
-          <View style={{ height: 120 }} />
-
+            <TouchableOpacity style={styles.formCheckBtn} onPress={() => navigation.navigate('FormCheck' as never)}>
+              <Ionicons name="scan-outline" size={16} color="#FFFFFF" />
+              <Text style={styles.formCheckBtnText}>CHECK FORM</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.instructionsWrapper}>
+            <View style={styles.instructionsHeader}>
+              <View style={styles.coachingBadge}>
+                <Ionicons name="bulb" size={12} color="#FFFFFF" />
+                <Text style={styles.coachingBadgeText}>PRO TIPS</Text>
+              </View>
+              <Text style={styles.instructionsTitle}>How to execute</Text>
+            </View>
+            <View style={styles.instructionContent}>
+              {typeof currentExercise !== 'string' && currentExercise.instructions ? (
+                (Array.isArray(currentExercise.instructions)
+                  ? currentExercise.instructions
+                  : typeof currentExercise.instructions === 'string'
+                  ? currentExercise.instructions.split('.').filter((s: string) => s.trim().length > 0)
+                  : []
+                ).map((step: string, idx: number) => (
+                  <View key={idx} style={styles.stepRow}>
+                    <View style={styles.stepLine} />
+                    <Text style={styles.instructionsText}>{`${step.trim()}.`}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.instructionsText}>Follow the animation above carefully.</Text>
+              )}
+            </View>
+          </View>
+          <View style={{ height: 100 }} />
         </View>
       </ScrollView>
-
-      {/* Floating Bottom Navigator */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-        <TouchableOpacity
-          style={[styles.navBtnWrapper, currentIndex === 0 && styles.navBtnWrapperDisabled]}
-          onPress={handlePrevious}
-          disabled={currentIndex === 0 || loading}
-        >
-          <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? "#94A3B8" : "#1E293B"} />
+      <View style={styles.footer}>
+        <TouchableOpacity style={[styles.navBtnWrapper, currentIndex === 0 && styles.navBtnWrapperDisabled]} onPress={handlePrevious} disabled={currentIndex === 0}>
+          <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? "#CBD5E1" : "#1E293B"} />
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.finishBtn}
-          onPress={handleNext}
-          disabled={loading}
-        >
+        <TouchableOpacity style={styles.finishBtn} onPress={handleNext} disabled={loading}>
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <>
-              <Text style={styles.finishBtnText}>
-                {isLastExercise ? 'COMPLETE SESSION' : 'NEXT EXERCISE'}
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={styles.finishBtnText}>{isLastExercise ? "COMPLETE WORKOUT" : "NEXT EXERCISE"}</Text>
               <Ionicons name={isLastExercise ? "checkmark-circle" : "chevron-forward"} size={20} color="#FFFFFF" />
-            </>
+            </View>
           )}
         </TouchableOpacity>
       </View>
@@ -334,7 +301,7 @@ const styles = StyleSheet.create({
   },
   heroWrapper: {
     width: '100%',
-    height: 280, // slightly shorter since it's pushed down
+    height: 280, 
     backgroundColor: '#F8FAFC',
     marginTop: 10,
   },
@@ -385,8 +352,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 36,
     paddingHorizontal: 24,
     paddingTop: 32,
-    marginTop: -32, // Overlaps the image slightly
-    flex: 1, // Let it fill the rest space
+    marginTop: -32, 
+    flex: 1, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
@@ -461,7 +428,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   timerButtonIdle: {
-    backgroundColor: '#1E293B', // dark subtle button on light theme
+    backgroundColor: '#1E293B', 
   },
   timerButtonActive: {
     backgroundColor: '#EF4444',
@@ -473,28 +440,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   instructionsWrapper: {
-    backgroundColor: '#ECFDF5',
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   instructionsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 20,
+  },
+  coachingBadge: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  coachingBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   instructionsTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#059669',
+    color: '#1E293B',
     letterSpacing: 0.5,
   },
+  instructionContent: {
+    gap: 12,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  stepLine: {
+    width: 3,
+    backgroundColor: '#10B981',
+    borderRadius: 2,
+    alignSelf: 'stretch',
+    marginVertical: 2,
+    opacity: 0.3,
+  },
   instructionsText: {
+    flex: 1,
     fontSize: 15,
     lineHeight: 24,
-    color: '#064E3B',
+    color: '#475569',
     fontWeight: '500',
   },
   footer: {
@@ -506,6 +510,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 12,
     paddingTop: 16,
+    paddingBottom: 20,
   },
   navBtnWrapper: {
     width: 60,
@@ -528,7 +533,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
     shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -553,10 +557,9 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 16,
   },
-  // Rest Mode Styles
   restContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // Light background as requested
+    backgroundColor: '#FFFFFF', 
     alignItems: 'center',
     justifyContent: 'center',
     padding: 30,
@@ -627,5 +630,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 1,
-  }
+  },
+  formCheckBanner: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 24,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  formCheckTextContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  formCheckTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  formCheckSubtext: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  formCheckBtn: {
+    backgroundColor: '#3B82F6', 
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 8,
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  formCheckBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
 });

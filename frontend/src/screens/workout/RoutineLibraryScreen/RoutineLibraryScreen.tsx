@@ -1,5 +1,7 @@
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -36,11 +38,11 @@ export const RoutineLibraryScreen = () => {
         if (fullWorkout) {
           navigation.navigate('ActiveWorkout', { workout: fullWorkout, userId });
         } else {
-          Alert.alert("Notice", "We couldn't load the details for this routine right now.");
+          CustomAlert.alert("Notice", "We couldn't load the details for this routine right now.");
         }
       } catch (err) {
         console.error('Generation error:', err);
-        Alert.alert("Error", "Workout generation failed.");
+        CustomAlert.alert("Error", "Workout generation failed.");
       } finally {
         setLoading(false);
       }
@@ -108,6 +110,19 @@ export const RoutineLibraryScreen = () => {
                 </TouchableOpacity>
               ))}
             </View>
+          ) : searchQuery.length > 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="sparkles-outline" size={60} color={theme.colors.primary} />
+              <Text style={styles.emptyTitle}>No matching routines</Text>
+              <Text style={styles.emptySub}>Would you like Fitrova AI to create a "{searchQuery}" routine for you?</Text>
+              <TouchableOpacity 
+                style={styles.generateSearchBtn} 
+                onPress={() => handleRoutinePress({ name: searchQuery })}
+              >
+                <Text style={styles.generateSearchBtnText}>GENERATE WITH AI</Text>
+                <Ionicons name="flash" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="library-outline" size={60} color={theme.colors.border} />
@@ -133,7 +148,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 35,
   },
   backButton: {
     padding: 8,
@@ -265,5 +280,22 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 40,
+    marginBottom: 20,
+  },
+  generateSearchBtn: {
+    backgroundColor: theme.colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 10,
+    elevation: 4,
+  },
+  generateSearchBtnText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 1,
   }
 });
