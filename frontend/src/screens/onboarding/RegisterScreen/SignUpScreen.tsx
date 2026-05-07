@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet,  KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList } from '../../../navigation/types';
 import { Button } from '../../../components/buttons/Button';
 import { Input } from '../../../components/inputs/Input';
 import { HeaderLogo } from '../../../components/common/HeaderLogo';
@@ -30,9 +30,12 @@ export const SignUpScreen = () => {
 
   React.useEffect(() => {
     if (route.params?.verified && step === 1) {
+      if (route.params?.email) {
+        setEmail(route.params.email);
+      }
       setStep(2);
     }
-  }, [route.params?.verified]);
+  }, [route.params?.verified, route.params?.email]);
 
   const handleContinue = async () => {
     if (step === 1) {

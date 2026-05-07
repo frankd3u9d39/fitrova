@@ -14,12 +14,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { theme } from '../../../theme';
 import { nutritionService, Meal } from '../../../services/api/nutritionService';
+import { RootStackParamList } from '../../../navigation/types';
 
 const { width } = Dimensions.get('window');
 
-type HistoryRouteProp = RouteProp<{
-  NutritionHistory: { userId: number };
-}, 'NutritionHistory'>;
+type HistoryRouteProp = RouteProp<RootStackParamList, 'NutritionHistory'>;
 
 export const NutritionHistoryScreen = () => {
   const navigation = useNavigation<any>();

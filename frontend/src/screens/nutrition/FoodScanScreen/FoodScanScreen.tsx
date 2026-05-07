@@ -15,7 +15,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { theme } from '../../../theme';
 import { BlurView } from 'expo-blur';
 import * as Animatable from 'react-native-animatable';
-import { RootStackParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList } from '../../../navigation/types';
 
 const { width, height } = Dimensions.get('window');
 

@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://10.187.13.154/Fitrova/backend';
+export const API_BASE_URL = 'http://10.246.157.154/Fitrova/backend';
 
 export const endpoints = {
   register: `${API_BASE_URL}/app/controllers/auth/register.php`,
@@ -12,4 +12,5 @@ export const endpoints = {
   scanMeal: `${API_BASE_URL}/app/controllers/nutrition/scan_meal.php`,
   verifyEmail: `${API_BASE_URL}/app/controllers/auth/verify_email.php`,
   sendCode: `${API_BASE_URL}/app/controllers/auth/send_code.php`,
+  getAIRecommendation: `${API_BASE_URL}/app/controllers/profile/get_ai_recommendation.php`,
 };

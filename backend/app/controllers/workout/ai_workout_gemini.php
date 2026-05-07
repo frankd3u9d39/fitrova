@@ -104,8 +104,13 @@ function findExerciseVideo($exerciseName, $exerciseVideoMap, $categoryFallbacks,
 function callGemini($prompt, $apiKey) {
     $logFile = __DIR__ . '/gemini_debug.log';
     
-    // Multi-Model Resilience: Try the latest available models in order
-    $models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-pro'];
+    // Multi-Model Resilience: Using 2026 stable models verified for generateContent
+    $models = [
+        'gemini-flash-latest',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-pro-latest'
+    ];
     
     foreach ($models as $modelName) {
         $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $modelName . ':generateContent?key=' . $apiKey;
@@ -137,8 +142,12 @@ function callGemini($prompt, $apiKey) {
         $curlError = curl_error($ch);
         curl_close($ch);
 
-        file_put_contents($logFile, date('Y-m-d H:i:s') . " (Trying {$modelName}) HTTP: $httpCode | CurlErr: $curlError
-", FILE_APPEND);
+        // Log more details to understand why it fails (especially 404/429)
+        $logMsg = date('Y-m-d H:i:s') . " (Trying {$modelName}) HTTP: $httpCode | CurlErr: $curlError";
+        if ($httpCode !== 200) {
+            $logMsg .= " | Response: " . substr($response, 0, 500); // Log first 500 chars of error
+        }
+        file_put_contents($logFile, $logMsg . "\n", FILE_APPEND);
 
         if ($httpCode === 200) {
             $result = json_decode($response, true);

@@ -16,9 +16,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { WorkoutAvatar } from '../../../components/workout/WorkoutAvatar';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList } from '../../../navigation/types';
 import { completeWorkout } from '../../../services/api/workoutService';
 import { theme } from '../../../theme';
 
@@ -209,11 +210,9 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.heroWrapper}>
-          {videoUrl ? (
-            <VideoView style={styles.heroImage} player={player} contentFit="cover" nativeControls={false} />
-          ) : (
-            <Image source={{ uri: imageUrl }} style={styles.heroImage} />
-          )}
+          <WorkoutAvatar 
+            exercise={typeof currentExercise === 'string' ? currentExercise : currentExercise.name} 
+          />
         </View>
         <View style={styles.surface}>
           <View style={styles.titleWrapper}>
@@ -301,8 +300,8 @@ const styles = StyleSheet.create({
   },
   heroWrapper: {
     width: '100%',
-    height: 280, 
-    backgroundColor: '#F8FAFC',
+    height: 480, // Increased from 280 to show full body
+    backgroundColor: '#F1F5F9',
     marginTop: 10,
   },
   heroImage: {

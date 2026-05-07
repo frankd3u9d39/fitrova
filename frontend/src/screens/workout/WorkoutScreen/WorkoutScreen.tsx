@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getWorkoutRecommendations, completeWorkout, WorkoutRecommendation, generateWorkoutDetails } from '../../../services/api/workoutService';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, MainTabParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList, MainTabParamList } from '../../../navigation/types';
 
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type WorkoutScreenRouteProp = RouteProp<MainTabParamList, 'Workout'>;

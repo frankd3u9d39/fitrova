@@ -3,7 +3,7 @@ import React from 'react';
 import { View, StyleSheet, Image, Text,  Dimensions, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList } from '../../../navigation/types';
 import { Button } from '../../../components/buttons/Button';
 import { HeaderLogo } from '../../../components/common/HeaderLogo';
 import { Ionicons } from '@expo/vector-icons';

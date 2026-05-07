@@ -5,7 +5,7 @@ import { View, Text, StyleSheet,  ScrollView, TouchableOpacity, Dimensions, Text
 import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList } from '../../../navigation/types';
 import { Button } from '../../../components/buttons/Button';
 import { Input } from '../../../components/inputs/Input';
 import { ProgressHeader } from '../../../components/common/ProgressHeader';
@@ -43,12 +43,25 @@ export const PersonalizationScreen = () => {
   };
 
   const handleNext = async () => {
+    if (!age) {
+      CustomAlert.alert('Missing Info', 'Please provide your age.');
+      return;
+    }
+
     try {
       const response = await fetch(endpoints.saveProfile, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId, age, gender, height, weight, activityLevel: activity, hasEquipment, survey_step: 'GoalSetting', firstName
+          userId, 
+          firstName, 
+          age, 
+          gender, 
+          height, 
+          weight, 
+          activityLevel: activity, 
+          hasEquipment, 
+          survey_step: 'GoalSetting'
         }),
       });
       const data = await response.json();

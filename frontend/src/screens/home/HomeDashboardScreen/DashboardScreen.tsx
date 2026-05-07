@@ -4,7 +4,7 @@ import { View, Text, StyleSheet,  ScrollView, ActivityIndicator } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
 import { useRoute, RouteProp } from '@react-navigation/native';
-import { MainTabParamList } from '../../../navigation/AppNavigator';
+import { MainTabParamList } from '../../../navigation/types';
 import { getDashboardData, DashboardData } from '../../../services/api/dashboardService';
 
 type DashboardRouteProp = RouteProp<MainTabParamList, 'Home'>;

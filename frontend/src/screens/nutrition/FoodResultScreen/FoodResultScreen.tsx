@@ -16,12 +16,11 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { theme } from '../../../theme';
 import { nutritionService } from '../../../services/api/nutritionService';
 import * as Animatable from 'react-native-animatable';
+import { RootStackParamList } from '../../../navigation/types';
 
 const { width } = Dimensions.get('window');
 
-type FoodResultRouteProp = RouteProp<{
-  FoodResult: { imageUri: string; base64: string; userId: number };
-}, 'FoodResult'>;
+type FoodResultRouteProp = RouteProp<RootStackParamList, 'FoodResult'>;
 
 export const FoodResultScreen = () => {
   const navigation = useNavigation<any>();

@@ -45,7 +45,8 @@
           "cameraPermission": "Allow Fitrova to use the camera to analyze your workout form."
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-asset"
     ]
   }
 }

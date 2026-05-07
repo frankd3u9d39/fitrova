@@ -8,6 +8,9 @@ config.resolver = {
   ...resolver,
   assetExts: [...resolver.assetExts, 'glb', 'gltf', 'mtl', 'obj'],
   sourceExts: [...resolver.sourceExts, 'cjs', 'mjs'],
+  extraNodeModules: {
+    three: require.resolve('three'),
+  },
 };
 
 module.exports = config;

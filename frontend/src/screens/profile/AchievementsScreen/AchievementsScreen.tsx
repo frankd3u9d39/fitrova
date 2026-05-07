@@ -4,31 +4,19 @@ import {
   View,
   Text,
   StyleSheet,
-  
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Share} from 'react-native';
+  Share
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AchievementCard } from '../../../components/cards';
 import { getAchievements, Achievement, Category } from '../../../services/api/achievementService';
-import { MainTabParamList } from '../../../navigation/AppNavigator';
+import { MainTabParamList } from '../../../navigation/types';
 
-type Category = 'Training' | 'Nutrition' | 'Milestones';
-
-interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  category: Category;
-  unlocked: boolean;
-  color: string;
-}
-
-type AchievementsRouteProp = RouteProp<MainTabParamList, 'Profile'>; // Assuming it's under Profile
+type AchievementsRouteProp = RouteProp<MainTabParamList, 'Profile'>;
 
 export const AchievementsScreen = () => {
   const navigation = useNavigation();
@@ -39,7 +27,7 @@ export const AchievementsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const userId = (route.params as any)?.userId || 1; // Default to 1 for now
+  const userId = (route.params as any)?.userId || 1;
 
   const loadAchievements = useCallback(async (showLoading = true) => {
     try {

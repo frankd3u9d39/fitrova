@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, MainTabParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList, MainTabParamList } from '../../../navigation/types';
 import { StatCard, AchievementCard, ActivityCard } from '../../../components/cards';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

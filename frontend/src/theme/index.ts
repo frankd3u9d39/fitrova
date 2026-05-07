@@ -1,4 +1,5 @@
 // Enhanced Theme System for Professional UI
+// Updated to support all components across the app
 
 export const theme = {
   // Color Palette
@@ -8,6 +9,26 @@ export const theme = {
     primaryDark: '#059669',
     primaryLight: '#34D399',
     primaryAlpha: 'rgba(16, 185, 129, 0.1)',
+    
+    // Secondary & Accent
+    secondary: '#3B82F6',    // Blue
+    accent: '#8B5CF6',       // Purple
+    
+    // Neutrals
+    white: '#FFFFFF',
+    black: '#000000',
+    gray: {
+      50: '#F9FAFB',
+      100: '#F3F4F6',
+      200: '#E5E7EB',
+      300: '#D1D5DB',
+      400: '#9CA3AF',
+      500: '#6B7280',
+      600: '#4B5563',
+      700: '#374151',
+      800: '#1F2937',
+      900: '#111827',
+    },
     
     // Background
     background: '#FFFFFF',
@@ -45,6 +66,8 @@ export const theme = {
     overlayLight: 'rgba(0, 0, 0, 0.3)',
     
     // Gradients
+    gradientStart: '#FFFFFF',
+    gradientEnd: '#F3F4F6',
     gradientPrimary: ['#10B981', '#059669'],
     gradientDark: ['#1F2937', '#111827'],
     gradientLight: ['#FFFFFF', '#F9FAFB'],
@@ -52,7 +75,31 @@ export const theme = {
   
   // Typography
   typography: {
-    // Headings
+    // Scales
+    fontSize: {
+      xs: 12,
+      sm: 14,
+      base: 16,
+      lg: 18,
+      xl: 20,
+      '2xl': 24,
+      '3xl': 30,
+      '4xl': 36,
+    },
+    fontWeight: {
+      regular: '400' as const,
+      medium: '500' as const,
+      semibold: '600' as const,
+      bold: '700' as const,
+      heavy: '800' as const,
+    },
+    lineHeight: {
+      tight: 1.2,
+      normal: 1.5,
+      relaxed: 1.625,
+    },
+
+    // Presets
     h1: {
       fontSize: 32,
       fontWeight: '800' as const,
@@ -77,7 +124,6 @@ export const theme = {
       lineHeight: 24,
     },
     
-    // Body
     body: {
       fontSize: 16,
       fontWeight: '400' as const,
@@ -94,7 +140,6 @@ export const theme = {
       lineHeight: 20,
     },
     
-    // Caption
     caption: {
       fontSize: 12,
       fontWeight: '400' as const,
@@ -107,7 +152,6 @@ export const theme = {
       letterSpacing: 0.5,
     },
     
-    // Label
     label: {
       fontSize: 10,
       fontWeight: '700' as const,
@@ -119,6 +163,7 @@ export const theme = {
   
   // Spacing (4px base unit)
   spacing: {
+    none: 0,
     xxs: 4,
     xs: 8,
     sm: 12,
@@ -127,6 +172,8 @@ export const theme = {
     xl: 24,
     xxl: 32,
     xxxl: 40,
+    '2xl': 32, // for backward compatibility with some screens
+    '3xl': 48,
   },
   
   // Border Radius
@@ -198,5 +245,9 @@ export const theme = {
     tooltip: 1600,
   },
 };
+
+export const colors = theme.colors;
+export const typography = theme.typography;
+export const spacing = theme.spacing;
 
 export type Theme = typeof theme;

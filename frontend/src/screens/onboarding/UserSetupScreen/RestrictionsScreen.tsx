@@ -11,7 +11,7 @@ import {
   Alert} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../../navigation/AppNavigator';
+import { RootStackParamList } from '../../../navigation/types';
 import { ProgressHeader } from '../../../components/common/ProgressHeader';
 import { Button } from '../../../components/buttons/Button';
 import { Ionicons } from '@expo/vector-icons';

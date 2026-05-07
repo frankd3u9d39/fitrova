@@ -41,3 +41,56 @@
 2026-05-05 19:06:27 (Trying gemini-pro) HTTP: 404 | CurlErr: 
 2026-05-05 19:07:59 (Trying gemini-2.5-flash) HTTP: 200 | CurlErr: 
 2026-05-06 04:06:39 (Trying gemini-2.5-flash) HTTP: 200 | CurlErr: 
+2026-05-07 10:35:21 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr: 
+2026-05-07 10:35:22 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr: 
+2026-05-07 10:35:23 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr: 
+2026-05-07 10:35:24 (Trying gemini-pro) HTTP: 404 | CurlErr: 
+2026-05-07 10:56:07 (Trying gemini-1.5-flash) HTTP: 404 | CurlErr:  | Response: {
+  "error": {
+    "code": 404,
+    "message": "models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-05-07 10:56:08 (Trying gemini-1.5-pro) HTTP: 404 | CurlErr:  | Response: {
+  "error": {
+    "code": 404,
+    "message": "models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-05-07 10:56:09 (Trying gemini-pro) HTTP: 404 | CurlErr:  | Response: {
+  "error": {
+    "code": 404,
+    "message": "models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-05-07 11:15:21 (Trying gemini-3.1-flash-live-preview) HTTP: 404 | CurlErr:  | Response: {
+  "error": {
+    "code": 404,
+    "message": "models/gemini-3.1-flash-live-preview is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-05-07 11:15:22 (Trying gemini-3.1-pro-preview) HTTP: 429 | CurlErr:  | Response: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-3.1-pro\n* Quota exceeded for metric: generativelanguage.googleapis.com/gener
+2026-05-07 11:15:23 (Trying gemini-2.5-flash) HTTP: 503 | CurlErr:  | Response: {
+  "error": {
+    "code": 503,
+    "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+    "status": "UNAVAILABLE"
+  }
+}
+
+2026-05-07 11:15:24 (Trying gemini-2.0-flash) HTTP: 429 | CurlErr:  | Response: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_con
+2026-05-07 11:43:27 (Trying gemini-flash-latest) HTTP: 200 | CurlErr: 

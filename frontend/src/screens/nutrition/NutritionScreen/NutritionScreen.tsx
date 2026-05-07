@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
-import { MainTabParamList, RootStackParamList } from '../../../navigation/AppNavigator';
+import { MainTabParamList, RootStackParamList } from '../../../navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../../../theme';
 import { nutritionService, NutritionData } from '../../../services/api/nutritionService';

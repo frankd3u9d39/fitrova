@@ -1,3 +1,4 @@
+// AppNavigator.tsx - Navigation Logic Final
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -26,59 +27,8 @@ import { SettingsScreen } from '../screens/profile/SettingsScreen/SettingsScreen
 import { FoodScanScreen } from '../screens/nutrition/FoodScanScreen/FoodScanScreen';
 import { FoodResultScreen } from '../screens/nutrition/FoodResultScreen/FoodResultScreen';
 import { NutritionHistoryScreen } from '../screens/nutrition/NutritionHistoryScreen/NutritionHistoryScreen';
-import { EmailVerificationScreen } from '../screens/onboarding/RegisterScreen/EmailVerificationScreen';
-import { Workout } from '../services/api/workoutService';
-
-export type RootStackParamList = {
-  Welcome: undefined;
-  SignUp: undefined;
-  Login: undefined;
-  EmailVerification: { email: string; firstName: string };
-  Personalization: { userId: number; firstName: string };
-  GoalSetting: {
-    userId: number;
-    age: string;
-    gender: string;
-    height: string;
-    weight: string;
-    activityLevel: string;
-    goal: string;
-    firstName: string;
-    hasEquipment: boolean;
-  };
-  Restrictions: {
-    userId: number;
-    age: string;
-    gender: string;
-    height: string;
-    weight: string;
-    activityLevel: string;
-    goal: string;
-    selectedGoal: string;
-    targetWeight: string;
-    targetDate: string;
-    firstName: string;
-    hasEquipment: boolean;
-  };
-  Main: { firstName: string; userId: number };
-  Achievements: undefined;
-  ActiveWorkout: { workout: Workout; userId: number };
-  Schedule: { userId: number };
-  FormCheck: undefined;
-  RoutineLibrary: undefined;
-  Settings: undefined;
-  FoodScan: { userId: number };
-  FoodResult: { imageUri: string; base64: string; userId: number };
-  NutritionHistory: { userId: number };
-  Profile: { userId: number };
-};
-
-export type MainTabParamList = {
-  Home: { firstName: string; userId: number };
-  Workout: { userId: number };
-  Nutrition: { userId: number };
-  Profile: { userId: number; firstName: string };
-};
+import VerifyEmailScreen from '../screens/onboarding/RegisterScreen/VerifyEmailScreen';
+import { RootStackParamList, MainTabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -132,7 +82,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+        <Stack.Screen name="EmailVerification" component={VerifyEmailScreen} />
         <Stack.Screen name="Personalization" component={PersonalizationScreen} />
         <Stack.Screen name="GoalSetting" component={GoalSettingScreen} />
         <Stack.Screen name="Restrictions" component={RestrictionsScreen} />
