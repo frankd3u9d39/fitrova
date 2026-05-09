@@ -224,9 +224,6 @@ export const WorkoutScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Upcoming Workouts</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Schedule' as any)}>
-              <Text style={styles.viewScheduleText}>View Schedule</Text>
-            </TouchableOpacity>
           </View>
           <View style={styles.workoutsContainer}>
             {(workoutData.upcoming_workouts || []).map((workout, index) => (
