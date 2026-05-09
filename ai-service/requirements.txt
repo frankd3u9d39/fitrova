@@ -1,4 +1,8 @@
 Flask==3.0.0
 Flask-CORS==4.0.0
-mysql-connector-python==8.2.0
+mysql-connector-python==9.7.0
 python-dotenv==1.0.0
+mediapipe==0.10.21
+opencv-python
+yt-dlp
+google-generativeai

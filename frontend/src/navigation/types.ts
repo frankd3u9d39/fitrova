@@ -43,6 +43,7 @@ export type RootStackParamList = {
   FoodResult: { imageUri: string; base64: string; userId: number };
   NutritionHistory: { userId: number };
   Profile: { userId: number };
+  YouTubeAnalysis: undefined;
 };
 
 export type MainTabParamList = {

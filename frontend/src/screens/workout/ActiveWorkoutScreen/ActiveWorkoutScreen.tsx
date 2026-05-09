@@ -16,8 +16,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { WorkoutAvatar } from '../../../components/workout/WorkoutAvatar';
 import { Ionicons } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
+import YoutubePlayer from 'react-native-youtube-iframe';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { completeWorkout } from '../../../services/api/workoutService';
@@ -126,10 +127,30 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
     : null;
 
   const player = useVideoPlayer(videoUrl || '', player => {
-    player.loop = true;
-    player.muted = true;
-    player.play();
+    if (videoUrl && !videoUrl.includes('youtube.com') && !videoUrl.includes('youtu.be')) {
+      player.loop = true;
+      player.muted = true;
+      player.play();
+    }
   });
+
+  const getYoutubeId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const youtubeId = videoUrl ? getYoutubeId(videoUrl) : null;
+  
+  const [youtubeError, setYoutubeError] = useState(false);
+
+  useEffect(() => {
+    if (youtubeId) {
+      console.log('📺 [YouTube]: Found ID:', youtubeId, 'from URL:', videoUrl);
+      setYoutubeError(false);
+    }
+  }, [youtubeId, videoUrl, currentIndex]);
 
   const handleNext = async () => {
     if (isLastExercise) {
@@ -210,9 +231,39 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.heroWrapper}>
-          <WorkoutAvatar 
-            exercise={typeof currentExercise === 'string' ? currentExercise : currentExercise.name} 
-          />
+          {youtubeId && !youtubeError ? (
+            <YoutubePlayer
+              height={300} // Increased from 240
+              play={true}
+              videoId={youtubeId}
+              mute={true}
+              onError={(e) => {
+                console.log('❌ [YouTube Error]:', e);
+                // Handle specific error codes if needed (e.g., 100 is video not found)
+                setYoutubeError(true);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              }}
+              initialPlayerParams={{
+                loop: true,
+                playlist: youtubeId,
+                controls: false,
+                modestbranding: true,
+              }}
+              webViewProps={{
+                allowsFullscreenVideo: true,
+                androidLayerType: 'hardware',
+                origin: 'https://www.youtube.com',
+              }}
+            />
+          ) : videoUrl && !youtubeId ? (
+            <VideoView
+              player={player}
+              style={styles.heroImage}
+              contentFit="cover"
+            />
+          ) : (
+            <Image source={{ uri: imageUrl }} style={styles.heroImage} />
+          )}
         </View>
         <View style={styles.surface}>
           <View style={styles.titleWrapper}>
@@ -300,9 +351,15 @@ const styles = StyleSheet.create({
   },
   heroWrapper: {
     width: '100%',
-    height: 480, // Increased from 280 to show full body
-    backgroundColor: '#F1F5F9',
+    height: 300, // Increased for better visibility
+    backgroundColor: '#000',
     marginTop: 10,
+    overflow: 'hidden',
+    borderRadius: 0,
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: '#000',
   },
   heroImage: {
     width: '100%',

@@ -18,7 +18,8 @@ require_once __DIR__ . '/../../../config/db_config.php';
 
 // API Configuration
 $GEMINI_API_KEY = 'AQ.Ab8RN6K04-jc_xK7I1yOSz291VKJ1pwm0j5izQMReuOhalV7uA';
-$PIXABAY_API_KEY = '55510128-80706278b60fe59adb3d443e4'; // Added user's Pixabay API Key here
+$PIXABAY_API_KEY = '55510128-80706278b60fe59adb3d443e4';
+$YOUTUBE_API_KEY = 'AIzaSyD-tOfE-vkGE4mBNzJLadLb_U6CCfztqUE'; // Added from ai-service/.env
 
 // ═══════════════════════════════════════════════════════════════
 // CURATED EXERCISE VIDEO LIBRARY - Verified videos per exercise
@@ -26,43 +27,44 @@ $PIXABAY_API_KEY = '55510128-80706278b60fe59adb3d443e4'; // Added user's Pixabay
 // ═══════════════════════════════════════════════════════════════
 $EXERCISE_VIDEO_MAP = [
     // CARDIO
-    ['keywords' => ['jumping jack', 'star jump'],           'video' => 'https://cdn.pixabay.com/video/2017/11/15/12963-243165477_small.mp4',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['high knee', 'high knees'],             'video' => 'https://videos.pexels.com/video-files/6388095/6388095-sd_640_360_25fps.mp4',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['burpee'],                              'video' => 'https://videos.pexels.com/video-files/6389168/6389168-sd_640_360_25fps.mp4',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['mountain climber'],                    'video' => 'https://videos.pexels.com/video-files/6389070/6389070-sd_640_360_25fps.mp4',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['jump rope', 'skipping'],               'video' => 'https://videos.pexels.com/video-files/4761434/4761434-sd_640_360_25fps.mp4',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['running', 'jogging', 'jog', 'run'],    'video' => 'https://videos.pexels.com/video-files/5319457/5319457-sd_640_360_25fps.mp4',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['jumping jack', 'star jump'],           'video' => 'https://www.youtube.com/watch?v=VjO-y9oN5C0',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['high knee', 'high knees'],             'video' => 'https://www.youtube.com/watch?v=kYv9d5Nn-y4',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['burpee'],                              'video' => 'https://www.youtube.com/watch?v=dZgVxmf6jkA',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['mountain climber'],                    'video' => 'https://www.youtube.com/watch?v=zJg13E1C55w',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['jump rope', 'skipping'],               'video' => 'https://www.youtube.com/watch?v=vVj4u651L9w',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['running', 'jogging', 'jog', 'run'],    'video' => 'https://www.youtube.com/watch?v=P9W2h9825bM',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
 
     // UPPER BODY
-    ['keywords' => ['push up', 'pushup', 'push-up'],        'video' => 'https://cdn.pixabay.com/video/2017/12/01/13134-245530646_small.mp4',  'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['bench press'],                         'video' => 'https://videos.pexels.com/video-files/4761447/4761447-sd_640_360_25fps.mp4',  'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
-    ['keywords' => ['shoulder press', 'overhead press', 'military press'], 'video' => 'https://videos.pexels.com/video-files/6388140/6388140-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
-    ['keywords' => ['bicep curl', 'curl', 'dumbbell curl'],  'video' => 'https://videos.pexels.com/video-files/6388073/6388073-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['lateral raise', 'side raise'],          'video' => 'https://videos.pexels.com/video-files/6388140/6388140-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
-    ['keywords' => ['tricep', 'dip', 'pushdown'],            'video' => 'https://videos.pexels.com/video-files/6388073/6388073-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['pull up', 'pullup', 'chin up'],         'video' => 'https://videos.pexels.com/video-files/4761447/4761447-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['row', 'barbell row', 'dumbbell row'],   'video' => 'https://videos.pexels.com/video-files/4761447/4761447-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+    ['keywords' => ['push up', 'pushup', 'push-up'],        'video' => 'https://www.youtube.com/watch?v=IODxDxX7oi4',  'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+    ['keywords' => ['bench press'],                         'video' => 'https://www.youtube.com/watch?v=vcBig73ojpE',  'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+    ['keywords' => ['shoulder press', 'overhead press', 'military press'], 'video' => 'https://www.youtube.com/watch?v=B-aVuyhvLHU', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+    ['keywords' => ['bicep curl', 'curl', 'dumbbell curl'],  'video' => 'https://www.youtube.com/watch?v=F08VqG0k-gI', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
+    ['keywords' => ['lateral raise', 'side raise'],          'video' => 'https://www.youtube.com/watch?v=3VcKaXpzqRo', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+    ['keywords' => ['tricep', 'dip', 'pushdown'],            'video' => 'https://www.youtube.com/watch?v=1Fw_0V12UoE', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
+    ['keywords' => ['pull up', 'pullup', 'chin up'],         'video' => 'https://www.youtube.com/watch?v=eGo4IYlbE5g', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
+    ['keywords' => ['row', 'barbell row', 'dumbbell row'],   'video' => 'https://www.youtube.com/watch?v=gT_nJ9P4F9s', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
 
     // LOWER BODY
-    ['keywords' => ['squat', 'back squat', 'goblet squat'],  'video' => 'https://cdn.pixabay.com/video/2018/09/23/18369-291382852_small.mp4', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['lunge', 'walking lunge', 'reverse lunge'], 'video' => 'https://cdn.pixabay.com/video/2017/12/13/13355-247515775_small.mp4', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['deadlift', 'romanian deadlift', 'rdl'],  'video' => 'https://videos.pexels.com/video-files/4761447/4761447-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['calf raise', 'calf'],                   'video' => 'https://videos.pexels.com/video-files/6389026/6389026-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['leg press', 'leg extension', 'leg curl'], 'video' => 'https://videos.pexels.com/video-files/6389026/6389026-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['glute bridge', 'hip thrust'],           'video' => 'https://videos.pexels.com/video-files/6389070/6389070-sd_640_360_25fps.mp4', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+    ['keywords' => ['squat', 'back squat', 'goblet squat'],  'video' => 'https://www.youtube.com/watch?v=aclHkVaku9U', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+    ['keywords' => ['lunge', 'walking lunge', 'reverse lunge'], 'video' => 'https://www.youtube.com/watch?v=QOVaHwm-Q6U', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+    ['keywords' => ['deadlift', 'romanian deadlift', 'rdl'],  'video' => 'https://www.youtube.com/watch?v=op9kVnSso6Q', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
+    ['keywords' => ['calf raise', 'calf'],                   'video' => 'https://www.youtube.com/watch?v=-M4-G8p8fmc', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+    ['keywords' => ['leg press', 'leg extension', 'leg curl'], 'video' => 'https://www.youtube.com/watch?v=yZmx_7igP2A', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+    ['keywords' => ['glute bridge', 'hip thrust'],           'video' => 'https://www.youtube.com/watch?v=wPM8icPu6H8', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
 
     // CORE
-    ['keywords' => ['plank', 'forearm plank'],               'video' => 'https://cdn.pixabay.com/video/2017/07/23/10809-226624946_small.mp4', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['crunch', 'sit up', 'situp', 'ab'],      'video' => 'https://videos.pexels.com/video-files/4366624/4366624-hd_1080_1920_25fps.mp4', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['russian twist'],                        'video' => 'https://videos.pexels.com/video-files/4366624/4366624-hd_1080_1920_25fps.mp4', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['leg raise', 'hanging leg'],             'video' => 'https://videos.pexels.com/video-files/4366624/4366624-hd_1080_1920_25fps.mp4', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['plank', 'forearm plank'],               'video' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['crunch', 'sit up', 'situp', 'ab'],      'video' => 'https://www.youtube.com/watch?v=Xyd_fa5zoEU', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['russian twist'],                        'video' => 'https://www.youtube.com/watch?v=Nm0h97Y4uqA', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['leg raise', 'hanging leg'],             'video' => 'https://www.youtube.com/watch?v=K3u-yT588Ew', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
 
     // FLEXIBILITY / RECOVERY
-    ['keywords' => ['stretch', 'yoga', 'cooldown', 'cool down'], 'video' => 'https://videos.pexels.com/video-files/5510141/5510141-hd_1080_1920_25fps.mp4', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['stretch', 'yoga', 'cooldown', 'cool down'], 'video' => 'https://www.youtube.com/watch?v=tXWh-dowiLg', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
 
     // FULL BODY
-    ['keywords' => ['kettlebell swing', 'kettlebell'],       'video' => 'https://videos.pexels.com/video-files/8401319/8401319-hd_1920_1080_30fps.mp4', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['box jump', 'jump squat', 'plyometric'],  'video' => 'https://videos.pexels.com/video-files/8857692/8857692-hd_1280_720_25fps.mp4', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+    ['keywords' => ['kettlebell swing', 'kettlebell'],       'video' => 'https://www.youtube.com/watch?v=Y5U-uGj7V9E', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
+    ['keywords' => ['box jump', 'jump squat', 'plyometric'],  'video' => 'https://www.youtube.com/watch?v=52r_Ul5k03g', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+
 ];
 
 // Fallback categories for exercises that don't match any keyword
@@ -75,25 +77,105 @@ $CATEGORY_FALLBACK_VIDEOS = [
 ];
 
 /**
- * Finds the best matching video for an exercise name from our curated library.
- * Uses keyword matching to ensure the video actually demonstrates the exercise.
+ * Validates if a YouTube video is actually available and embeddable.
+ * Uses the OEmbed endpoint which doesn't require an API key.
  */
-function findExerciseVideo($exerciseName, $exerciseVideoMap, $categoryFallbacks, $workoutType = 'general') {
-    $nameLower = strtolower($exerciseName);
+function isYoutubeVideoAvailable($url) {
+    if (strpos($url, 'youtube.com') === false && strpos($url, 'youtu.be') === false) {
+        return true; // Not a YouTube URL
+    }
     
-    // Try to match against our curated keyword library
-    foreach ($exerciseVideoMap as $entry) {
-        foreach ($entry['keywords'] as $keyword) {
-            if (strpos($nameLower, $keyword) !== false) {
-                return [
-                    'video' => $entry['video'],
-                    'image' => $entry['image']
-                ];
+    $oembedUrl = "https://www.youtube.com/oembed?url=" . urlencode($url) . "&format=json";
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $oembedUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Increased timeout
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Added for local dev flexibility
+    
+    // Add User-Agent to avoid being blocked by YouTube/Google
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    return ($httpCode === 200);
+}
+
+/**
+ * Searches YouTube for a workout video based on a search term.
+ * Fetches multiple results and verifies availability until a working one is found.
+ */
+function searchYouTube($searchTerm, $apiKey) {
+    if (empty($searchTerm)) return null;
+    
+    // We fetch up to 3 results to find a working one without too much overhead
+    $query = urlencode($searchTerm . " exercise tutorial");
+    $url = "https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&q=$query&type=video&videoEmbeddable=true&key=$apiKey";
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 7);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode === 200) {
+        $data = json_decode($response, true);
+        if (!empty($data['items'])) {
+            foreach ($data['items'] as $item) {
+                $videoId = $item['id']['videoId'] ?? null;
+                if (!$videoId) continue;
+                
+                $videoUrl = "https://www.youtube.com/watch?v=" . $videoId;
+                
+                // VERIFY AVAILABILITY (Deep Search Retry)
+                if (isYoutubeVideoAvailable($videoUrl)) {
+                    return $videoUrl;
+                }
             }
         }
     }
     
-    // No keyword match found — use workout type fallback
+    return null;
+}
+
+/**
+ * Finds the best matching video for an exercise name.
+ * Now prioritized: Curated Map -> Dynamic YouTube "Deep Search" -> Category Fallback
+ */
+function findExerciseVideo($exerciseName, $searchTerm, $exerciseVideoMap, $categoryFallbacks, $ytApiKey, $workoutType = 'general') {
+    $nameLower = strtolower($exerciseName);
+    
+    // 1. Try our curated library first (Verified high-quality results)
+    foreach ($exerciseVideoMap as $entry) {
+        foreach ($entry['keywords'] as $keyword) {
+            if (strpos($nameLower, $keyword) !== false) {
+                $videoUrl = $entry['video'];
+                if (isYoutubeVideoAvailable($videoUrl)) {
+                    return [
+                        'video' => $videoUrl,
+                        'image' => $entry['image']
+                    ];
+                }
+            }
+        }
+    }
+    
+    // 2. Dynamic YouTube "Deep Search" (Tries multiple results)
+    $dynamicVideo = searchYouTube($searchTerm ?: $exerciseName, $ytApiKey);
+    if ($dynamicVideo) {
+        return [
+            'video' => $dynamicVideo,
+            'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'
+        ];
+    }
+    
+    // 3. Last Resort Fallback (Stock Video instead of static image)
     $type = strtolower($workoutType);
     return [
         'video' => $categoryFallbacks[$type] ?? $categoryFallbacks['general'],
@@ -249,13 +331,23 @@ try {
         $prompt .= "CRITICAL: If the user has NO equipment, include 'bodyweight' or 'no equipment' in the search_term for every exercise.\n";
         $prompt .= "Instructions should be 1-2 powerful cues for correct form.\n\n";
     }
+
+    $prompt .= "3D ANIMATION STRATEGY:\n";
+    $prompt .= "For each exercise, provide an 'ai_motion' object to drive a simplified 3D skeleton.\n";
+    $prompt .= "Available targets: wrist_l, wrist_r, ankle_l, ankle_r (Positions relative to hips).\n";
+    $prompt .= "Available joint rotations: hips, spine, neck, head, shoulder_l, shoulder_r, elbow_l, elbow_r, leg_l, leg_r.\n";
+    $prompt .= "USE TARGETS FOR HANDS/FEET whenever possible. Example for Jumping Jacks:\n";
+    $prompt .= "- Start: wrist_l: [0.5, -0.8, 0], wrist_r: [-0.5, -0.8, 0], ankle_l: [-0.2, -1.0, 0]\n";
+    $prompt .= "- Jump: wrist_l: [0.3, 0.8, 0], wrist_r: [-0.3, 0.8, 0], ankle_l: [-0.6, -1.0, 0], hips: [0, 0.5, 0]\n";
+    $prompt .= "Rotations are in RADIANS. Positions are in METERS relative to hips.\n";
+    $prompt .= "Provide 3-5 keyframes (time 0.0 to 1.0) for one repetition.\n\n";
     
     $prompt .= "JSON FORMAT:\n";
     $prompt .= "{\n";
     $prompt .= '  "todays_workout": {';
     $prompt .= '    "name": "Workout Title",';
     $prompt .= '    "exercises": [';
-    $prompt .= '      {"name": "Exercise Name", "search_term": "standard name", "sets": 3, "reps": 10, "instructions": "Short tip"}';
+    $prompt .= '      {"name": "Exercise Name", "search_term": "name", "sets": 3, "reps": 10, "instructions": "cues", "ai_motion": {"keyframes": [{"time": 0, "targets": {"wrist_l": [0.5, -0.8, 0]}, "joints": {"hips": [0,0,0]}, "position": [0,0,0]}]}}';
     $prompt .= '    ],';
     $prompt .= '    "exercises_count": 1,';
     $prompt .= '    "duration": 30,';
@@ -264,9 +356,12 @@ try {
     $prompt .= '  },';
     $prompt .= '  "recovery_score": 90,';
     $prompt .= '  "status": "READY FOR SESSION",';
-    $prompt .= '  "missed_workouts": [],';
-    $prompt .= '  "upcoming_workouts": []';
-    $prompt .= "\n}";
+    $prompt .= '  "missed_workouts": [],' . "\n";
+    $prompt .= '  "upcoming_workouts": [' . "\n";
+    $prompt .= '    {"name": "Upper Body Power", "scheduled_date": "YYYY-MM-DD", "duration": 45, "exercises_count": 6}' . "\n";
+    $prompt .= '  ]' . "\n";
+    $prompt .= '}' . "\n";
+    $prompt .= 'IMPORTANT: Always return "name" and "scheduled_date" (YYYY-MM-DD) for upcoming workouts.';
     
     // Call Gemini with graceful fallback
     try {
@@ -284,13 +379,15 @@ try {
         $workoutData = ['error' => true, 'message' => $e->getMessage()];
     }
 
-    // SMART VIDEO MATCHING - Uses curated library instead of unreliable Pixabay search
+    // SMART VIDEO MATCHING - Uses curated library + AI-Driven YouTube Search
     if ($workoutData && isset($workoutData['todays_workout']['exercises'])) {
         $workoutType = $workoutData['todays_workout']['type'] ?? 'general';
 
         foreach ($workoutData['todays_workout']['exercises'] as $idx => &$exercise) {
             $exerciseName = $exercise['name'] ?? 'general exercise';
-            $media = findExerciseVideo($exerciseName, $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $workoutType);
+            $searchTerm = $exercise['search_term'] ?? $exerciseName;
+            
+            $media = findExerciseVideo($exerciseName, $searchTerm, $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY, $workoutType);
             $exercise['video_url'] = $media['video'];
             $exercise['image_url'] = $media['image'];
         }
@@ -357,35 +454,74 @@ finalize_response:
     if (!isset($workoutData['recovery_score'])) $workoutData['recovery_score'] = 98;
     if (!isset($workoutData['missed_workouts'])) $workoutData['missed_workouts'] = [];
     
-    // Ensure high-quality Upcoming Workouts exist
-    if (!isset($workoutData['upcoming_workouts']) || empty($workoutData['upcoming_workouts'])) {
+    // 3. SANITIZE AND MAP DATA (Fixes 'TBD' and 'No Video' issues)
+    if (isset($workoutData['upcoming_workouts']) && is_array($workoutData['upcoming_workouts'])) {
+        foreach ($workoutData['upcoming_workouts'] as $i => &$upcoming) {
+            // Map AI variants like 'focus' or 'title' to 'name'
+            if (!isset($upcoming['name']) && isset($upcoming['focus'])) $upcoming['name'] = $upcoming['focus'];
+            if (!isset($upcoming['name']) && isset($upcoming['title'])) $upcoming['name'] = $upcoming['title'];
+            if (!isset($upcoming['name'])) $upcoming['name'] = "Daily Session " . ($i + 1);
+
+            // Map 'day' or 'date' to 'scheduled_date'
+            if (!isset($upcoming['scheduled_date'])) {
+                if (isset($upcoming['date'])) {
+                    $upcoming['scheduled_date'] = $upcoming['date'];
+                } elseif (isset($upcoming['day'])) {
+                    $dayStr = $upcoming['day'];
+                    $upcoming['scheduled_date'] = date('Y-m-d', strtotime("next $dayStr"));
+                } else {
+                    $upcoming['scheduled_date'] = date('Y-m-d', strtotime('+' . ($i + 1) . ' days'));
+                }
+            }
+
+            // Ensure exercises exist for 'ActiveWorkout' screen
+            if (!isset($upcoming['exercises']) || empty($upcoming['exercises'])) {
+                $upcoming['exercises'] = [
+                    ['name' => 'Forearm Plank', 'sets' => 3, 'reps' => 60, 'duration' => 60],
+                    ['name' => 'Mountain Climbers', 'sets' => 3, 'reps' => 20, 'duration' => 60],
+                ];
+            }
+            
+            // Match videos for upcoming exercises too
+            foreach ($upcoming['exercises'] as &$ex) {
+                $m = findExerciseVideo($ex['name'], $ex['search_term'] ?? $ex['name'], $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY);
+                $ex['video_url'] = $m['video'];
+                $ex['image_url'] = $m['image'];
+            }
+
+            if (!isset($upcoming['duration'])) $upcoming['duration'] = 45;
+            if (!isset($upcoming['exercises_count'])) $upcoming['exercises_count'] = count($upcoming['exercises']);
+        }
+    } else {
+        // High-quality fallback with FULL exercise data
         $workoutData['upcoming_workouts'] = [
             [
                 'name' => 'Upper Body Power',
                 'scheduled_date' => date('Y-m-d', strtotime('+1 day')),
                 'day_name' => date('l', strtotime('+1 day')),
                 'duration' => 45,
-                'exercises_count' => 6,
+                'exercises_count' => 3,
                 'exercises' => [
-                    ['name' => 'Bench Press', 'sets' => 3, 'reps' => 10],
-                    ['name' => 'Incline Flys', 'sets' => 3, 'reps' => 12]
+                    ['name' => 'Push Ups', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=IODxDxX7oi4', 'image_url' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+                    ['name' => 'Dumbbell Curls', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=F08VqG0k-gI', 'image_url' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
+                    ['name' => 'Lateral Raises', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=3VcKaXpzqRo', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800']
                 ]
             ],
             [
-                'name' => 'Lower Body Focus',
+                'name' => 'Core and Stability',
                 'scheduled_date' => date('Y-m-d', strtotime('+2 days')),
                 'day_name' => date('l', strtotime('+2 days')),
-                'duration' => 50,
-                'exercises_count' => 5,
+                'duration' => 30,
+                'exercises_count' => 2,
                 'exercises' => [
-                    ['name' => 'Squats', 'sets' => 3, 'reps' => 15],
-                    ['name' => 'Leg Extensions', 'sets' => 3, 'reps' => 12]
+                    ['name' => 'Forearm Plank', 'sets' => 3, 'reps' => 60, 'video_url' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+                    ['name' => 'Russian Twists', 'sets' => 3, 'reps' => 20, 'video_url' => 'https://www.youtube.com/watch?v=Nm0h97Y4uqA', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800']
                 ]
             ]
         ];
     }
     
-    // 3. SEND CLEAN RESPONSE
+    // 4. SEND CLEAN RESPONSE
     echo json_encode([
         'status' => 'success',
         'data' => $workoutData,

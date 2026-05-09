@@ -11,6 +11,12 @@ export interface Exercise {
   image_url?: string;
   video_url?: string;
   instructions?: string | string[];
+  ai_motion?: {
+    keyframes: {
+      time: number;
+      joints: { [key: string]: [number, number, number] };
+    }[];
+  };
 }
 
 export interface Workout {

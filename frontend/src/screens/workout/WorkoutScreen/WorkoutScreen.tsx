@@ -36,8 +36,8 @@ export const WorkoutScreen = () => {
       case '3':
         navigation.navigate('Achievements' as any);
         break;
-      case '4':
-        navigation.navigate('RoutineLibrary' as any);
+      case '5':
+        navigation.navigate('YouTubeAnalysis' as any);
         break;
       default:
         // 'Plan My Session' could re-trigger loadWorkoutData or show a modal
@@ -100,9 +100,9 @@ export const WorkoutScreen = () => {
 
   const aiTools = [
     { id: '1', title: 'Check Form with AI', icon: 'camera-outline' },
+    { id: '5', title: 'Analyze Video', icon: 'logo-youtube' },
     { id: '2', title: 'Plan My Session', icon: 'calendar-outline' },
     { id: '3', title: 'View Past PRs', icon: 'trophy-outline' },
-    { id: '4', title: 'Find a Routine', icon: 'search-outline' },
   ];
 
   const formatDate = (dateStr: string) => {

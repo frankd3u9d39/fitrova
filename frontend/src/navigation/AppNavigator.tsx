@@ -24,6 +24,7 @@ import { ScheduleScreen } from '../screens/workout/ScheduleScreen/ScheduleScreen
 import { FormCheckScreen } from '../screens/workout/FormCheckScreen/FormCheckScreen';
 import { RoutineLibraryScreen } from '../screens/workout/RoutineLibraryScreen/RoutineLibraryScreen';
 import { SettingsScreen } from '../screens/profile/SettingsScreen/SettingsScreen';
+import { YouTubeAnalysisScreen } from '../screens/workout/YouTubeAnalysisScreen/YouTubeAnalysisScreen';
 import { FoodScanScreen } from '../screens/nutrition/FoodScanScreen/FoodScanScreen';
 import { FoodResultScreen } from '../screens/nutrition/FoodResultScreen/FoodResultScreen';
 import { NutritionHistoryScreen } from '../screens/nutrition/NutritionHistoryScreen/NutritionHistoryScreen';
@@ -94,6 +95,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="RoutineLibrary" component={RoutineLibraryScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="FoodScan" component={FoodScanScreen} />
+        <Stack.Screen name="YouTubeAnalysis" component={YouTubeAnalysisScreen} />
         <Stack.Screen name="FoodResult" component={FoodResultScreen} />
         <Stack.Screen name="NutritionHistory" component={NutritionHistoryScreen} />
       </Stack.Navigator>

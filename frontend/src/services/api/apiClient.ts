@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://10.246.157.154/Fitrova/backend';
+export const API_BASE_URL = 'http://10.127.100.154/Fitrova/backend';
 
 export const endpoints = {
   register: `${API_BASE_URL}/app/controllers/auth/register.php`,
