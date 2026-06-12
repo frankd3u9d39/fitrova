@@ -638,14 +638,21 @@ if (empty($notifications)) {
                     <div class="relative z-10">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                             <div>
-                                <span
-                                    class="px-2.5 py-1 rounded-md bg-primary/10 text-primary text-[10px] font-extrabold uppercase tracking-widest border border-primary/20">Active
-                                    Integration</span>
-                                <h3 class="font-display text-xl font-extrabold italic text-white mt-2">Gemini API Token
-                                    Monitor</h3>
-                                <p class="text-xs text-slate-400 mt-1">Real-time usage analytics for key: <code
-                                        class="bg-slate-800 px-1.5 py-0.5 rounded text-[11px] text-primary">AIzaSyBQ8T...8wmJI</code>
-                                </p>
+                                <div class="flex flex-wrap gap-2 mb-2">
+                                    <span class="px-2.5 py-1 rounded-md bg-primary/10 text-primary text-[10px] font-extrabold uppercase tracking-widest border border-primary/20">
+                                        Active: Google Gemini 1.5
+                                    </span>
+                                    <?php
+                                    $settingsListStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+                                    $allSettings = $settingsListStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                                    $hfTokenConfigured = !empty(getenv('HF_TOKEN')) || !empty($allSettings['hf_token'] ?? '');
+                                    ?>
+                                    <span class="px-2.5 py-1 rounded-md <?php echo $hfTokenConfigured ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-slate-700/10 text-slate-400 border-slate-700/20'; ?> text-[10px] font-extrabold uppercase tracking-widest border">
+                                        Fallback: Gemma 2 (<?php echo $hfTokenConfigured ? 'Active' : 'Missing Token'; ?>)
+                                    </span>
+                                </div>
+                                <h3 class="font-display text-xl font-extrabold italic text-white">AI Engine & Token Monitor</h3>
+                                <p class="text-xs text-slate-400 mt-1">Real-time usage analytics for Google Gemini & Hugging Face Serverless fallback</p>
                             </div>
                             <div
                                 class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-full px-3 py-1.5 text-xs text-slate-300">
