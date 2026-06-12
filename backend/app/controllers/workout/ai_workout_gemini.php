@@ -645,6 +645,57 @@ function callGemini($prompt, $apiKey, $primaryModel = 'gemini-1.5-pro-latest', $
 
     throw new Exception('All Gemini models failed or were throttled.');
 }
+
+function callHuggingFace($prompt, $hfToken, $model = 'google/gemma-2-9b-it') {
+    if (empty($hfToken)) {
+        throw new Exception("Hugging Face API token is not configured.");
+    }
+
+    $url = "https://api-inference.huggingface.co/models/" . $model;
+    
+    $payload = [
+        'inputs' => $prompt,
+        'parameters' => [
+            'max_new_tokens' => 1500,
+            'temperature' => 0.7
+        ],
+        'options' => [
+            'wait_for_model' => true
+        ]
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST,           true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS,     json_encode($payload));
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT,        60);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $hfToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        throw new Exception("Hugging Face API Error (HTTP $httpCode): " . $response . " | " . $curlError);
+    }
+
+    $result = json_decode($response, true);
+    
+    if (is_array($result) && isset($result[0]['generated_text'])) {
+        return $result[0]['generated_text'];
+    } elseif (is_array($result) && isset($result['generated_text'])) {
+        return $result['generated_text'];
+    }
+    
+    throw new Exception("Unexpected response format from Hugging Face: " . $response);
+}
+
 try {
     $input = json_decode(file_get_contents('php://input'), true);
     $userId = $input['user_id'] ?? null;
@@ -834,20 +885,43 @@ try {
     $prompt .= '  "recovery_score": 90, "status": "READY FOR SESSION", "missed_workouts": [], "upcoming_workouts": [{"name": "Upper Body Power", "scheduled_date": "YYYY-MM-DD", "duration": 45, "exercises_count": 5, "exercises": [{"name": "Name", "sets": 3, "reps": 10, "instructions": "cues"}]}]';
     $prompt .= "}\n";
     
-    // Call Gemini with dynamic config
+    // Call Gemini with dynamic config, falling back to Hugging Face if Gemini fails
+    $ai_provider = 'Fitrova Smart Engine';
     try {
         $aiResponse = callGemini($prompt, $GEMINI_API_KEY, $PRIMARY_MODEL, $AI_TEMPERATURE);
         
-        // Clean response (remove markdown if present)
-        $aiResponse = preg_replace('/```json\s*/', '', $aiResponse);
+        $aiResponse = preg_replace('/```json\s*/i', '', $aiResponse);
         $aiResponse = preg_replace('/```\s*$/', '', $aiResponse);
         $aiResponse = trim($aiResponse);
-        
-        // Parse JSON from AI response
         $workoutData = json_decode($aiResponse, true);
+        if ($workoutData && isset($workoutData['todays_workout'])) {
+            $ai_provider = 'Google Gemini Pro';
+        }
     } catch (Exception $e) {
-        error_log("Gemini API call failed: " . $e->getMessage());
-        $workoutData = ['error' => true, 'message' => $e->getMessage()];
+        error_log("Gemini API call failed: " . $e->getMessage() . ". Attempting Hugging Face Serverless fallback...");
+        
+        // Load HF token
+        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+        if (!empty($hfToken)) {
+            try {
+                // Try Gemma 2 9B model on Hugging Face Serverless Inference API
+                $hfResponse = callHuggingFace($prompt, $hfToken, 'google/gemma-2-9b-it');
+                $hfResponse = preg_replace('/```json\s*/i', '', $hfResponse);
+                $hfResponse = preg_replace('/```\s*$/', '', $hfResponse);
+                $hfResponse = trim($hfResponse);
+                $workoutData = json_decode($hfResponse, true);
+                if ($workoutData && isset($workoutData['todays_workout'])) {
+                    $ai_provider = 'Hugging Face (Gemma 2 9B)';
+                } else {
+                    $workoutData = ['error' => true, 'message' => 'Hugging Face returned invalid JSON data.'];
+                }
+            } catch (Exception $hfEx) {
+                error_log("Hugging Face fallback failed: " . $hfEx->getMessage());
+                $workoutData = ['error' => true, 'message' => $hfEx->getMessage()];
+            }
+        } else {
+            $workoutData = ['error' => true, 'message' => 'Hugging Face token not configured.'];
+        }
     }
 
     // SMART VIDEO MATCHING - Uses curated library + AI-Driven YouTube Search
@@ -870,11 +944,11 @@ try {
 
     // 1. AUTO-HEALING: If AI fails or returns malformed data, use the high-quality backup generator
     if (!$workoutData || isset($workoutData['error']) || !isset($workoutData['todays_workout'])) {
-        error_log("⚠️ Gemini AI error or malformed data, fallback to local smart generator.");
+        error_log("⚠️ AI generation error or malformed data, fallback to local smart generator.");
         $workoutData = getLocalSmartWorkout($profile, $hasEquipment, $CATEGORY_FALLBACK_VIDEOS);
         $ai_provider = 'Fitrova Smart Engine (Backup)';
     } else {
-        $ai_provider = 'Google Gemini Pro';
+        // Keep the dynamically assigned provider (Gemini or Hugging Face)
         
         // SAVE NEW PLAN TO DATABASE
         try {
