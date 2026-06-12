@@ -12,13 +12,24 @@ if (php_sapi_name() !== 'cli') {
     }
 }
 
-$host = 'localhost';
-$dbname = 'fitrova_db';
-$username = 'root';
-$password = ''; // Default XAMPP empty password
+// Load environment variables if env_loader is present
+require_once __DIR__ . '/env_loader.php';
+if (file_exists(__DIR__ . '/../.env')) {
+    loadEnv(__DIR__ . '/../.env');
+} elseif (file_exists(__DIR__ . '/../.env.local')) {
+    loadEnv(__DIR__ . '/../.env.local');
+} elseif (file_exists(__DIR__ . '/../.env.production')) {
+    loadEnv(__DIR__ . '/../.env.production');
+}
+
+$host = getenv('DB_HOST') ?: 'localhost';
+$port = getenv('DB_PORT') ?: '3306';
+$dbname = getenv('DB_NAME') ?: 'fitrova_db';
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASS') ?: (getenv('DB_PASSWORD') ?: '');
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8", $username, $password);
     // Set PDO error mode to exception
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
