@@ -39,6 +39,10 @@ $queries = [
         profile_picture TEXT DEFAULT NULL,
         daily_calorie_goal INT DEFAULT 2000,
         health_score INT DEFAULT 50,
+        subscription_tier VARCHAR(20) DEFAULT 'free',
+        trial_used TINYINT(1) DEFAULT 0,
+        subscription_expiry DATETIME DEFAULT NULL,
+        ai_engine VARCHAR(20) DEFAULT 'eco',
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )",
@@ -79,6 +83,8 @@ $queries = [
         duration_minutes INT NOT NULL,
         difficulty ENUM('beginner', 'intermediate', 'advanced') DEFAULT 'intermediate',
         workout_type ENUM('strength', 'cardio', 'flexibility', 'mixed') DEFAULT 'mixed',
+        plan_date DATE DEFAULT NULL,
+        plan_data TEXT DEFAULT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -196,6 +202,34 @@ $queries = [
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (achievement_id) REFERENCES achievements(id) ON DELETE CASCADE,
         UNIQUE KEY idx_user_achievement (user_id, achievement_id)
+    )",
+
+    // 16. payment_transactions
+    "CREATE TABLE IF NOT EXISTS payment_transactions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        reference VARCHAR(100) UNIQUE NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        currency VARCHAR(10) DEFAULT 'NGN',
+        subscription_tier VARCHAR(50) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        paystack_response JSON DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8",
+
+    // 17. form_check_logs
+    "CREATE TABLE IF NOT EXISTS form_check_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        exercise_name VARCHAR(255),
+        score INT,
+        status VARCHAR(50),
+        summary TEXT,
+        tips TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )"
 ];
 
@@ -205,6 +239,24 @@ foreach ($queries as $index => $query) {
         echo "✅ Table " . ($index + 1) . " created/verified successfully.\n";
     } catch (PDOException $e) {
         die("❌ Table creation failed on query " . ($index + 1) . ": " . $e->getMessage() . "\n");
+    }
+}
+
+// Self-Heal existing tables by adding columns that might be missing
+$alterations = [
+    "ALTER TABLE user_profiles ADD COLUMN subscription_tier VARCHAR(20) DEFAULT 'free'",
+    "ALTER TABLE user_profiles ADD COLUMN trial_used TINYINT(1) DEFAULT 0",
+    "ALTER TABLE user_profiles ADD COLUMN subscription_expiry DATETIME DEFAULT NULL",
+    "ALTER TABLE user_profiles ADD COLUMN ai_engine VARCHAR(20) DEFAULT 'eco'",
+    "ALTER TABLE workout_plans ADD COLUMN plan_date DATE DEFAULT NULL",
+    "ALTER TABLE workout_plans ADD COLUMN plan_data TEXT DEFAULT NULL"
+];
+
+foreach ($alterations as $alteration) {
+    try {
+        $pdo->exec($alteration);
+    } catch (PDOException $e) {
+        // Safe to ignore if column already exists
     }
 }
 
