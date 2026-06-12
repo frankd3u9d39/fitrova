@@ -32,11 +32,11 @@ RUN chown -R aiuser:aiuser /app
 USER aiuser
 
 # Expose port
-EXPOSE 5001
+EXPOSE 7860
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5001/health || exit 1
+    CMD curl -f http://localhost:7860/health || exit 1
 
 # Run the application
 CMD ["python", "api/video_analyzer.py"]

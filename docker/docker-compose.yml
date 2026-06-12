@@ -57,7 +57,7 @@ services:
     container_name: fitrova_ai_service
     restart: unless-stopped
     ports:
-      - "5001:5001"
+      - "5001:7860"
     environment:
       PYTHONUNBUFFERED: 1
       FLASK_ENV: ${FLASK_ENV:-development}
