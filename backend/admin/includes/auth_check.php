@@ -9,10 +9,17 @@ if (!isset($pdo)) {
     require_once __DIR__ . '/../../config/db_config.php';
 }
 
-// Self-Heal Database Schema (Ensure is_admin column exists in users table)
+// Self-Heal Database Schema (Ensure tables and columns exist)
 try {
-    // We check if the column exists to avoid triggering database errors in logs,
-    // though ALTER TABLE with try-catch is also safe.
+    // If users table is missing, initialize the database tables and seed defaults
+    $tableExists = $pdo->query("SHOW TABLES LIKE 'users'")->fetch();
+    if (!$tableExists) {
+        ob_start();
+        require_once __DIR__ . '/../../scripts/setup_production_db.php';
+        ob_end_clean();
+    }
+
+    // Ensure the is_admin column exists
     $checkCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'is_admin'")->fetch();
     if (!$checkCol) {
         $pdo->exec("ALTER TABLE users ADD COLUMN is_admin TINYINT(1) DEFAULT 0");
