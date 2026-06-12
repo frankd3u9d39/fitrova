@@ -57,9 +57,9 @@ const staging: AppConfig = {
 // Production configuration
 const production: AppConfig = {
   env: 'production',
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.fitrova.com/backend',
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://fitrova-backend.onrender.com',
   youtubeApiKey: process.env.EXPO_PUBLIC_YOUTUBE_API_KEY || '',
-  aiServiceUrl: process.env.EXPO_PUBLIC_AI_SERVICE_URL || 'https://ai.fitrova.com',
+  aiServiceUrl: process.env.EXPO_PUBLIC_AI_SERVICE_URL || 'https://ibeh12-fitrova-ai.hf.space',
   googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
   paystackPublicKey: process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_live_YOUR_KEY',
   loggingEnabled: false,
