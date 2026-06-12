@@ -20,6 +20,7 @@ import { Button } from '../../../components/buttons/Button';
 import { theme } from '../../../theme';
 import { getProfileStats, updateProfile } from '../../../services/api/profileService';
 import { CustomAlert } from '../../../components/common/CustomAlert';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type EditProfileRouteProp = RouteProp<RootStackParamList, 'EditProfile'>;
 
@@ -36,9 +37,19 @@ export const EditProfileScreen = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [darkTheme, setDarkTheme] = useState(false);
 
   useEffect(() => {
     loadCurrentProfile();
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+        if (saved) {
+          const prefs = JSON.parse(saved);
+          if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
+        }
+      } catch (e) { }
+    })();
   }, [userId]);
 
   const loadCurrentProfile = async () => {
@@ -126,12 +137,23 @@ export const EditProfileScreen = () => {
     }
   };
 
+  // Dynamic theme colors matching SettingsScreen
+  const colors = {
+    background: darkTheme ? '#0F172A' : '#F3F4F6',
+    cardBg: darkTheme ? '#1E293B' : '#FFFFFF',
+    text: darkTheme ? '#F8FAFC' : '#1F2937',
+    textSecondary: darkTheme ? '#94A3B8' : '#6B7280',
+    border: darkTheme ? '#334155' : '#F3F4F6',
+    inputBg: darkTheme ? '#0F172A' : '#F9FAFB',
+    inputBorder: darkTheme ? '#334155' : '#E5E7EB',
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.loadingText}>Fetching profile details...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Fetching profile details...</Text>
         </View>
       </SafeAreaView>
     );
@@ -140,13 +162,13 @@ export const EditProfileScreen = () => {
   const initials = ((firstName?.[0] || '') + (lastName?.[0] || '')).toUpperCase() || 'U';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Profile</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -176,7 +198,7 @@ export const EditProfileScreen = () => {
                   <Text style={styles.avatarText}>{initials}</Text>
                 )}
               </View>
-              <View style={styles.cameraIconBox}>
+              <View style={[styles.cameraIconBox, { borderColor: colors.background }]}>
                 <Ionicons name="camera" size={16} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
@@ -184,13 +206,17 @@ export const EditProfileScreen = () => {
           </View>
 
           {/* Form Card */}
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
             <Input
               label="First Name"
               placeholder="First name"
               value={firstName}
               onChangeText={setFirstName}
               autoCapitalize="words"
+              style={{ backgroundColor: colors.inputBg, borderColor: colors.inputBorder }}
+              inputStyle={{ color: colors.text }}
+              labelStyle={{ color: colors.textSecondary }}
+              placeholderTextColor={colors.textSecondary}
             />
 
             <Input
@@ -199,6 +225,10 @@ export const EditProfileScreen = () => {
               value={lastName}
               onChangeText={setLastName}
               autoCapitalize="words"
+              style={{ backgroundColor: colors.inputBg, borderColor: colors.inputBorder }}
+              inputStyle={{ color: colors.text }}
+              labelStyle={{ color: colors.textSecondary }}
+              placeholderTextColor={colors.textSecondary}
             />
 
             <Input
@@ -208,6 +238,10 @@ export const EditProfileScreen = () => {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              style={{ backgroundColor: colors.inputBg, borderColor: colors.inputBorder }}
+              inputStyle={{ color: colors.text }}
+              labelStyle={{ color: colors.textSecondary }}
+              placeholderTextColor={colors.textSecondary}
             />
 
             <Input
@@ -216,6 +250,10 @@ export const EditProfileScreen = () => {
               value={motto}
               onChangeText={setMotto}
               autoCapitalize="sentences"
+              style={{ backgroundColor: colors.inputBg, borderColor: colors.inputBorder }}
+              inputStyle={{ color: colors.text }}
+              labelStyle={{ color: colors.textSecondary }}
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
 

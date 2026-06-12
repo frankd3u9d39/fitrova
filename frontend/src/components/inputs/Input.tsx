@@ -9,6 +9,8 @@ interface InputProps extends TextInputProps {
   isPassword?: boolean;
   rightIcon?: React.ReactNode;
   containerStyle?: ViewStyle;
+  labelStyle?: any;
+  inputStyle?: any;
 }
 
 export const Input = ({
@@ -18,6 +20,8 @@ export const Input = ({
   rightIcon,
   style,
   containerStyle,
+  labelStyle,
+  inputStyle,
   ...props
 }: InputProps) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -25,7 +29,7 @@ export const Input = ({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, labelStyle]}>{label}</Text>}
       <View
         style={[
           styles.inputContainer,
@@ -35,8 +39,8 @@ export const Input = ({
         ]}
       >
         <TextInput
-          style={styles.input}
-          placeholderTextColor={theme.colors.textSecondary}
+          style={[styles.input, inputStyle]}
+          placeholderTextColor={props.placeholderTextColor || theme.colors.textSecondary}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           secureTextEntry={secureTextEntry}

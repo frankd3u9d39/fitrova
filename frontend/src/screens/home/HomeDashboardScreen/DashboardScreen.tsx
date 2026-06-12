@@ -1,16 +1,22 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ImageBackground } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
 import { useRoute, RouteProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MainTabParamList } from '../../../navigation/types';
-import { getDashboardData, DashboardData, logWeight } from '../../../services/api/dashboardService';
+import { getDashboardData, DashboardData, logWeight, joinChallenge } from '../../../services/api/dashboardService';
 import { notificationService, Notification } from '../../../services/api/notificationService';
 import { AICoachModal } from '../../../components/common/AICoachModal';
 
 type DashboardRouteProp = RouteProp<MainTabParamList, 'Home'>;
+
+const workoutImages = [
+  require('../../../../assets/workout_athletes.png'),
+  require('../../../../assets/workout_athlete_girl.png'),
+  require('../../../../assets/workout_athlete_boy.png'),
+];
 
 export const DashboardScreen = () => {
   const route = useRoute<DashboardRouteProp>();
@@ -21,12 +27,22 @@ export const DashboardScreen = () => {
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [weightInput, setWeightInput] = useState('');
   const [loggingWeight, setLoggingWeight] = useState(false);
+  const [joiningChallengeKey, setJoiningChallengeKey] = useState<string | null>(null);
 
   // Notification states
   const [unreadCount, setUnreadCount] = useState(0);
   const [latestNotification, setLatestNotification] = useState<Notification | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showAIPromptModal, setShowAIPromptModal] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
+  const [currentWorkoutImageIndex, setCurrentWorkoutImageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentWorkoutImageIndex((prev) => (prev + 1) % 3);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Get userId from route params or use default (you should pass this from login)
   const userId = route.params?.userId || 1; // TODO: Get from auth context
@@ -66,6 +82,49 @@ export const DashboardScreen = () => {
     }, [userId])
   );
 
+  useEffect(() => {
+    let timer: any;
+    
+    const checkDismissalAndSchedule = async () => {
+      if (!loading && dashboardData) {
+        try {
+          const dismissedVal = await AsyncStorage.getItem(`weight_prompt_dismissed_${userId}`);
+          if (dismissedVal) {
+            const dismissedDate = new Date(dismissedVal);
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - dismissedDate.getTime());
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+            if (diffDays < 4) {
+              return;
+            }
+          }
+        } catch (e) {
+          console.error('Error reading weight prompt dismissal status:', e);
+        }
+
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayDateStr = `${year}-${month}-${day}`;
+        
+        const loggedToday = dashboardData.weight.history.some(w => w.recorded_date === todayDateStr);
+        
+        if (!loggedToday) {
+          timer = setTimeout(() => {
+            setShowAIPromptModal(true);
+          }, 7000);
+        }
+      }
+    };
+
+    checkDismissalAndSchedule();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [loading, dashboardData, userId]);
+
   const fetchNotifications = async () => {
     try {
       const data = await notificationService.getNotifications(userId);
@@ -88,6 +147,15 @@ export const DashboardScreen = () => {
       // Refresh count
       const data = await notificationService.getNotifications(userId);
       setUnreadCount(data.unreadCount);
+    }
+  };
+
+  const handleDismissPrompt = async () => {
+    setShowAIPromptModal(false);
+    try {
+      await AsyncStorage.setItem(`weight_prompt_dismissed_${userId}`, new Date().toISOString());
+    } catch (e) {
+      console.error('Error saving weight prompt dismissal status:', e);
     }
   };
   
@@ -121,6 +189,58 @@ export const DashboardScreen = () => {
       Alert.alert('Error', err.message || 'Could not log weight.');
     } finally {
       setLoggingWeight(false);
+    }
+  };
+
+  const handleJoinChallenge = async (challengeKey: string, currentJoined: boolean) => {
+    try {
+      setJoiningChallengeKey(challengeKey);
+      const action = currentJoined ? 'leave' : 'join';
+      await joinChallenge(userId, challengeKey, action);
+      
+      // Update local state to feel snappy
+      if (dashboardData) {
+        const updatedChallenges = dashboardData.challenges.map((c) => {
+          if (c.key === challengeKey) {
+            const countOffset = currentJoined ? -1 : 1;
+            const updatedJoined = !currentJoined;
+            
+            // Recompute mock participants slice for me
+            let updatedParticipants = [...c.participants];
+            if (updatedJoined) {
+              const myInitial = ((firstName?.[0] || 'Y') + (lastName?.[0] || '')).toUpperCase() || 'U';
+              updatedParticipants.unshift({
+                first_name: firstName || 'You',
+                last_name: lastName || '',
+                initials: myInitial,
+                color: '#10B981',
+                is_me: true
+              });
+              if (updatedParticipants.length > 3) {
+                updatedParticipants.pop();
+              }
+            } else {
+              updatedParticipants = updatedParticipants.filter(p => !p.is_me);
+            }
+
+            return {
+              ...c,
+              joined: updatedJoined,
+              participants_count: c.participants_count + countOffset,
+              participants: updatedParticipants,
+            };
+          }
+          return c;
+        });
+        setDashboardData({
+          ...dashboardData,
+          challenges: updatedChallenges,
+        });
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Could not update challenge.');
+    } finally {
+      setJoiningChallengeKey(null);
     }
   };
   
@@ -240,7 +360,11 @@ export const DashboardScreen = () => {
         </View>
 
         {/* Today's Workout Hero */}
-        <View style={styles.workoutCard}>
+        <ImageBackground 
+          source={workoutImages[currentWorkoutImageIndex]} 
+          style={styles.workoutCard}
+          imageStyle={{ borderRadius: 24 }}
+        >
           <View style={styles.workoutCardOverlay}>
              <Text style={styles.workoutSubtitle}>TODAY'S WORKOUT</Text>
              {todayWorkout ? (
@@ -255,20 +379,18 @@ export const DashboardScreen = () => {
                <Text style={styles.workoutTitle}>No workout{'\n'}scheduled</Text>
              )}
           </View>
-        </View>
+        </ImageBackground>
 
         {/* Weight Trend */}
         <View style={styles.trendSection}>
            <View style={styles.trendHeader}>
               <Text style={[styles.trendTitle, { color: colors.textSecondary }]}>WEIGHT TREND</Text>
-              <View style={styles.weightLogBtn}>
-                <View style={styles.weightValueRow}>
-                  <Text style={[styles.trendValue, { color: colors.text }]}>
-                    {currentWeight > 0 ? currentWeight.toFixed(1) : '--'}
-                    <Text style={[styles.trendUnit, { color: colors.textSecondary }]}> kg</Text>
-                  </Text>
-                </View>
-              </View>
+               <View>
+                 <Text style={[styles.trendValue, { color: colors.text }]}>
+                   {currentWeight > 0 ? currentWeight.toFixed(1) : '--'}
+                   <Text style={[styles.trendUnit, { color: colors.textSecondary }]}> kg</Text>
+                 </Text>
+               </View>
            </View>
            
            <View style={[styles.chartContainer, { backgroundColor: colors.cardBg }]}>
@@ -279,7 +401,10 @@ export const DashboardScreen = () => {
                   for (let i = 6; i >= 0; i--) {
                     const date = new Date(today);
                     date.setDate(date.getDate() - i);
-                    const dateStr = date.toISOString().split('T')[0];
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const dateStr = `${year}-${month}-${day}`;
                     const entry = weightHistory.find(w => w.recorded_date === dateStr);
                     last7Days.push({
                       date: dateStr,
@@ -314,6 +439,89 @@ export const DashboardScreen = () => {
                 })()}
              </View>
            </View>
+        </View>
+
+        {/* Personalized AI Challenges Section */}
+        <View style={styles.challengesSection}>
+          <View style={styles.challengesHeader}>
+            <Text style={[styles.challengesSectionTitle, { color: colors.textSecondary }]}>PERSONALIZED AI CHALLENGES</Text>
+            <View style={styles.gemmaBadge}>
+              <Ionicons name="sparkles" size={12} color={theme.colors.primary} />
+              <Text style={styles.gemmaBadgeText}>Gemma AI</Text>
+            </View>
+          </View>
+
+          {dashboardData.challenges && dashboardData.challenges.length > 0 ? (
+            dashboardData.challenges.map((challenge) => (
+              <View 
+                key={challenge.key} 
+                style={[styles.challengeCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+              >
+                <View style={styles.challengeCardHeader}>
+                  <View style={styles.challengeMeta}>
+                    <Text style={[styles.challengeDifficulty, { 
+                      color: challenge.difficulty === 'Advanced' ? '#EF4444' : challenge.difficulty === 'Intermediate' ? '#F59E0B' : '#10B981',
+                      backgroundColor: challenge.difficulty === 'Advanced' ? 'rgba(239, 68, 68, 0.1)' : challenge.difficulty === 'Intermediate' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)'
+                    }]}>
+                      {challenge.difficulty}
+                    </Text>
+                    <Text style={[styles.challengeDuration, { color: colors.textSecondary }]}>⏱ {challenge.duration}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.challengeJoinBtn,
+                      challenge.joined && styles.challengeJoinedBtn,
+                      joiningChallengeKey === challenge.key && { opacity: 0.7 }
+                    ]}
+                    onPress={() => handleJoinChallenge(challenge.key, challenge.joined)}
+                    disabled={joiningChallengeKey !== null}
+                    activeOpacity={0.8}
+                  >
+                    {joiningChallengeKey === challenge.key ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={[styles.challengeJoinBtnText, challenge.joined && styles.challengeJoinedBtnText]}>
+                        {challenge.joined ? 'Joined' : 'Join'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={[styles.challengeTitle, { color: colors.text }]}>{challenge.title}</Text>
+                <Text style={[styles.challengeDescription, { color: colors.textSecondary }]}>{challenge.description}</Text>
+
+                {/* Participants row */}
+                <View style={styles.challengeFooter}>
+                  <View style={styles.participantAvatars}>
+                    {challenge.participants.map((participant, index) => (
+                      <View 
+                        key={index} 
+                        style={[
+                          styles.participantAvatarCircle, 
+                          { backgroundColor: participant.color, zIndex: 10 - index }
+                        ]}
+                      >
+                        <Text style={styles.participantAvatarText}>{participant.initials}</Text>
+                      </View>
+                    ))}
+                    {challenge.participants_count > challenge.participants.length && (
+                      <Text style={[styles.othersText, { color: colors.textSecondary }]}>
+                        +{challenge.participants_count - challenge.participants.length} others active
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.participantCountRow}>
+                    <Ionicons name="people" size={16} color={theme.colors.primary} />
+                    <Text style={[styles.participantCountText, { color: colors.text }]}>{challenge.participants_count} joined</Text>
+                  </View>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={[styles.emptyStateContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+              <Text style={{ color: colors.textSecondary }}>No active challenges at this time.</Text>
+            </View>
+          )}
         </View>
 
         {/* Weight Log Modal */}
@@ -359,6 +567,55 @@ export const DashboardScreen = () => {
           notification={latestNotification}
           onDismiss={handleDismissAIModal}
         />
+
+        {/* AI Prompt Modal for Weight Update */}
+        <Modal
+          transparent
+          visible={showAIPromptModal}
+          animationType="fade"
+          onRequestClose={handleDismissPrompt}
+        >
+          <View style={styles.promptOverlay}>
+            <View style={[styles.promptCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+              {/* Premium Icon Badge */}
+              <View style={[styles.promptIconWrapper, { backgroundColor: darkTheme ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5', borderColor: darkTheme ? '#059669' : '#A7F3D0' }]}>
+                <Ionicons name="sparkles" size={32} color="#10B981" />
+              </View>
+
+              {/* Content Container */}
+              <View style={styles.promptContent}>
+                <Text style={[styles.promptTag, { color: '#10B981' }]}>AI ENGINE ACCURACY</Text>
+                <Text style={[styles.promptTitle, { color: colors.text }]}>Optimize AI Performance</Text>
+                <Text style={[styles.promptBodyText, { color: colors.textSecondary }]}>
+                  Have you checked your weight recently? Keeping your weight log up-to-date helps our smart engine generate highly accurate workout plans and balance parameters.
+                </Text>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.promptActions}>
+                <TouchableOpacity 
+                  style={styles.promptPrimaryBtn}
+                  onPress={() => {
+                    setShowAIPromptModal(false);
+                    setShowWeightModal(true);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.promptPrimaryBtnText}>Log Weight Now</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.promptSecondaryBtn, { borderColor: colors.border }]}
+                  onPress={handleDismissPrompt}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.promptSecondaryBtnText, { color: colors.textSecondary }]}>Maybe Later</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
       </ScrollView>
     </SafeAreaView>
@@ -542,6 +799,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)', // Premium semi-transparent overlay
   },
   workoutSubtitle: {
     fontSize: 10,
@@ -812,5 +1070,229 @@ const styles = StyleSheet.create({
   insightHighlight: {
     fontWeight: '700',
     color: theme.colors.text,
+  },
+  // AI Prompt Modal Styles
+  promptOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  promptCard: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 25,
+    elevation: 10,
+  },
+  promptIconWrapper: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  promptContent: {
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  promptTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  promptTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  promptBodyText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  promptActions: {
+    width: '100%',
+    gap: 10,
+  },
+  promptPrimaryBtn: {
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    width: '100%',
+  },
+  promptPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  promptSecondaryBtn: {
+    height: 48,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  promptSecondaryBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Challenges Styles
+  challengesSection: {
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.xl,
+  },
+  challengesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  challengesSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  gemmaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  gemmaBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.colors.primary,
+  },
+  challengeCard: {
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.lg,
+    borderWidth: 1,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.md,
+  },
+  challengeCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  challengeMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  challengeDifficulty: {
+    fontSize: 10,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    textTransform: 'uppercase',
+  },
+  challengeDuration: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  challengeJoinBtn: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: theme.borderRadius.lg,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  challengeJoinedBtn: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  challengeJoinBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  challengeJoinedBtnText: {
+    color: theme.colors.primary,
+  },
+  challengeTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  challengeDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: theme.spacing.md,
+  },
+  challengeFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(156, 163, 175, 0.1)',
+    paddingTop: theme.spacing.sm,
+  },
+  participantAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  participantAvatarCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: -8,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  participantAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  othersText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 14,
+  },
+  participantCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  participantCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  emptyStateContainer: {
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
 });

@@ -26,6 +26,8 @@ export const SignUpScreen = () => {
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const { verifyEmailAddress, isVerifying, verificationError, clearError } = useEmailVerification();
 
 
@@ -244,8 +246,8 @@ export const SignUpScreen = () => {
             {step === 3 && (
               <Text style={styles.termsText}>
                 By creating an account, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>.
+                <Text style={styles.termsLink} onPress={() => setShowTermsModal(true)}>Terms of Service</Text> and{' '}
+                <Text style={styles.termsLink} onPress={() => setShowPrivacyModal(true)}>Privacy Policy</Text>.
               </Text>
             )}
           </View>
@@ -262,7 +264,124 @@ export const SignUpScreen = () => {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* ── Terms of Service Modal ──────────────────── */}
+      <Modal visible={showTermsModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTermsModal(false)}>
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Terms of Service</Text>
+            <TouchableOpacity onPress={() => setShowTermsModal(false)}>
+              <Ionicons name="close" size={26} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
 
+          <ScrollView contentContainerStyle={styles.termsModalContent} style={{ backgroundColor: '#FFFFFF' }}>
+            <Text style={styles.termsDate}>Last updated: June 12, 2026</Text>
+            <Text style={[styles.termsBody, { color: '#1F2937' }]}>
+              Welcome to Fitrova! Please read these Terms of Service ("Terms") carefully before using the Fitrova mobile application and related services operated by us.
+            </Text>
+
+            <Text style={styles.termsHeading}>1. Acceptance of Terms</Text>
+            <Text style={styles.termsBody}>
+              By creating an account, logging in, or using the Fitrova app, you agree to be bound by these Terms. If you do not agree to all of the terms, you must not use or access the services.
+            </Text>
+
+            <Text style={styles.termsHeading}>2. Eligibility and Accounts</Text>
+            <Text style={styles.termsBody}>
+              You must be at least 13 years old to use Fitrova. You are responsible for safeguarding the credentials you use to access the service and for any activities or actions under your account.
+            </Text>
+
+            <Text style={styles.termsHeading}>3. AI Coaching & Medical Disclaimer</Text>
+            <Text style={[styles.termsBody, { color: '#D97706', fontWeight: '600' }]}>
+              ⚠️ Fitrova provides AI-powered workout recommendations, fitness suggestions, and computer-vision based form analysis. All suggestions, plans, and form ratings are for informational, motivational, and educational purposes only.
+            </Text>
+            <Text style={styles.termsBody}>
+              Fitrova is not a medical organization or physical therapy clinic. The content and features provided do not constitute medical advice, diagnosis, or treatment. Always consult a qualified physician or professional healthcare provider before starting any physical fitness or diet regimen. You assume all risk and liability for any injuries or damages resulting from physical activities guided by our AI models.
+            </Text>
+
+            <Text style={styles.termsHeading}>4. Subscription and Billing</Text>
+            <Text style={styles.termsBody}>
+              Some features of Fitrova require paid subscriptions. Subscription fees are billed in advance on a recurring, periodic basis. You can cancel your subscription at any time through your account settings or application store preferences.
+            </Text>
+
+            <Text style={styles.termsHeading}>5. User Content and Behavior</Text>
+            <Text style={styles.termsBody}>
+              You agree not to upload files containing viruses, malicious code, or materials that violate intellectual property rights. We reserve the right to suspend or terminate accounts that breach these standards or misuse our AI endpoints.
+            </Text>
+
+            <Text style={styles.termsHeading}>6. Limitation of Liability</Text>
+            <Text style={styles.termsBody}>
+              To the maximum extent permitted by law, Fitrova and its developers shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or personal injury resulting from your use of the app.
+            </Text>
+
+            <Text style={styles.termsHeading}>7. Contact Us</Text>
+            <Text style={styles.termsBody}>
+              If you have any questions regarding these Terms, please contact our support team at legal@fitrova.app.
+            </Text>
+            
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Privacy Policy Modal ────────────────────── */}
+      <Modal visible={showPrivacyModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPrivacyModal(false)}>
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Privacy Policy</Text>
+            <TouchableOpacity onPress={() => setShowPrivacyModal(false)}>
+              <Ionicons name="close" size={26} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.termsModalContent} style={{ backgroundColor: '#FFFFFF' }}>
+            <Text style={styles.termsDate}>Last updated: June 12, 2026</Text>
+            <Text style={[styles.termsBody, { color: '#1F2937' }]}>
+              At Fitrova, we value your trust. This Privacy Policy describes how we collect, use, and protect your personal information when you use our mobile application and backend services.
+            </Text>
+
+            <Text style={styles.termsHeading}>1. Information We Collect</Text>
+            <Text style={styles.termsBody}>
+              We collect information to deliver personalized AI-powered fitness services. This includes:
+            </Text>
+            <Text style={styles.termsBullet}>• Account credentials (email, username, and secure password hashes).</Text>
+            <Text style={styles.termsBullet}>• Physical profile stats (age, gender, height, weight, fitness goals, and equipment preferences).</Text>
+            <Text style={styles.termsBullet}>• Workout activity (exercise logs, achievements, streaks, and generated plans).</Text>
+            <Text style={styles.termsBullet}>• Camera recordings (short video clips you upload for AI joint and posture form check analysis).</Text>
+
+            <Text style={styles.termsHeading}>2. Video and Form Analysis Processing</Text>
+            <Text style={styles.termsBody}>
+              When you use the AI Form Check feature, the application uploads a video to our secure AI Form Analyzer endpoint. Joint coordinates and posture alignment are evaluated programmatically. These video files are only processed to return form coach analysis and are not retained persistently on our servers or shared with any advertising networks.
+            </Text>
+
+            <Text style={styles.termsHeading}>3. How We Use Information</Text>
+            <Text style={styles.termsBody}>
+              We use your data to generate customized daily workout recommendations, track fitness achievements, send push notifications, and monitor fallback AI capabilities (such as Gemma 2 and local coach logic) to optimize system performance.
+            </Text>
+
+            <Text style={styles.termsHeading}>4. Data Security & Storage</Text>
+            <Text style={styles.termsBody}>
+              We use industry-standard encryption, SSL protocols, and secure cloud databases (including Render containers and Aiven DB) to safeguard your data. While we implement rigorous controls, no transmission method over the Internet is 100% secure.
+            </Text>
+
+            <Text style={styles.termsHeading}>5. Third-Party Services</Text>
+            <Text style={styles.termsBody}>
+              We may utilize secure third-party AI models (such as Google Gemini and Hugging Face Inference API space services) to generate structured fitness plans. These third parties receive anonymized profile parameters and do not have access to your personal contact details.
+            </Text>
+
+            <Text style={styles.termsHeading}>6. Account Deletion and Rights</Text>
+            <Text style={styles.termsBody}>
+              You can access, modify, or update your profile statistics directly from the App settings. To request full deletion of your account and personal history, contact us at privacy@fitrova.app.
+            </Text>
+
+            <Text style={styles.termsHeading}>7. Contact Us</Text>
+            <Text style={styles.termsBody}>
+              If you have any questions or feedback about our privacy practices, please contact us at privacy@fitrova.app.
+            </Text>
+            
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -543,5 +662,53 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     fontWeight: '600',
     marginTop: 12,
+  },
+  // Terms & Privacy Modals
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  termsModalContent: {
+    padding: 24,
+  },
+  termsDate: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 16,
+  },
+  termsHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  termsBody: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  termsBullet: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 22,
+    marginLeft: 16,
+    marginBottom: 6,
   },
 });

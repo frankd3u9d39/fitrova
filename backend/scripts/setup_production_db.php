@@ -244,6 +244,16 @@ $queries = [
         tips TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )",
+
+    // 18. user_challenges
+    "CREATE TABLE IF NOT EXISTS user_challenges (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        challenge_key VARCHAR(100) NOT NULL,
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY idx_user_challenge (user_id, challenge_key)
     )"
 ];
 

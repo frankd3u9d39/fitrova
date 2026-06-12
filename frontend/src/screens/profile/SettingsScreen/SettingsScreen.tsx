@@ -9,9 +9,7 @@ import {
   Platform,
   Alert,
   Modal,
-  TextInput,
   Linking,
-  KeyboardAvoidingView,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,19 +18,10 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { changePassword, savePreferences } from '../../../services/api/settingsService';
+import { savePreferences } from '../../../services/api/settingsService';
 import { CustomAlert } from '../../../components/common/CustomAlert';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-const LANGUAGES = [
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'pt', label: 'Português', flag: '🇧🇷' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
-];
 
 const FAQ_ITEMS = [
   { q: 'How does AI Form Check work?', a: 'The AI Form Check uses your camera to record a 5-second video of your movement. Our AI analyzes your joint alignment and posture, then gives you a form score and corrections.' },
@@ -51,32 +40,23 @@ export const SettingsScreen = () => {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [darkTheme, setDarkTheme] = useState(false);
   const [units, setUnits] = useState<'metric' | 'imperial'>('metric');
-  const [language, setLanguage] = useState('en');
 
   // ── Modal visibility ──────────────────────────────
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showUnitsModal, setShowUnitsModal] = useState(false);
-
-  // ── Change password form ──────────────────────────
-  const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
-  const [pwLoading, setPwLoading] = useState(false);
-  const [showCurrentPw, setShowCurrentPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   // ── FAQ accordion ─────────────────────────────────
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   // Dynamic theme colors
   const colors = {
-    background: darkTheme ? '#0F172A' : '#F3F4F6', 
-    cardBg: darkTheme ? '#1E293B' : '#FFFFFF',     
-    text: darkTheme ? '#F8FAFC' : '#1F2937',       
-    textSecondary: darkTheme ? '#94A3B8' : '#6B7280', 
-    border: darkTheme ? '#334155' : '#F3F4F6',     
+    background: darkTheme ? '#0F172A' : '#F3F4F6',
+    cardBg: darkTheme ? '#1E293B' : '#FFFFFF',
+    text: darkTheme ? '#F8FAFC' : '#1F2937',
+    textSecondary: darkTheme ? '#94A3B8' : '#6B7280',
+    border: darkTheme ? '#334155' : '#F3F4F6',
     separator: darkTheme ? '#334155' : '#F3F4F6',
     inputBg: darkTheme ? '#0F172A' : '#F9FAFB',
     inputBorder: darkTheme ? '#334155' : '#E5E7EB',
@@ -92,9 +72,8 @@ export const SettingsScreen = () => {
           if (prefs.pushEnabled !== undefined) setPushEnabled(prefs.pushEnabled);
           if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
           if (prefs.units) setUnits(prefs.units);
-          if (prefs.language) setLanguage(prefs.language);
         }
-      } catch (e) {}
+      } catch (e) { }
     })();
   }, [userId]);
 
@@ -103,13 +82,13 @@ export const SettingsScreen = () => {
       const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
       const current = saved ? JSON.parse(saved) : {};
       await AsyncStorage.setItem(`user_prefs_${userId}`, JSON.stringify({ ...current, ...patch }));
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleTogglePush = async (val: boolean) => {
     setPushEnabled(val);
     persistPrefs({ pushEnabled: val });
-    try { await savePreferences(userId, { notification_enabled: val }); } catch (_) {}
+    try { await savePreferences(userId, { notification_enabled: val }); } catch (_) { }
   };
 
   const handleToggleDark = async (val: boolean) => {
@@ -117,44 +96,11 @@ export const SettingsScreen = () => {
     persistPrefs({ darkTheme: val });
   };
 
-  const handleSelectLanguage = async (code: string) => {
-    setLanguage(code);
-    setShowLanguageModal(false);
-    persistPrefs({ language: code });
-    try { await savePreferences(userId, { language: code }); } catch (_) {}
-  };
-
   const handleSelectUnits = async (val: 'metric' | 'imperial') => {
     setUnits(val);
     setShowUnitsModal(false);
     persistPrefs({ units: val });
-    try { await savePreferences(userId, { unit_preference: val }); } catch (_) {}
-  };
-
-  const handleChangePassword = async () => {
-    if (!currentPw || !newPw || !confirmPw) {
-      CustomAlert.alert('Missing Fields', 'Please fill in all password fields.');
-      return;
-    }
-    if (newPw.length < 8) {
-      CustomAlert.alert('Too Short', 'New password must be at least 8 characters.');
-      return;
-    }
-    if (newPw !== confirmPw) {
-      CustomAlert.alert('Mismatch', 'New passwords do not match.');
-      return;
-    }
-    try {
-      setPwLoading(true);
-      await changePassword(userId, currentPw, newPw);
-      setShowPasswordModal(false);
-      setCurrentPw(''); setNewPw(''); setConfirmPw('');
-      CustomAlert.alert('✅ Password Changed', 'Your password has been updated successfully.');
-    } catch (err: any) {
-      CustomAlert.alert('Failed', err.message || 'Could not change password.');
-    } finally {
-      setPwLoading(false);
-    }
+    try { await savePreferences(userId, { unit_preference: val }); } catch (_) { }
   };
 
   const handleLogout = () => {
@@ -167,15 +113,13 @@ export const SettingsScreen = () => {
           text: 'Log Out',
           style: 'destructive',
           onPress: async () => {
-            try { await AsyncStorage.removeItem('user_session'); } catch (e) {}
+            try { await AsyncStorage.removeItem('user_session'); } catch (e) { }
             navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
           },
         },
       ]
     );
   };
-
-  const currentLang = LANGUAGES.find(l => l.code === language);
 
   // ── Render helpers ────────────────────────────────
   const renderSection = (title: string) => (
@@ -196,13 +140,13 @@ export const SettingsScreen = () => {
       activeOpacity={0.7}
     >
       <View style={[
-        styles.iconBox, 
+        styles.iconBox,
         isDestructive ? styles.iconBoxDestructive : (darkTheme && { backgroundColor: '#064E3B' })
       ]}>
         <Ionicons name={icon} size={20} color={isDestructive ? '#EF4444' : '#34D399'} />
       </View>
       <Text style={[
-        styles.settingTitle, 
+        styles.settingTitle,
         { color: isDestructive ? '#EF4444' : colors.text }
       ]}>
         {title}
@@ -229,8 +173,6 @@ export const SettingsScreen = () => {
         {renderSection('ACCOUNT')}
         <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           {renderRow('person-outline', 'Edit Profile', () => navigation.navigate('EditProfile', { userId }))}
-          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
-          {renderRow('lock-closed-outline', 'Security & Password', () => setShowPasswordModal(true))}
           <View style={[styles.separator, { backgroundColor: colors.separator }]} />
           {renderRow('shield-checkmark-outline', 'Unit Preferences', () => setShowUnitsModal(true), (
             <Text style={[styles.valueText, { color: colors.textSecondary }]}>{units === 'metric' ? 'kg / cm' : 'lbs / ft'}</Text>
@@ -263,10 +205,6 @@ export const SettingsScreen = () => {
               thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : darkTheme ? '#10B981' : '#F8FAFC'}
             />
           )}
-          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
-          {renderRow('language-outline', 'Language', () => setShowLanguageModal(true), (
-            <Text style={[styles.valueText, { color: colors.textSecondary }]}>{currentLang?.flag} {currentLang?.label}</Text>
-          ))}
         </View>
 
         {/* SUPPORT */}
@@ -275,16 +213,12 @@ export const SettingsScreen = () => {
           {renderRow('help-buoy-outline', 'Help Center', () => setShowHelpModal(true))}
           <View style={[styles.separator, { backgroundColor: colors.separator }]} />
           {renderRow('bug-outline', 'Report a Bug', () =>
-            Linking.openURL('mailto:support@fitrova.app?subject=Bug%20Report&body=Describe%20the%20bug%20here...')
+            Linking.openURL('mailto:ibehpromise30@gmail.com?subject=Bug%20Report&body=Describe%20the%20bug%20here...')
           )}
           <View style={[styles.separator, { backgroundColor: colors.separator }]} />
-          {renderRow('document-text-outline', 'Terms of Service', () =>
-            Linking.openURL('https://www.fitrova.app/terms')
-          )}
+          {renderRow('document-text-outline', 'Terms of Service', () => setShowTermsModal(true))}
           <View style={[styles.separator, { backgroundColor: colors.separator }]} />
-          {renderRow('information-circle-outline', 'Privacy Policy', () =>
-            Linking.openURL('https://www.fitrova.app/privacy')
-          )}
+          {renderRow('information-circle-outline', 'Privacy Policy', () => setShowPrivacyModal(true))}
         </View>
 
         {/* LOGOUT */}
@@ -295,79 +229,7 @@ export const SettingsScreen = () => {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* ── Change Password Modal ──────────────────── */}
-      <Modal visible={showPasswordModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPasswordModal(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Change Password</Text>
-              <TouchableOpacity onPress={() => { setShowPasswordModal(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); }}>
-                <Ionicons name="close" size={26} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
 
-            <ScrollView contentContainerStyle={styles.modalContent}>
-              <Text style={[styles.modalSubtext, { color: colors.textSecondary }]}>Enter your current password, then choose a new one (min. 8 characters).</Text>
-
-              {/* Current password */}
-              <Text style={[styles.inputLabel, { color: colors.text }]}>Current Password</Text>
-              <View style={[styles.passwordRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                <TextInput
-                  style={[styles.passwordInput, { color: colors.text }]}
-                  value={currentPw}
-                  onChangeText={setCurrentPw}
-                  secureTextEntry={!showCurrentPw}
-                  placeholder="Enter current password"
-                  placeholderTextColor={colors.textSecondary}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity onPress={() => setShowCurrentPw(p => !p)} style={styles.eyeBtn}>
-                  <Ionicons name={showCurrentPw ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* New password */}
-              <Text style={[styles.inputLabel, { color: colors.text }]}>New Password</Text>
-              <View style={[styles.passwordRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                <TextInput
-                  style={[styles.passwordInput, { color: colors.text }]}
-                  value={newPw}
-                  onChangeText={setNewPw}
-                  secureTextEntry={!showNewPw}
-                  placeholder="At least 8 characters"
-                  placeholderTextColor={colors.textSecondary}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity onPress={() => setShowNewPw(p => !p)} style={styles.eyeBtn}>
-                  <Ionicons name={showNewPw ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Confirm */}
-              <Text style={[styles.inputLabel, { color: colors.text }]}>Confirm New Password</Text>
-              <View style={[styles.passwordRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                <TextInput
-                  style={[styles.passwordInput, { color: colors.text }]}
-                  value={confirmPw}
-                  onChangeText={setConfirmPw}
-                  secureTextEntry
-                  placeholder="Repeat new password"
-                  placeholderTextColor={colors.textSecondary}
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.saveBtn, pwLoading && { opacity: 0.6 }]}
-                onPress={handleChangePassword}
-                disabled={pwLoading}
-              >
-                <Text style={styles.saveBtnText}>{pwLoading ? 'Saving...' : 'Update Password'}</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {/* ── Units Modal ──────────────────────────────── */}
       <Modal visible={showUnitsModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowUnitsModal(false)}>
@@ -402,32 +264,6 @@ export const SettingsScreen = () => {
         </SafeAreaView>
       </Modal>
 
-      {/* ── Language Modal ────────────────────────────── */}
-      <Modal visible={showLanguageModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowLanguageModal(false)}>
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Language</Text>
-            <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
-              <Ionicons name="close" size={26} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView contentContainerStyle={styles.modalContent} style={{ backgroundColor: colors.cardBg }}>
-            <Text style={[styles.modalSubtext, { color: colors.textSecondary }]}>Select your preferred display language.</Text>
-            {LANGUAGES.map(lang => (
-              <TouchableOpacity
-                key={lang.code}
-                style={[styles.optionRow, { backgroundColor: darkTheme ? '#1E293B' : '#FAFAFA', borderColor: colors.inputBorder }, language === lang.code && styles.optionRowActive]}
-                onPress={() => handleSelectLanguage(lang.code)}
-              >
-                <Text style={styles.optionFlag}>{lang.flag}</Text>
-                <Text style={[styles.optionLabel, { color: colors.text }, language === lang.code && styles.optionLabelActive]}>{lang.label}</Text>
-                {language === lang.code && <Ionicons name="checkmark-circle" size={22} color="#10B981" />}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
 
       {/* ── Help Center / FAQ Modal ──────────────────── */}
       <Modal visible={showHelpModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowHelpModal(false)}>
@@ -471,11 +307,130 @@ export const SettingsScreen = () => {
               </View>
               <TouchableOpacity
                 style={styles.contactBtn}
-                onPress={() => Linking.openURL('mailto:support@fitrova.app')}
+                onPress={() => Linking.openURL('mailto:ibehpromise30@gmail.com')}
               >
                 <Text style={styles.contactBtnText}>Email Us</Text>
               </TouchableOpacity>
             </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Terms of Service Modal ──────────────────── */}
+      <Modal visible={showTermsModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTermsModal(false)}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Terms of Service</Text>
+            <TouchableOpacity onPress={() => setShowTermsModal(false)}>
+              <Ionicons name="close" size={26} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.termsModalContent} style={{ backgroundColor: colors.cardBg }}>
+            <Text style={[styles.termsDate, { color: colors.textSecondary }]}>Last updated: June 12, 2026</Text>
+            <Text style={[styles.termsBody, { color: colors.text }]}>
+              Welcome to Fitrova! Please read these Terms of Service ("Terms") carefully before using the Fitrova mobile application and related services operated by us.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>1. Acceptance of Terms</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              By creating an account, logging in, or using the Fitrova app, you agree to be bound by these Terms. If you do not agree to all of the terms, you must not use or access the services.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>2. Eligibility and Accounts</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              You must be at least 13 years old to use Fitrova. You are responsible for safeguarding the credentials you use to access the service and for any activities or actions under your account.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>3. AI Coaching & Medical Disclaimer</Text>
+            <Text style={[styles.termsBody, { color: darkTheme ? '#F59E0B' : '#D97706', fontWeight: '600' }]}>
+              ⚠️ Fitrova provides AI-powered workout recommendations, fitness suggestions, and computer-vision based form analysis. All suggestions, plans, and form ratings are for informational, motivational, and educational purposes only.
+            </Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              Fitrova is not a medical organization or physical therapy clinic. The content and features provided do not constitute medical advice, diagnosis, or treatment. Always consult a qualified physician or professional healthcare provider before starting any physical fitness or diet regimen. You assume all risk and liability for any injuries or damages resulting from physical activities guided by our AI models.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>4. Subscription and Billing</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              Some features of Fitrova require paid subscriptions. Subscription fees are billed in advance on a recurring, periodic basis. You can cancel your subscription at any time through your account settings or application store preferences.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>5. User Content and Behavior</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              You agree not to upload files containing viruses, malicious code, or materials that violate intellectual property rights. We reserve the right to suspend or terminate accounts that breach these standards or misuse our AI endpoints.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>6. Limitation of Liability</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              To the maximum extent permitted by law, Fitrova and its developers shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or personal injury resulting from your use of the app.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>7. Contact Us</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              If you have any questions regarding these Terms, please contact our support team at ibehpromise30@gmail.com.
+            </Text>
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Privacy Policy Modal ────────────────────── */}
+      <Modal visible={showPrivacyModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPrivacyModal(false)}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Privacy Policy</Text>
+            <TouchableOpacity onPress={() => setShowPrivacyModal(false)}>
+              <Ionicons name="close" size={26} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.termsModalContent} style={{ backgroundColor: colors.cardBg }}>
+            <Text style={[styles.termsDate, { color: colors.textSecondary }]}>Last updated: June 12, 2026</Text>
+            <Text style={[styles.termsBody, { color: colors.text }]}>
+              At Fitrova, we value your trust. This Privacy Policy describes how we collect, use, and protect your personal information when you use our mobile application and backend services.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>1. Information We Collect</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              We collect information to deliver personalized AI-powered fitness services. This includes:
+            </Text>
+            <Text style={[styles.termsBullet, { color: colors.textSecondary }]}>• Account credentials (email, username, and secure password hashes).</Text>
+            <Text style={[styles.termsBullet, { color: colors.textSecondary }]}>• Physical profile stats (age, gender, height, weight, fitness goals, and equipment preferences).</Text>
+            <Text style={[styles.termsBullet, { color: colors.textSecondary }]}>• Workout activity (exercise logs, achievements, streaks, and generated plans).</Text>
+            <Text style={[styles.termsBullet, { color: colors.textSecondary }]}>• Camera recordings (short video clips you upload for AI joint and posture form check analysis).</Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>2. Video and Form Analysis Processing</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              When you use the AI Form Check feature, the application uploads a video to our secure AI Form Analyzer endpoint. Joint coordinates and posture alignment are evaluated programmatically. These video files are only processed to return form coach analysis and are not retained persistently on our servers or shared with any advertising networks.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>3. How We Use Information</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              We use your data to generate customized daily workout recommendations, track fitness achievements, send push notifications, and monitor fallback AI capabilities (such as Gemma 2 and local coach logic) to optimize system performance.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>4. Data Security & Storage</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              We use industry-standard encryption, SSL protocols, and secure cloud databases (including Render containers and Aiven DB) to safeguard your data. While we implement rigorous controls, no transmission method over the Internet is 100% secure.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>5. Third-Party Services</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              We may utilize secure third-party AI models (such as Google Gemini and Hugging Face Inference API space services) to generate structured fitness plans. These third parties receive anonymized profile parameters and do not have access to your personal contact details.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>6. Account Deletion and Rights</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              You can access, modify, or update your profile statistics directly from the App settings. To request full deletion of your account and personal history, contact us at privacy@fitrova.app.
+            </Text>
+
+            <Text style={[styles.termsHeading, { color: colors.text }]}>7. Contact Us</Text>
+            <Text style={[styles.termsBody, { color: colors.textSecondary }]}>
+              If you have any questions or feedback about our privacy practices, please contact us at ibehpromise30@gmail.com.
+            </Text>
+
+            <View style={{ height: 40 }} />
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -747,5 +702,31 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
+  },
+  // Terms & Privacy Modals
+  termsModalContent: {
+    padding: 24,
+  },
+  termsDate: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  termsHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  termsBody: {
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  termsBullet: {
+    fontSize: 14,
+    lineHeight: 22,
+    marginLeft: 16,
+    marginBottom: 6,
   },
 });

@@ -172,9 +172,7 @@ export const ProfileScreen = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
           <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
           <TouchableOpacity 
             style={styles.settingsButton}
