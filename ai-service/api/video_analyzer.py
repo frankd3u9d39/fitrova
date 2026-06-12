@@ -123,6 +123,11 @@ Respond ONLY with valid JSON — no markdown fences, no extra text:
         }
 
 
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({"status": "healthy"}), 200
+
+
 @app.route('/api/analyze-youtube', methods=['POST'])
 def analyze_youtube():
     data = request.json
