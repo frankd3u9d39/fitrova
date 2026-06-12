@@ -3,6 +3,20 @@
 
 require_once __DIR__ . '/../config/db_config.php';
 
+// Drop legacy achievements schema to let it rebuild with correct columns
+try {
+    $checkLegacy = $pdo->query("SHOW COLUMNS FROM achievements LIKE 'badge_icon'")->fetch();
+    if ($checkLegacy) {
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
+        $pdo->exec("DROP TABLE IF EXISTS user_achievements;");
+        $pdo->exec("DROP TABLE IF EXISTS achievements;");
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
+        echo "Dropped legacy achievements tables.\n";
+    }
+} catch (PDOException $e) {
+    // Table doesn't exist yet
+}
+
 echo "Initializing database tables...\n";
 
 $queries = [
@@ -185,11 +199,11 @@ $queries = [
     // 14. achievements
     "CREATE TABLE IF NOT EXISTS achievements (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
-        description TEXT NOT NULL,
-        badge_icon VARCHAR(50) NOT NULL,
-        points_required INT NOT NULL,
-        criteria_type VARCHAR(100) NOT NULL,
+        title VARCHAR(100) NOT NULL,
+        description VARCHAR(255) NOT NULL,
+        icon VARCHAR(50) NOT NULL,
+        category ENUM('Training','Nutrition','Milestones') NOT NULL,
+        color VARCHAR(7) DEFAULT '#D1FAE5',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )",
 
@@ -198,7 +212,7 @@ $queries = [
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         achievement_id INT NOT NULL,
-        earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (achievement_id) REFERENCES achievements(id) ON DELETE CASCADE,
         UNIQUE KEY idx_user_achievement (user_id, achievement_id)
@@ -248,15 +262,24 @@ $alterations = [
     "ALTER TABLE user_profiles ADD COLUMN trial_used TINYINT(1) DEFAULT 0",
     "ALTER TABLE user_profiles ADD COLUMN subscription_expiry DATETIME DEFAULT NULL",
     "ALTER TABLE user_profiles ADD COLUMN ai_engine VARCHAR(20) DEFAULT 'eco'",
+    "ALTER TABLE user_profiles ADD COLUMN has_equipment TINYINT(1) DEFAULT 0",
+    "ALTER TABLE user_profiles ADD COLUMN unit_preference ENUM('metric','imperial') DEFAULT 'metric'",
+    "ALTER TABLE user_profiles ADD COLUMN notification_enabled TINYINT(1) DEFAULT 1",
+    "ALTER TABLE user_profiles ADD COLUMN language VARCHAR(10) DEFAULT 'en'",
+    "ALTER TABLE user_profiles ADD COLUMN form_trial_used TINYINT(1) DEFAULT 0",
+    "ALTER TABLE user_profiles ADD COLUMN scan_trial_used TINYINT(1) DEFAULT 0",
+    "ALTER TABLE user_profiles ADD COLUMN diet_trial_used TINYINT(1) DEFAULT 0",
+    "ALTER TABLE user_profiles MODIFY COLUMN profile_picture LONGTEXT DEFAULT NULL",
     "ALTER TABLE workout_plans ADD COLUMN plan_date DATE DEFAULT NULL",
-    "ALTER TABLE workout_plans ADD COLUMN plan_data TEXT DEFAULT NULL"
+    "ALTER TABLE workout_plans ADD COLUMN plan_data TEXT DEFAULT NULL",
+    "ALTER TABLE workout_plans MODIFY COLUMN workout_type VARCHAR(50) DEFAULT 'mixed'"
 ];
 
 foreach ($alterations as $alteration) {
     try {
         $pdo->exec($alteration);
     } catch (PDOException $e) {
-        // Safe to ignore if column already exists
+        // Safe to ignore if column already exists or is already modified
     }
 }
 
@@ -272,27 +295,15 @@ try {
     echo "ℹ️ Admin user seeding skipped or already exists.\n";
 }
 
-// Seed default achievements
-$achievements = [
-    ['First Workout', 'Complete your first workout session', '🏆', 1, 'workouts_completed'],
-    ['Week Warrior', 'Complete 7 workouts in a week', '🔥', 7, 'workouts_completed'],
-    ['Monthly Master', 'Complete 20 workouts in a month', '👑', 20, 'workouts_completed'],
-    ['Weight Loss Goal', 'Lose 5kg of body weight', '⚖️', 5, 'weight_lost'],
-    ['Nutrition Expert', 'Log 50 meals', '🍎', 50, 'meals_logged'],
-    ['Streak Keeper', 'Maintain a 30-day workout streak', '📅', 30, 'streak_days'],
-    ['Form Perfectionist', 'Score 90+ on form check', '🎯', 90, 'form_score'],
-    ['YouTube Analyzer', 'Analyze 10 YouTube workouts', '📹', 10, 'videos_analyzed']
-];
-
-foreach ($achievements as $ach) {
-    try {
-        $pdo->prepare("INSERT IGNORE INTO achievements (name, description, badge_icon, points_required, criteria_type) VALUES (?, ?, ?, ?, ?)")
-            ->execute($ach);
-    } catch (PDOException $e) {
-        // Suppress
-    }
+// Seed default achievements via the main seed script
+try {
+    ob_start();
+    require_once __DIR__ . '/seed_achievements.php';
+    ob_end_clean();
+    echo "✅ Seeded achievements library.\n";
+} catch (Exception $e) {
+    echo "ℹ_ Achievements seeding skipped or errored: " . $e->getMessage() . "\n";
 }
-echo "✅ Seeded achievements library.\n";
 
 // Seed default exercises
 $exercises = [
