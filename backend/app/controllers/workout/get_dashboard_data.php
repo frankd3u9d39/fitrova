@@ -11,6 +11,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../../config/db_config.php';
 
+// Self-Heal Database: Ensure user_challenges table exists
+try {
+    $challengesTable = $pdo->query("SHOW TABLES LIKE 'user_challenges'")->fetch();
+    if (!$challengesTable) {
+        ob_start();
+        require_once __DIR__ . '/../../../scripts/setup_production_db.php';
+        ob_end_clean();
+    }
+} catch (PDOException $e) {
+    error_log("Database self-healing failed in get_dashboard_data.php: " . $e->getMessage());
+}
+
 try {
     $input = json_decode(file_get_contents('php://input'), true);
     

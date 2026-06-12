@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ImageBackground, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
 import { useRoute, RouteProp, useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -36,13 +36,29 @@ export const DashboardScreen = () => {
   const [showAIPromptModal, setShowAIPromptModal] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
   const [currentWorkoutImageIndex, setCurrentWorkoutImageIndex] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentWorkoutImageIndex((prev) => (prev + 1) % 3);
-    }, 5000);
+      // 1. Fade out smoothly
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }).start(() => {
+        // 2. Switch image source
+        setCurrentWorkoutImageIndex((prev) => (prev + 1) % 3);
+        // 3. Fade back in smoothly
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 10000); // 10 seconds interval (calmer transition)
+    
     return () => clearInterval(interval);
-  }, []);
+  }, [fadeAnim]);
   
   // Get userId from route params or use default (you should pass this from login)
   const userId = route.params?.userId || 1; // TODO: Get from auth context
@@ -360,11 +376,15 @@ export const DashboardScreen = () => {
         </View>
 
         {/* Today's Workout Hero */}
-        <ImageBackground 
-          source={workoutImages[currentWorkoutImageIndex]} 
-          style={styles.workoutCard}
-          imageStyle={{ borderRadius: 24 }}
-        >
+        <View style={styles.workoutCard}>
+          <Animated.Image 
+            source={workoutImages[currentWorkoutImageIndex]} 
+            style={[
+              StyleSheet.absoluteFillObject,
+              { opacity: fadeAnim, borderRadius: theme.borderRadius.xl }
+            ]}
+            resizeMode="cover"
+          />
           <View style={styles.workoutCardOverlay}>
              <Text style={styles.workoutSubtitle}>TODAY'S WORKOUT</Text>
              {todayWorkout ? (
@@ -379,7 +399,7 @@ export const DashboardScreen = () => {
                <Text style={styles.workoutTitle}>No workout{'\n'}scheduled</Text>
              )}
           </View>
-        </ImageBackground>
+        </View>
 
         {/* Weight Trend */}
         <View style={styles.trendSection}>
