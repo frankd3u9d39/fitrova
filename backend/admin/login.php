@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Invalid email address or password.';
             }
         } catch (Exception $e) {
-            $error = 'A database connection error occurred. Please verify configuration.';
+            $error = 'A database connection error occurred: ' . $e->getMessage();
         }
     }
 }
