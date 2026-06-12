@@ -33,6 +33,9 @@ RUN chown -R www-data:www-data /var/www/html \
 # Configure Apache
 COPY docker/000-default.conf /etc/apache2/sites-available/000-default.conf
 
+# Configure PHP Upload limits
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 # Expose port
 EXPOSE 80
 
