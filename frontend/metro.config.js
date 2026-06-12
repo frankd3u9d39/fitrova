@@ -11,6 +11,7 @@ config.resolver = {
   extraNodeModules: {
     three: require.resolve('three'),
   },
+  unstable_enablePackageExports: false,
 };
 
 module.exports = config;

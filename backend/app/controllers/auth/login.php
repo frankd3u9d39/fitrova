@@ -39,7 +39,7 @@ try {
                 "firstName" => $user['first_name'],
                 "lastName" => $user['last_name'],
                 "email" => $user['email'],
-                "isVerified" => (bool)$user['is_verified'],
+                "isVerified" => (bool) $user['is_verified'],
                 "surveyStep" => $user['survey_step'] ?? 'Personalization',
                 "profile" => [
                     "age" => $user['age'],

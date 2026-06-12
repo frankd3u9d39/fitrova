@@ -36,15 +36,29 @@ try {
     $carbsGoal = round(($calorieGoal * 0.40) / 4);
     $fatsGoal = round(($calorieGoal * 0.30) / 9);
     
-    // Get logged meals for today
-    $mealsStmt = $pdo->prepare("
-        SELECT id, meal_name, calories, protein, carbs, fats, meal_type, 
-               DATE_FORMAT(created_at, '%h:%i %p') as meal_time
-        FROM nutrition_logs
-        WHERE user_id = ? AND logged_date = ?
-        ORDER BY created_at ASC
-    ");
-    $mealsStmt->execute([$userId, $today]);
+    // Check if full history is requested
+    $isHistory = isset($input['history']) && $input['history'] === true;
+    
+    // Get logged meals (today or all time history)
+    if ($isHistory) {
+        $mealsStmt = $pdo->prepare("
+            SELECT id, meal_name, calories, protein, carbs, fats, meal_type, 
+                   DATE_FORMAT(created_at, '%b %d, %Y - %h:%i %p') as meal_time
+            FROM nutrition_logs
+            WHERE user_id = ?
+            ORDER BY logged_date DESC, created_at DESC
+        ");
+        $mealsStmt->execute([$userId]);
+    } else {
+        $mealsStmt = $pdo->prepare("
+            SELECT id, meal_name, calories, protein, carbs, fats, meal_type, 
+                   DATE_FORMAT(created_at, '%h:%i %p') as meal_time
+            FROM nutrition_logs
+            WHERE user_id = ? AND logged_date = ?
+            ORDER BY created_at ASC
+        ");
+        $mealsStmt->execute([$userId, $today]);
+    }
     $meals = $mealsStmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Calculate totals
@@ -66,6 +80,26 @@ try {
         ];
     }
     
+    // Get today's calories burned
+    $burnedStmt = $pdo->prepare("
+        SELECT COALESCE(SUM(calories_burned), 0) as total_burned
+        FROM workout_logs
+        WHERE user_id = ? AND completed_date = ?
+    ");
+    $burnedStmt->execute([$userId, $today]);
+    $burnedData = $burnedStmt->fetch(PDO::FETCH_ASSOC);
+    $totalBurned = intval($burnedData['total_burned']);
+
+    // Get latest active AI insight/warning
+    $insightStmt = $pdo->prepare("
+        SELECT insight_text, insight_type
+        FROM ai_insights
+        WHERE user_id = ? AND is_read = FALSE
+        ORDER BY created_at DESC LIMIT 1
+    ");
+    $insightStmt->execute([$userId]);
+    $insight = $insightStmt->fetch(PDO::FETCH_ASSOC);
+    
     echo json_encode([
         'status' => 'success',
         'data' => [
@@ -79,15 +113,20 @@ try {
                 'calories' => $totalCalories,
                 'protein' => $totalProtein,
                 'carbs' => $totalCarbs,
-                'fats' => $totalFats
+                'fats' => $totalFats,
+                'burned' => $totalBurned
             ],
             'remaining' => [
-                'calories' => max(0, $calorieGoal - $totalCalories),
+                'calories' => max(0, ($calorieGoal + $totalBurned) - $totalCalories),
                 'protein' => max(0, $proteinGoal - $totalProtein),
                 'carbs' => max(0, $carbsGoal - $totalCarbs),
                 'fats' => max(0, $fatsGoal - $totalFats)
             ],
-            'meals' => $meals
+            'meals' => $meals,
+            'latest_insight' => $insight ? [
+                'text' => $insight['insight_text'],
+                'type' => $insight['insight_type']
+            ] : null
         ]
     ]);
     

@@ -9,6 +9,7 @@ interface ActivityCardProps {
   iconColor?: string;
   onPress?: () => void;
   style?: ViewStyle;
+  dark?: boolean;
 }
 
 export const ActivityCard: React.FC<ActivityCardProps> = ({
@@ -18,10 +19,15 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   iconColor = '#10B981',
   onPress,
   style,
+  dark = false,
 }) => {
   return (
     <TouchableOpacity
-      style={[styles.container, style]}
+      style={[
+        styles.container, 
+        dark && { backgroundColor: '#1E293B' },
+        style
+      ]}
       onPress={onPress}
       disabled={!onPress}
     >
@@ -35,12 +41,12 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           <Ionicons name={icon as any} size={24} color={iconColor} />
         </View>
         <View style={styles.info}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <Text style={[styles.title, dark && { color: '#F8FAFC' }]}>{title}</Text>
+          <Text style={[styles.subtitle, dark && { color: '#94A3B8' }]}>{subtitle}</Text>
         </View>
       </View>
       {onPress && (
-        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <Ionicons name="chevron-forward" size={20} color={dark ? '#94A3B8' : '#9CA3AF'} />
       )}
     </TouchableOpacity>
   );

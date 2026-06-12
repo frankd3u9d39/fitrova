@@ -26,8 +26,19 @@ try {
         code VARCHAR(6) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Create ai_food_recommendations table
+    $pdo->exec("CREATE TABLE IF NOT EXISTS ai_food_recommendations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        recommendation_date DATE NOT NULL,
+        recommendations_json TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY idx_user_date (user_id, recommendation_date)
+    )");
     
-    echo "Database updated successfully with pending_verifications!\n";
+    echo "Database updated successfully with pending_verifications and ai_food_recommendations!\n";
 } catch (PDOException $e) {
     echo "Error updating database: " . $e->getMessage() . "\n";
 }

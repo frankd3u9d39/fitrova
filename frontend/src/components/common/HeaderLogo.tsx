@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 100,
     height: 100,
-    marginRight: theme.spacing,
+    marginRight: theme.spacing.sm,
     marginBottom:-40,
   },
 });

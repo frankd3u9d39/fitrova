@@ -10,8 +10,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Gemini API Configuration
-$GEMINI_API_KEY = 'AQ.Ab8RN6K04-jc_xK7I1yOSz291VKJ1pwm0j5izQMReuOhalV7uA';
-$models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro'];
+require_once __DIR__ . '/../../../config/db_config.php';
+
+// Fetch dynamic configuration
+$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary')");
+$settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
+$primaryModel = $settings['ai_model_primary'] ?? '';
+
+// Build models fallback list with modern, active models
+$models = [];
+if (!empty($primaryModel)) {
+    $models[] = $primaryModel;
+}
+$fallbackModels = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-flash-lite-latest'];
+foreach ($fallbackModels as $fm) {
+    if ($fm !== $primaryModel) {
+        $models[] = $fm;
+    }
+}
 
 $input = json_decode(file_get_contents('php://input'), true);
 

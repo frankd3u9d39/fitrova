@@ -76,7 +76,7 @@ export const WelcomeScreen = () => {
           <Button 
             title="I Already Have an Account" 
             variant="secondary"
-            onPress={() => {}} // Placeholder for Sign In flow
+            onPress={() => navigation.navigate('Login')} 
             style={{ marginTop: theme.spacing.md }}
           />
         </View>
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.h1,
     textAlign: 'center',
-    lineHeight: 30,
+    lineHeight: 34,
     marginBottom: theme.spacing.md,
   },
   titleHighlight: {

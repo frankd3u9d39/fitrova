@@ -8,6 +8,7 @@ interface StatCardProps {
   unit?: string;
   icon?: string;
   highlighted?: boolean;
+  dark?: boolean;
   style?: ViewStyle;
 }
 
@@ -17,16 +18,27 @@ export const StatCard: React.FC<StatCardProps> = ({
   unit,
   icon,
   highlighted = false,
+  dark = false,
   style,
 }) => {
   return (
-    <View style={[styles.container, highlighted && styles.highlighted, style]}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={[
+      styles.container, 
+      dark && { backgroundColor: '#1E293B' },
+      highlighted && styles.highlighted, 
+      highlighted && dark && { backgroundColor: '#064E3B', borderColor: '#10B981' },
+      style
+    ]}>
+      <Text style={[styles.label, dark && { color: '#94A3B8' }]}>{label}</Text>
       <View style={styles.valueContainer}>
-        <Text style={[styles.value, highlighted && styles.valueLarge]}>
+        <Text style={[
+          styles.value, 
+          highlighted && styles.valueLarge,
+          dark && { color: '#F8FAFC' }
+        ]}>
           {value}
         </Text>
-        {unit && <Text style={styles.unit}>{unit}</Text>}
+        {unit && <Text style={[styles.unit, dark && { color: '#94A3B8' }]}>{unit}</Text>}
         {icon && (
           <Ionicons name={icon as any} size={20} color="#10B981" />
         )}

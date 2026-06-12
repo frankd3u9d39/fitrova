@@ -77,14 +77,14 @@ export const theme = {
   typography: {
     // Scales
     fontSize: {
-      xs: 12,
-      sm: 14,
-      base: 16,
-      lg: 18,
-      xl: 20,
-      '2xl': 24,
-      '3xl': 30,
-      '4xl': 36,
+      xs: 10,
+      sm: 12,
+      base: 14,
+      lg: 16,
+      xl: 18,
+      '2xl': 20,
+      '3xl': 24,
+      '4xl': 28,
     },
     fontWeight: {
       regular: '400' as const,
@@ -101,63 +101,69 @@ export const theme = {
 
     // Presets
     h1: {
-      fontSize: 32,
+      fontSize: 26,
       fontWeight: '800' as const,
-      lineHeight: 40,
+      lineHeight: 32,
       letterSpacing: -0.5,
     },
     h2: {
-      fontSize: 24,
+      fontSize: 20,
       fontWeight: '700' as const,
-      lineHeight: 32,
+      lineHeight: 26,
       letterSpacing: -0.3,
     },
     h3: {
-      fontSize: 20,
+      fontSize: 17,
       fontWeight: '600' as const,
-      lineHeight: 28,
+      lineHeight: 22,
       letterSpacing: -0.2,
     },
     h4: {
-      fontSize: 18,
+      fontSize: 15,
       fontWeight: '600' as const,
-      lineHeight: 24,
+      lineHeight: 20,
     },
     
     body: {
-      fontSize: 16,
-      fontWeight: '400' as const,
-      lineHeight: 24,
-    },
-    bodyMedium: {
-      fontSize: 16,
-      fontWeight: '500' as const,
-      lineHeight: 24,
-    },
-    bodySmall: {
       fontSize: 14,
       fontWeight: '400' as const,
       lineHeight: 20,
     },
-    
-    caption: {
+    bodyMedium: {
+      fontSize: 14,
+      fontWeight: '500' as const,
+      lineHeight: 20,
+    },
+    bodySmall: {
       fontSize: 12,
       fontWeight: '400' as const,
       lineHeight: 16,
     },
+    
+    caption: {
+      fontSize: 11,
+      fontWeight: '400' as const,
+      lineHeight: 14,
+    },
     captionBold: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600' as const,
-      lineHeight: 16,
+      lineHeight: 14,
       letterSpacing: 0.5,
     },
     
     label: {
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: '700' as const,
-      lineHeight: 12,
+      lineHeight: 10,
       letterSpacing: 1,
       textTransform: 'uppercase' as const,
+    },
+    button: {
+      fontSize: 16,
+      fontWeight: '600' as const,
+      lineHeight: 24,
+      letterSpacing: 0.5,
     },
   },
   
@@ -190,39 +196,39 @@ export const theme = {
   // Shadows
   shadows: {
     none: {
-      shadowColor: '#000',
+      shadowColor: 'transparent',
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0,
       shadowRadius: 0,
       elevation: 0,
     },
     sm: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
+      shadowColor: '#1F2937', // Deep slate tint for soft light shadow
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
       elevation: 1,
     },
     md: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
+      shadowColor: '#1F2937', // Deep slate tint for ambient card shadow
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
       elevation: 2,
     },
     lg: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowColor: '#10B981', // Emerald brand-tinted glow for featured elements
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.06,
+      shadowRadius: 20,
+      elevation: 3,
     },
     xl: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.12,
-      shadowRadius: 16,
-      elevation: 8,
+      shadowColor: '#1F2937',
+      shadowOffset: { width: 0, height: 16 },
+      shadowOpacity: 0.08,
+      shadowRadius: 24,
+      elevation: 6,
     },
   },
   

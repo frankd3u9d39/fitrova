@@ -5,6 +5,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   SignUp: { verified?: boolean; email?: string };
   Login: undefined;
+  ForgotPassword: { email?: string } | undefined;
   EmailVerification: { email: string; firstName: string; signupFlow?: boolean };
   Personalization: { userId: number; firstName: string };
   GoalSetting: {
@@ -32,18 +33,25 @@ export type RootStackParamList = {
     firstName: string;
     hasEquipment?: boolean;
   };
+  SubscriptionSelection: {
+    userId: number;
+    firstName: string;
+  };
   Main: { firstName: string; userId: number };
   Achievements: undefined;
   ActiveWorkout: { workout: Workout; userId: number };
   Schedule: { userId: number };
   FormCheck: undefined;
   RoutineLibrary: undefined;
-  Settings: undefined;
+  Settings: { userId: number } | undefined;
   FoodScan: { userId: number };
   FoodResult: { imageUri: string; base64: string; userId: number };
   NutritionHistory: { userId: number };
   Profile: { userId: number };
+  EditProfile: { userId: number };
   YouTubeAnalysis: undefined;
+  MealLog: { userId: number };
+  Notifications: { userId: number };
 };
 
 export type MainTabParamList = {

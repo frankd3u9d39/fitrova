@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet,  KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet,  KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
@@ -11,6 +11,8 @@ import { HeaderLogo } from '../../../components/common/HeaderLogo';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
 import { endpoints } from '../../../services/api/apiClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -19,6 +21,10 @@ export const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+
+
+
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -40,6 +46,14 @@ export const LoginScreen = () => {
 
       if (response.ok && data.status === 'success') {
         const { id, firstName, surveyStep, profile } = data.user;
+        
+        // Save session details to AsyncStorage for persistent auto-login
+        await AsyncStorage.setItem('user_session', JSON.stringify({
+          id,
+          firstName,
+          surveyStep,
+          profile
+        }));
         
         if (surveyStep === 'Complete') {
           navigation.navigate('Main', { firstName, userId: id });
@@ -70,6 +84,8 @@ export const LoginScreen = () => {
             targetWeight: profile.targetWeight,
             targetDate: profile.targetDate
           });
+        } else if (surveyStep === 'SubscriptionSelection') {
+           navigation.navigate('SubscriptionSelection', { userId: id, firstName });
         }
       } else {
         CustomAlert.alert('Login Failed', data.message || 'Invalid credentials');
@@ -99,7 +115,8 @@ export const LoginScreen = () => {
 
       <KeyboardAvoidingView 
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.select({ ios: 64, android: 40 })}
       >
         <ScrollView 
           contentContainerStyle={styles.scrollContent} 
@@ -132,7 +149,10 @@ export const LoginScreen = () => {
               onChangeText={setPassword}
             />
 
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity 
+              style={styles.forgotPassword}
+              onPress={() => navigation.navigate('ForgotPassword')}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
@@ -144,20 +164,7 @@ export const LoginScreen = () => {
             />
           </View>
 
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerItem} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerItem} />
-          </View>
 
-          {/* Social */}
-          <Button 
-            title="Sign in with Google" 
-            variant="outline"
-            onPress={() => {}} 
-            style={styles.socialButton}
-            icon={<Ionicons name="logo-google" size={20} color="#DB4437" />}
-          />
 
           {/* Footer */}
           <View style={styles.footerContainer}>
@@ -168,6 +175,8 @@ export const LoginScreen = () => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+
     </SafeAreaView>
   );
 };
@@ -276,5 +285,147 @@ const styles = StyleSheet.create({
     ...theme.typography.bodySmall,
     color: theme.colors.primary,
     fontWeight: '700',
+  },
+  googleModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  googleModalBackdropClose: {
+    flex: 1,
+  },
+  googleBottomSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 44 : 24,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
+    position: 'relative',
+  },
+  googleDragHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E5E7EB',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  googleHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  googleBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  googleTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  googleSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  googleAccountItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    gap: 14,
+  },
+  googleAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  googleAvatarText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  googleAccountInfo: {
+    flex: 1,
+  },
+  googleAccountName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  googleAccountEmail: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  googleCustomForm: {
+    gap: 12,
+    paddingVertical: 10,
+  },
+  googleInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1F2937',
+    backgroundColor: '#F9FAFB',
+  },
+  googleCustomActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 10,
+  },
+  googleButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  googleButtonPrimary: {
+    backgroundColor: '#10B981',
+  },
+  googleButtonSecondary: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+  },
+  googleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  googleLoaderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    zIndex: 10,
+  },
+  googleLoaderText: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '600',
+    marginTop: 12,
   },
 });

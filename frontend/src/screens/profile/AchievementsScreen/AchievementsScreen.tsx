@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -11,7 +12,7 @@ import {
   Share
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { AchievementCard } from '../../../components/cards';
 import { getAchievements, Achievement, Category } from '../../../services/api/achievementService';
 import { MainTabParamList } from '../../../navigation/types';
@@ -28,6 +29,31 @@ export const AchievementsScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   const userId = (route.params as any)?.userId || 1;
+  const [darkTheme, setDarkTheme] = useState(false);
+
+  const colors = {
+    background:  darkTheme ? '#0F172A' : '#F9FAFB',
+    cardBg:      darkTheme ? '#1E293B' : '#FFFFFF',
+    text:        darkTheme ? '#F8FAFC' : '#1F2937',
+    textSecondary: darkTheme ? '#94A3B8' : '#6B7280',
+    tabBg:       darkTheme ? '#1E293B' : '#FFFFFF',
+    tabActiveBg: darkTheme ? '#10B981' : '#1F2937',
+    barTrack:    darkTheme ? '#334155' : '#E5E7EB',
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+          if (saved) {
+            const prefs = JSON.parse(saved);
+            if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
+          }
+        } catch (e) {}
+      })();
+    }, [userId])
+  );
 
   const loadAchievements = useCallback(async (showLoading = true) => {
     try {
@@ -75,7 +101,7 @@ export const AchievementsScreen = () => {
   const categories: Category[] = ['Training', 'Nutrition', 'Milestones'];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -90,24 +116,24 @@ export const AchievementsScreen = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Achievements</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Achievements</Text>
           <View style={styles.placeholder} />
         </View>
 
         {/* Progress Card */}
-        <View style={styles.progressCard}>
-          <Text style={styles.progressLabel}>ELITE PERFORMER</Text>
-          <Text style={styles.progressTitle}>
+        <View style={[styles.progressCard, { backgroundColor: colors.cardBg }]}>
+          <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>ELITE PERFORMER</Text>
+          <Text style={[styles.progressTitle, { color: colors.text }]}>
             You've earned <Text style={styles.progressHighlight}>{totalBadges}</Text>
             {'\n'}badges
           </Text>
           <View style={styles.progressInfo}>
-            <Text style={styles.progressNext}>NEXT: MASTER TIER</Text>
-            <Text style={styles.progressCount}>{totalBadges}/{totalAchievements}</Text>
+            <Text style={[styles.progressNext, { color: colors.textSecondary }]}>NEXT: MASTER TIER</Text>
+            <Text style={[styles.progressCount, { color: colors.text }]}>{totalBadges}/{totalAchievements}</Text>
           </View>
-          <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBarContainer, { backgroundColor: colors.barTrack }]}>
             <View
               style={[
                 styles.progressBar,
@@ -124,13 +150,15 @@ export const AchievementsScreen = () => {
               key={category}
               style={[
                 styles.categoryTab,
-                selectedCategory === category && styles.categoryTabActive,
+                { backgroundColor: colors.tabBg },
+                selectedCategory === category && { backgroundColor: colors.tabActiveBg },
               ]}
               onPress={() => setSelectedCategory(category)}
             >
               <Text
                 style={[
                   styles.categoryText,
+                  { color: colors.textSecondary },
                   selectedCategory === category && styles.categoryTextActive,
                 ]}
               >
@@ -141,7 +169,7 @@ export const AchievementsScreen = () => {
         </View>
 
         {/* Category Title */}
-        <Text style={styles.categoryTitle}>{selectedCategory}</Text>
+        <Text style={[styles.categoryTitle, { color: colors.text }]}>{selectedCategory}</Text>
 
         {/* Achievements Grid */}
         <View style={styles.achievementsGrid}>

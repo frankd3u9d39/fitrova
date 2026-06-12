@@ -196,27 +196,31 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.h3,
+    fontSize: 15,
+    lineHeight: 18,
     color: theme.colors.text,
     flex: 1,
   },
   message: {
     ...theme.typography.body,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     width: '100%',
-    gap: theme.spacing.sm, // Gap replaces marginHorizontal for multiple buttons
+    gap: theme.spacing.sm,
   },
   button: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: theme.borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 100,
+    minWidth: 80,
   },
   buttonDefault: {
     backgroundColor: theme.colors.primary,
@@ -231,6 +235,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     ...theme.typography.bodyMedium,
+    fontSize: 12,
   },
   buttonTextDefault: {
     color: theme.colors.textInverse,

@@ -17,6 +17,7 @@ import { theme } from '../../../theme';
 import { nutritionService } from '../../../services/api/nutritionService';
 import * as Animatable from 'react-native-animatable';
 import { RootStackParamList } from '../../../navigation/types';
+import { SubscriptionUpgradeModal } from '../../../components/common/SubscriptionUpgradeModal';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +31,8 @@ export const FoodResultScreen = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [paywallData, setPaywallData] = useState<any>(null);
 
   useEffect(() => {
     // Call the real scan API
@@ -39,14 +42,22 @@ export const FoodResultScreen = () => {
   const handleScan = async () => {
     try {
       setLoading(true);
-      // Call the real scan API
-      const data = await nutritionService.scanMeal(base64);
+      // Call the real scan API with userId to enable personalized coaching
+      const data = await nutritionService.scanMeal(base64, userId);
       setResult(data);
       setLoading(false);
-    } catch (error) {
-      console.error('Scan error:', error);
-      Alert.alert("Error", "Could not identify meal. Please try again.");
-      navigation.goBack();
+    } catch (error: any) {
+      setLoading(false);
+      
+      if (error && (error.status === 'subscription_locked' || error.statusCode === 403)) {
+        console.log('Scan trial exhausted (paywall locked):', error.message || 'Trial used.');
+        setPaywallData(error);
+        setPaywallVisible(true);
+      } else {
+        console.error('Scan error:', error);
+        Alert.alert("Error", "Could not identify meal. Please try again.");
+        navigation.goBack();
+      }
     }
   };
 
@@ -61,7 +72,11 @@ export const FoodResultScreen = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      // Real API call to save the meal
+      
+      // Save the meal and propagate potential pattern warnings/coaching insights
+      const hasPatternAlert = result.health_analysis?.pattern_alert;
+      const coachFeedback = result.health_analysis?.coach_feedback;
+      
       await nutritionService.logMeal({
         user_id: userId,
         meal_name: result.meal_name,
@@ -70,6 +85,8 @@ export const FoodResultScreen = () => {
         carbs: result.carbs,
         fats: result.fats,
         meal_type: getMealType(),
+        insight_text: hasPatternAlert || coachFeedback || null,
+        insight_type: hasPatternAlert ? 'warning' : 'tip'
       });
       
       Alert.alert("Success", "Meal logged successfully!", [
@@ -103,6 +120,27 @@ export const FoodResultScreen = () => {
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.loadingText}>Processing results...</Text>
       </View>
+    );
+  }
+
+  if (!result) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <SubscriptionUpgradeModal
+          visible={paywallVisible}
+          title={paywallData?.title || "✨ Unlock AI Meal Scanner"}
+          message={paywallData?.message || "Trial used. Upgrade to Premium or Advanced Premium to unlock unlimited access!"}
+          pricingOptions={paywallData?.pricing_options}
+          onClose={() => {
+            setPaywallVisible(false);
+            navigation.goBack();
+          }}
+          onUpgrade={() => {
+            setPaywallVisible(false);
+            navigation.navigate('SubscriptionSelection', { userId });
+          }}
+        />
+      </SafeAreaView>
     );
   }
 
@@ -144,6 +182,85 @@ export const FoodResultScreen = () => {
               <Text style={styles.macroValue}>{result.fats}g</Text>
             </View>
           </View>
+
+          {/* AI Coaching Analysis Block */}
+          {result.health_analysis && (
+            <Animatable.View animation="fadeInUp" delay={200} style={styles.aiCoachingCard}>
+              <View style={styles.aiCoachingHeader}>
+                <View style={styles.aiCoachingTitleRow}>
+                  <Ionicons name="sparkles" size={18} color={theme.colors.primary} />
+                  <Text style={styles.aiCoachingTitle}>AI NUTRITION COACH</Text>
+                </View>
+                <View style={[
+                  styles.healthRatingBadge, 
+                  result.health_analysis.health_rating === 'Excellent' && { backgroundColor: '#D1FAE5' },
+                  result.health_analysis.health_rating === 'Good' && { backgroundColor: '#E0F2FE' },
+                  result.health_analysis.health_rating === 'Caution' && { backgroundColor: '#FEF3C7' },
+                  result.health_analysis.health_rating === 'Avoid' && { backgroundColor: '#FEE2E2' },
+                ]}>
+                  <Text style={[
+                    styles.healthRatingText,
+                    result.health_analysis.health_rating === 'Excellent' && { color: '#065F46' },
+                    result.health_analysis.health_rating === 'Good' && { color: '#075985' },
+                    result.health_analysis.health_rating === 'Caution' && { color: '#92400E' },
+                    result.health_analysis.health_rating === 'Avoid' && { color: '#991B1B' },
+                  ]}>
+                    {result.health_analysis.health_rating?.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.evaluationText}>{result.health_analysis.evaluation}</Text>
+
+              {result.health_analysis.dietary_imbalances && result.health_analysis.dietary_imbalances.length > 0 && (
+                <View style={styles.imbalancesContainer}>
+                  {result.health_analysis.dietary_imbalances.map((imb: string, idx: number) => (
+                    <View key={idx} style={styles.imbalanceChip}>
+                      <Ionicons name="alert-circle-outline" size={12} color="#DC2626" />
+                      <Text style={styles.imbalanceChipText}>{imb}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Pattern Alert Callout */}
+              {result.health_analysis.pattern_alert && (
+                <Animatable.View animation="shake" duration={800} style={styles.patternAlertCard}>
+                  <View style={styles.patternAlertHeader}>
+                    <Ionicons name="alert-circle" size={18} color="#D97706" />
+                    <Text style={styles.patternAlertTitle}>Eating Pattern Warning</Text>
+                  </View>
+                  <Text style={styles.patternAlertText}>{result.health_analysis.pattern_alert}</Text>
+                </Animatable.View>
+              )}
+
+              {/* Alternatives Suggestions */}
+              {result.health_analysis.healthier_alternatives && result.health_analysis.healthier_alternatives.length > 0 && (
+                <View style={styles.alternativesSection}>
+                  <Text style={styles.alternativesTitle}>HEALTHIER MEAL ALTERNATIVES</Text>
+                  {result.health_analysis.healthier_alternatives.map((alt: any, idx: number) => (
+                    <View key={idx} style={styles.alternativeCard}>
+                      <View style={styles.alternativeIconCircle}>
+                        <Ionicons name="arrow-forward-circle" size={20} color="#10B981" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.alternativeName}>{alt.name}</Text>
+                        <Text style={styles.alternativeReason}>{alt.reason}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Coach Feedback Advice */}
+              {result.health_analysis.coach_feedback && (
+                <View style={styles.coachFeedbackContainer}>
+                  <Text style={styles.coachFeedbackTitle}>COACH FEEDBACK & ADVICE</Text>
+                  <Text style={styles.coachFeedbackText}>"{result.health_analysis.coach_feedback}"</Text>
+                </View>
+              )}
+            </Animatable.View>
+          )}
 
           <View style={styles.divider} />
 
@@ -357,5 +474,146 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  aiCoachingCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  aiCoachingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  aiCoachingTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  aiCoachingTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#374151',
+    letterSpacing: 1,
+  },
+  healthRatingBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  healthRatingText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  evaluationText: {
+    fontSize: 15,
+    color: '#4B5563',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  imbalancesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  imbalanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 4,
+  },
+  imbalanceChipText: {
+    fontSize: 12,
+    color: '#991B1B',
+    fontWeight: '600',
+  },
+  patternAlertCard: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+  },
+  patternAlertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  patternAlertTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#D97706',
+  },
+  patternAlertText: {
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 18,
+  },
+  alternativesSection: {
+    marginBottom: 20,
+  },
+  alternativesTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#9CA3AF',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  alternativeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 8,
+    gap: 12,
+  },
+  alternativeIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alternativeName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  alternativeReason: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  coachFeedbackContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 16,
+  },
+  coachFeedbackTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#9CA3AF',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  coachFeedbackText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#4B5563',
+    lineHeight: 20,
   },
 });

@@ -41,12 +41,29 @@ try {
     ");
     
     $stmt->execute([$userId, $mealName, $calories, $protein, $carbs, $fats, $mealType, $loggedDate]);
+    $loggedMealId = $pdo->lastInsertId();
+
+    // Insert AI insight alert if present
+    $insightText = isset($input['insight_text']) && !empty($input['insight_text']) ? trim($input['insight_text']) : null;
+    $insightType = isset($input['insight_type']) && !empty($input['insight_type']) ? trim($input['insight_type']) : 'tip';
+
+    if ($insightText) {
+        // Mark previous alerts as read to keep dashboard clean, then insert new one
+        $pdo->prepare("UPDATE ai_insights SET is_read = TRUE WHERE user_id = ? AND insight_type = ?")
+            ->execute([$userId, $insightType]);
+
+        $insightStmt = $pdo->prepare("
+            INSERT INTO ai_insights (user_id, insight_text, insight_type, is_read)
+            VALUES (?, ?, ?, FALSE)
+        ");
+        $insightStmt->execute([$userId, $insightText, $insightType]);
+    }
     
     echo json_encode([
         'status' => 'success',
         'message' => 'Meal logged successfully',
         'data' => [
-            'id' => $pdo->lastInsertId()
+            'id' => $loggedMealId
         ]
     ]);
     

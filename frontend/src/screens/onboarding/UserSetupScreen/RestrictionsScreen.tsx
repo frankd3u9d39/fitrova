@@ -1,18 +1,21 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CustomAlert } from '../../../components/common/CustomAlert';
 import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  
+  TextInput,
   ScrollView,
   TouchableOpacity,
-  Alert} from 'react-native';
+  Alert,
+  KeyboardAvoidingView,
+  Platform
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { ProgressHeader } from '../../../components/common/ProgressHeader';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 import { Button } from '../../../components/buttons/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
@@ -29,6 +32,9 @@ export const RestrictionsScreen = () => {
   const [selectedDiet, setSelectedDiet] = useState<string>('');
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [customDiet, setCustomDiet] = useState('');
+  const [customAllergy, setCustomAllergy] = useState('');
+  const [customCondition, setCustomCondition] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const dietOptions = [
@@ -38,6 +44,7 @@ export const RestrictionsScreen = () => {
     { id: 'low-carb', label: 'Low Carb', icon: 'nutrition-outline' },
     { id: 'vegetarian', label: 'Vegetarian', icon: 'leaf' },
     { id: 'none', label: 'None', icon: 'infinite-outline' },
+    { id: 'other', label: 'Other', icon: 'create-outline' },
   ];
 
   const allergyOptions = [
@@ -48,6 +55,7 @@ export const RestrictionsScreen = () => {
     'Soy',
     'Nuts',
     'None',
+    'Other',
   ];
 
   const medicalConditions = [
@@ -68,6 +76,12 @@ export const RestrictionsScreen = () => {
       title: 'No known conditions',
       description: 'General high-performance plans',
       icon: 'checkmark-circle-outline',
+    },
+    {
+      id: 'other',
+      title: 'Other',
+      description: 'Please specify',
+      icon: 'create-outline',
     },
   ];
 
@@ -90,16 +104,35 @@ export const RestrictionsScreen = () => {
   const handleFinish = async () => {
     setIsLoading(true);
     
-    // Combine params with final selections
-    const profilePayload = {
-      ...params,
-      selectedDiet,
-      selectedAllergies,
-      selectedConditions,
-      survey_step: 'Complete'
-    };
+    const finalDiet = selectedDiet === 'other' && customDiet.trim() !== '' ? customDiet.trim() : selectedDiet;
+    const finalAllergies = selectedAllergies.includes('Other') && customAllergy.trim() !== ''
+      ? [...selectedAllergies.filter(a => a !== 'Other'), customAllergy.trim()]
+      : selectedAllergies.filter(a => a !== 'Other');
+    const finalConditions = selectedConditions.includes('other') && customCondition.trim() !== ''
+      ? [...selectedConditions.filter(c => c !== 'other'), customCondition.trim()]
+      : selectedConditions.filter(c => c !== 'other');
 
     try {
+      // Check if paywall is enabled before deciding where to navigate next
+      let monetizationOn = true;
+      try {
+        const statusRes = await fetch(endpoints.getSystemStatus);
+        const statusData = await statusRes.json();
+        monetizationOn = statusData?.data?.monetization_enabled === true;
+      } catch { /* fail closed — show subscription screen if unsure */ }
+
+      // When paywall is OFF: complete onboarding immediately, skip subscription screen
+      const nextStep = monetizationOn ? 'SubscriptionSelection' : 'Complete';
+
+      const profilePayload = {
+        ...params,
+        selectedDiet: finalDiet,
+        selectedAllergies: finalAllergies,
+        selectedConditions: finalConditions,
+        survey_step: nextStep,
+        ...(nextStep === 'Complete' ? { subscription_tier: 'free' } : {}),
+      };
+
       const response = await fetch(endpoints.saveProfile, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,7 +142,11 @@ export const RestrictionsScreen = () => {
       const data = await response.json();
 
       if (response.ok && data.status === 'success') {
-        navigation.navigate('Main', { firstName: params.firstName, userId: params.userId });
+        if (monetizationOn) {
+          navigation.navigate('SubscriptionSelection', { firstName: params.firstName, userId: params.userId });
+        } else {
+          navigation.navigate('Main', { firstName: params.firstName, userId: params.userId });
+        }
       } else {
         CustomAlert.alert('Error', data.message || 'Failed to save profile');
       }
@@ -123,11 +160,17 @@ export const RestrictionsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
       >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Progress Header */}
         <ProgressHeader
           currentStep={3}
@@ -173,6 +216,15 @@ export const RestrictionsScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+          {selectedDiet === 'other' && (
+            <TextInput
+              style={styles.customInput}
+              placeholder="Please specify dietary preference"
+              value={customDiet}
+              onChangeText={setCustomDiet}
+              placeholderTextColor="#9CA3AF"
+            />
+          )}
         </View>
 
         {/* Allergies */}
@@ -203,6 +255,15 @@ export const RestrictionsScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+          {selectedAllergies.includes('Other') && (
+            <TextInput
+              style={styles.customInput}
+              placeholder="Please specify allergy"
+              value={customAllergy}
+              onChangeText={setCustomAllergy}
+              placeholderTextColor="#9CA3AF"
+            />
+          )}
         </View>
 
         {/* Medical Conditions */}
@@ -251,6 +312,15 @@ export const RestrictionsScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+          {selectedConditions.includes('other') && (
+            <TextInput
+              style={styles.customInput}
+              placeholder="Please specify medical condition"
+              value={customCondition}
+              onChangeText={setCustomCondition}
+              placeholderTextColor="#9CA3AF"
+            />
+          )}
         </View>
 
         <Button
@@ -262,6 +332,7 @@ export const RestrictionsScreen = () => {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -270,6 +341,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -411,6 +485,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bottomSpacer: {
-    height: 40,
+    height: 120,
+  },
+  customInput: {
+    marginTop: 16,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: theme.colors.text,
+    backgroundColor: '#FFFFFF',
   },
 });

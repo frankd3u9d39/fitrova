@@ -1,20 +1,34 @@
 <?php
 // backend/app/helpers/EmailHelper.php
 
+require_once __DIR__ . '/../../config/env_loader.php';
+loadEnv(__DIR__ . '/../../.env');
+
 class EmailHelper {
     private $host = 'smtp.gmail.com';
     private $port = 465;
-    private $username = 'jackcojahk@gmail.com'; // User should ideally set this
-    private $password = 'gfsy aeww jjqc ytcs';
+    private $username = '';
+    private $password = '';
     private $fromName = 'Fitrova App';
 
     public function __construct($senderEmail = null) {
+        $smtpUser = getenv('SMTP_USER') ?: 'jackcojahk@gmail.com';
+        $smtpPass = getenv('SMTP_PASS') ?: 'bhguhqnfzyoclbly';
+        
+        $this->username = $smtpUser;
+        $this->password = $smtpPass;
+        
+        echo "    [DEBUG] Connecting to SMTP as: " . $this->username . "\n";
+        
         if ($senderEmail) {
             $this->username = $senderEmail;
         }
     }
 
     public function sendVerificationCode($toEmail, $code) {
+        // [DEV DEBUG] Print the code to the terminal for easy testing
+        echo "    [DEBUG] Verification code for $toEmail is: $code\n";
+
         $subject = "Your Fitrova Verification Code";
         $message = "
             <html>
@@ -58,36 +72,45 @@ class EmailHelper {
             $socket = fsockopen("ssl://" . $this->host, $this->port, $errno, $errstr, 30);
             if (!$socket) return false;
 
-            $this->getResponse($socket); // 220
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 220) return false;
 
             echo "    [SMTP] SENDING: EHLO\n";
             fwrite($socket, "EHLO " . $this->host . "\r\n");
-            $this->getResponse($socket); // 250
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 250) return false;
 
             echo "    [SMTP] SENDING: AUTH LOGIN\n";
             fwrite($socket, "AUTH LOGIN\r\n");
-            $this->getResponse($socket); // 334
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 334) return false;
 
             fwrite($socket, base64_encode($this->username) . "\r\n");
-            $this->getResponse($socket); // 334
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 334) return false;
 
             fwrite($socket, base64_encode($this->password) . "\r\n");
-            $this->getResponse($socket); // 235
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 235) return false;
 
             echo "    [SMTP] SENDING: MAIL FROM\n";
             fwrite($socket, "MAIL FROM: <" . $this->username . ">\r\n");
-            $this->getResponse($socket); // 250
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 250) return false;
 
             echo "    [SMTP] SENDING: RCPT TO\n";
             fwrite($socket, "RCPT TO: <" . $to . ">\r\n");
-            $this->getResponse($socket); // 250
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 250) return false;
 
             echo "    [SMTP] SENDING: DATA\n";
             fwrite($socket, "DATA\r\n");
-            $this->getResponse($socket); // 354
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 354) return false;
 
             fwrite($socket, "To: $to\r\nSubject: $subject\r\n$header\r\n\r\n$message\r\n.\r\n");
-            $this->getResponse($socket); // 250
+            $resp = $this->getResponse($socket);
+            if ($this->getResponseCode($resp) !== 250) return false;
 
             echo "    [SMTP] SENDING: QUIT\n";
             fwrite($socket, "QUIT\r\n");
@@ -107,6 +130,12 @@ class EmailHelper {
             if (substr($str, 3, 1) == " ") break;
         }
         return $response;
+    }
+
+    private function getResponseCode($response) {
+        $lines = explode("\n", trim($response));
+        $lastLine = trim(end($lines));
+        return (int)substr($lastLine, 0, 3);
     }
 }
 ?>

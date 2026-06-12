@@ -19,15 +19,15 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.jam66.fitrova"
+      "package": "com.jam66.fitrova",
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "4fe327f8-74ad-4fb1-9613-ee0e6380e330"
-      }
     },
     "plugins": [
       [
@@ -47,6 +47,12 @@
       ],
       "expo-video",
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3e0209f4-36ab-4006-a9aa-1e3c5e07c1ac"
+      }
+    },
+    "owner": "holand455"
   }
 }

@@ -101,7 +101,8 @@ try {
         'data' => [
             'user' => [
                 'first_name' => $profile['first_name'],
-                'last_name' => $profile['last_name']
+                'last_name' => $profile['last_name'],
+                'profile_picture' => $profile['profile_picture'] ?? null
             ],
             'health_score' => $healthScore,
             'calories' => [

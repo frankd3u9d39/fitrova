@@ -26,13 +26,15 @@ $diet_preference = $data['selectedDiet'] ?? null;
 $allergies = isset($data['selectedAllergies']) ? json_encode($data['selectedAllergies']) : null;
 $medical_conditions = isset($data['selectedConditions']) ? json_encode($data['selectedConditions']) : null;
 $has_equipment = isset($data['hasEquipment']) ? (int)$data['hasEquipment'] : null;
+$subscription_tier = $data['subscription_tier'] ?? null;
+$subscription_expiry = $data['subscription_expiry'] ?? null;
 
 try {
     // If a value is provided, it replaces it. If null, we want COALESCE so it keeps the original value during updates.
     $stmt = $pdo->prepare("
         INSERT INTO user_profiles 
-        (user_id, age, gender, height, weight, activity_level, fitness_goal, target_weight, target_date, diet_preference, allergies, medical_conditions, has_equipment, survey_step) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, age, gender, height, weight, activity_level, fitness_goal, target_weight, target_date, diet_preference, allergies, medical_conditions, has_equipment, survey_step, subscription_tier, subscription_expiry) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE 
         age=COALESCE(VALUES(age), age), 
         gender=COALESCE(VALUES(gender), gender), 
@@ -46,12 +48,15 @@ try {
         allergies=COALESCE(VALUES(allergies), allergies), 
         medical_conditions=COALESCE(VALUES(medical_conditions), medical_conditions),
         has_equipment=COALESCE(VALUES(has_equipment), has_equipment),
-        survey_step=COALESCE(VALUES(survey_step), survey_step)
+        survey_step=COALESCE(VALUES(survey_step), survey_step),
+        subscription_tier=COALESCE(VALUES(subscription_tier), subscription_tier),
+        subscription_expiry=COALESCE(VALUES(subscription_expiry), subscription_expiry)
     ");
     
     $stmt->execute([
         $user_id, $age, $gender, $height, $weight, $activity_level, $fitness_goal, 
-        $target_weight, $target_date, $diet_preference, $allergies, $medical_conditions, $has_equipment, $survey_step
+        $target_weight, $target_date, $diet_preference, $allergies, $medical_conditions, $has_equipment, $survey_step,
+        $subscription_tier, $subscription_expiry
     ]);
     
     http_response_code(200);

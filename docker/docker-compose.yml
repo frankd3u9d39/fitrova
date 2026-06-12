@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: fitrova_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: fitrova_db
+      MYSQL_USER: fitrova_user
+      MYSQL_PASSWORD: ${DB_PASSWORD:-fitrovapass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # PHP Backend
+  backend:
+    build: ../backend
+    container_name: fitrova_backend
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    environment:
+      DB_HOST: mysql
+      DB_NAME: fitrova_db
+      DB_USER: fitrova_user
+      DB_PASSWORD: ${DB_PASSWORD:-fitrovapass}
+      DB_PORT: 3306
+      APP_ENV: ${APP_ENV:-development}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY:-}
+      AI_SERVICE_URL: http://ai-service:5001/api/analyze-youtube
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ../backend:/var/www/html
+      - backend_logs:/var/log/apache2
+    networks:
+      - fitrova_network
+
+  # AI Service (Python Flask)
+  ai-service:
+    build: ../ai-service
+    container_name: fitrova_ai_service
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      PYTHONUNBUFFERED: 1
+      FLASK_ENV: ${FLASK_ENV:-development}
+      DB_HOST: mysql
+      DB_NAME: fitrova_db
+      DB_USER: fitrova_user
+      DB_PASSWORD: ${DB_PASSWORD:-fitrovapass}
+      DB_PORT: 3306
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ../ai-service:/app
+      - ai_service_logs:/app/logs
+      - video_cache:/app/video_cache
+    networks:
+      - fitrova_network
+    # GPU support (optional, uncomment if needed)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Nginx Reverse Proxy (optional for production)
+  nginx:
+    image: nginx:alpine
+    container_name: fitrova_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - ai-service
+    networks:
+      - fitrova_network
+
+  # Adminer Database Management (optional)
+  adminer:
+    image: adminer
+    container_name: fitrova_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    depends_on:
+      - mysql
+    networks:
+      - fitrova_network
+
+networks:
+  fitrova_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  backend_logs:
+  ai_service_logs:
+  video_cache:

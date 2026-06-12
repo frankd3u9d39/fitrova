@@ -23,6 +23,20 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { completeWorkout } from '../../../services/api/workoutService';
 import { theme } from '../../../theme';
+import { Svg, Circle } from 'react-native-svg';
+
+const COLORS = {
+  PRIMARY: '#006D33',
+  PRIMARY_CONTAINER: '#00D46A',
+  ON_PRIMARY_CONTAINER: '#00210B',
+  BACKGROUND: '#F8F9FA',
+  SURFACE: '#FFFFFF',
+  OUTLINE: '#6C7B6C',
+  OUTLINE_VARIANT: '#BBCBB9',
+  TEXT: '#191C1D',
+  TEXT_VARIANT: '#3C4A3D',
+};
+
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +44,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>;
 
 export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
   const insets = useSafeAreaInsets();
+  
+  const safeGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Main' as any);
+    }
+  };
   
   // Defensive handling to prevent "undefined" convert crashes
   const params = (route.params as any) || {};
@@ -43,6 +65,7 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
   // Premium UX: Rest Mode
   const [isRestMode, setIsRestMode] = useState(false);
   const [restTimeLeft, setRestTimeLeft] = useState(30); // 30s default
+  const [activeTab, setActiveTab] = useState<'How To' | 'Tips'>('How To');
   
   // Guard against missing workout or exercises data
   if (!workout || !workout.exercises) {
@@ -50,7 +73,7 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
       <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
         <Ionicons name="alert-circle-outline" size={60} color="#EF4444" />
         <Text style={styles.errorText}>No workout data available.</Text>
-        <TouchableOpacity style={styles.finishBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.finishBtn} onPress={safeGoBack}>
           <Text style={styles.finishBtnText}>GO BACK</Text>
         </TouchableOpacity>
       </View>
@@ -88,6 +111,7 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
     } else if (isRestMode && restTimeLeft === 0) {
       setIsRestMode(false);
       setRestTimeLeft(30);
+      setIsTimerRunning(true);
     } else if (isTimerRunning && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
@@ -110,7 +134,7 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
     return (
       <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
         <Text style={styles.errorText}>No exercises found for this workout.</Text>
-        <TouchableOpacity style={styles.finishBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.finishBtn} onPress={safeGoBack}>
           <Text style={styles.finishBtnText}>GO BACK</Text>
         </TouchableOpacity>
       </View>
@@ -156,15 +180,25 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
     if (isLastExercise) {
       try {
         setLoading(true);
-        await completeWorkout(userId || 1, workout.name, workout.duration);
+        const result = await completeWorkout(userId || 1, workout.name, workout.duration);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        CustomAlert.alert('Success', 'Workout completed! Great job! 💪', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
+
+        if (result.newly_unlocked && result.newly_unlocked.length > 0) {
+          const badgeList = result.newly_unlocked.map((a: string) => `🏆 ${a}`).join('\n');
+          CustomAlert.alert(
+            '🎉 Achievement Unlocked!',
+            `Workout completed! Great job! 💪\n\nNew badges earned:\n${badgeList}`,
+            [{ text: 'Awesome!', onPress: safeGoBack }]
+          );
+        } else {
+          CustomAlert.alert('Success', 'Workout completed! Great job! 💪', [
+            { text: 'OK', onPress: safeGoBack }
+          ]);
+        }
       } catch (err) {
         console.warn('AI service unavailable for logging', err);
         CustomAlert.alert('Success', 'Workout completed! Great job! 💪\n\n(Offline mode)', [
-          { text: 'OK', onPress: () => navigation.goBack() }
+          { text: 'OK', onPress: safeGoBack }
         ]);
       } finally {
         setLoading(false);
@@ -208,7 +242,13 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
           {typeof currentExercise !== 'string' && currentExercise.reps ? `${currentExercise.reps} Reps` : null}
         </Text>
       </View>
-      <TouchableOpacity style={styles.skipRestBtn} onPress={() => setIsRestMode(false)}>
+      <TouchableOpacity 
+        style={styles.skipRestBtn} 
+        onPress={() => {
+          setIsRestMode(false);
+          setIsTimerRunning(true);
+        }}
+      >
         <Text style={styles.skipRestText}>SKIP REST</Text>
         <Ionicons name="play-skip-forward" size={18} color="#10B981" />
       </TouchableOpacity>
@@ -219,40 +259,55 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.BACKGROUND} />
+      
+      {/* Top Navigation Bar */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) + 10 }]}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={24} color="#1E293B" />
+        <TouchableOpacity style={styles.iconButton} onPress={safeGoBack}>
+          <Ionicons name="close" size={24} color={COLORS.TEXT} />
         </TouchableOpacity>
         <View style={styles.progressPill}>
           <Text style={styles.progressText}>{`${currentIndex + 1} of ${workout.exercises.length}`}</Text>
         </View>
         <View style={{ width: 44 }} />
       </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Exercise Title */}
+        <View style={styles.titleWrapper}>
+          <Text style={styles.exerciseName}>
+            {typeof currentExercise === 'string' ? currentExercise : currentExercise.name}
+          </Text>
+        </View>
+
+        {/* Hero Video Section */}
         <View style={styles.heroWrapper}>
           {youtubeId && !youtubeError ? (
             <YoutubePlayer
-              height={300} // Increased from 240
-              play={true}
+              height={width * (9/16)}
+              play={isTimerRunning}
               videoId={youtubeId}
               mute={true}
+              host="https://www.youtube-nocookie.com"
+              onChangeState={(state) => {
+                if (state === 'playing') setIsTimerRunning(true);
+                else if (state === 'paused' || state === 'ended') setIsTimerRunning(false);
+              }}
               onError={(e) => {
                 console.log('❌ [YouTube Error]:', e);
-                // Handle specific error codes if needed (e.g., 100 is video not found)
                 setYoutubeError(true);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
               }}
               initialPlayerParams={{
                 loop: true,
                 playlist: youtubeId,
-                controls: false,
+                controls: true,
                 modestbranding: true,
               }}
               webViewProps={{
                 allowsFullscreenVideo: true,
                 androidLayerType: 'hardware',
-                origin: 'https://www.youtube.com',
+                origin: 'https://www.youtube-nocookie.com',
               }}
             />
           ) : videoUrl && !youtubeId ? (
@@ -264,81 +319,173 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
           ) : (
             <Image source={{ uri: imageUrl }} style={styles.heroImage} />
           )}
+
+          {/* AI Form Check Pill */}
+          <TouchableOpacity 
+            style={styles.formCheckPill}
+            onPress={() => navigation.navigate('FormCheck' as any, { 
+              userId,
+              exercise: typeof currentExercise === 'string' ? currentExercise : currentExercise.name
+            })}
+          >
+            <Ionicons name="videocam" size={16} color={COLORS.ON_PRIMARY_CONTAINER} />
+            <Text style={styles.formCheckPillText}>AI Form Check</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.surface}>
-          <View style={styles.titleWrapper}>
-            <Text style={styles.exerciseName}>{typeof currentExercise === 'string' ? currentExercise : currentExercise.name}</Text>
+
+        {/* Metrics Grid */}
+        <View style={styles.metricsGrid}>
+          <View style={styles.metricCard}>
+            <Text 
+              style={[
+                styles.metricValue, 
+                typeof currentExercise !== 'string' && String(currentExercise.sets || '').length > 6 
+                  ? { fontSize: 12, textAlign: 'center', paddingHorizontal: 4, lineHeight: 16 } 
+                  : null
+              ]}
+              numberOfLines={2}
+            >
+              {typeof currentExercise !== 'string' && currentExercise.sets ? currentExercise.sets : '3'}
+            </Text>
+            <Text style={styles.metricLabel}>SETS</Text>
           </View>
-          <View style={styles.metricsRow}>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricVal}>{typeof currentExercise !== 'string' && currentExercise.sets ? currentExercise.sets : '-'}</Text>
-              <Text style={styles.metricLabel}>SETS</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricVal}>{typeof currentExercise !== 'string' && currentExercise.reps ? currentExercise.reps : '-'}</Text>
-              <Text style={styles.metricLabel}>REPS</Text>
-            </View>
+          
+          <View style={styles.metricCard}>
+            <Text 
+              style={[
+                styles.metricValue, 
+                typeof currentExercise !== 'string' && String(currentExercise.reps || '').length > 6 
+                  ? { fontSize: 12, textAlign: 'center', paddingHorizontal: 4, lineHeight: 16 } 
+                  : null
+              ]}
+              numberOfLines={2}
+            >
+              {typeof currentExercise !== 'string' && currentExercise.reps ? currentExercise.reps : '15'}
+            </Text>
+            <Text style={styles.metricLabel}>
+              {typeof currentExercise !== 'string' && String(currentExercise.reps || '').toLowerCase().includes('hold') ? 'GOAL' : 'REPS'}
+            </Text>
           </View>
-          <View style={styles.timerContainer}>
-            <Text style={styles.timerDisplay}>{formatTime(timeLeft)}</Text>
-            <TouchableOpacity style={[styles.timerButton, isTimerRunning ? styles.timerButtonActive : styles.timerButtonIdle]} onPress={toggleTimer}>
-              <Ionicons name={isTimerRunning ? "pause" : "play"} size={20} color="#FFFFFF" />
-              <Text style={styles.timerButtonText}>{isTimerRunning ? "PAUSE" : "START"}</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.formCheckBanner}>
-            <View style={styles.formCheckTextContent}>
-              <Text style={styles.formCheckTitle}>AI Form Check</Text>
-              <Text style={styles.formCheckSubtext}>Record your form for instant AI analysis</Text>
-            </View>
-            <TouchableOpacity style={styles.formCheckBtn} onPress={() => navigation.navigate('FormCheck' as never)}>
-              <Ionicons name="scan-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.formCheckBtnText}>CHECK FORM</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.instructionsWrapper}>
-            <View style={styles.instructionsHeader}>
-              <View style={styles.coachingBadge}>
-                <Ionicons name="bulb" size={12} color="#FFFFFF" />
-                <Text style={styles.coachingBadgeText}>PRO TIPS</Text>
+
+          <View style={styles.metricCard}>
+            <View style={styles.circularTimerContainer}>
+              <Svg width="64" height="64" viewBox="0 0 64 64">
+                <Circle 
+                  cx="32" cy="32" r="28" 
+                  stroke="#E7E8E9" strokeWidth="4" fill="none" 
+                />
+                <Circle 
+                  cx="32" cy="32" r="28" 
+                  stroke={COLORS.PRIMARY_CONTAINER} strokeWidth="4" fill="none" 
+                  strokeDasharray="176" 
+                  strokeDashoffset={176 * (1 - timeLeft / defaultDuration)}
+                  strokeLinecap="round"
+                  transform="rotate(-90 32 32)"
+                />
+              </Svg>
+              <View style={styles.timerCenter}>
+                <Text style={styles.timerTextSmall}>{formatTime(timeLeft)}</Text>
               </View>
-              <Text style={styles.instructionsTitle}>How to execute</Text>
             </View>
-            <View style={styles.instructionContent}>
-              {typeof currentExercise !== 'string' && currentExercise.instructions ? (
+          </View>
+        </View>
+
+        {/* Instructions Section */}
+        <View style={styles.instructionsCard}>
+          <View style={styles.tabHeader}>
+            <TouchableOpacity 
+              onPress={() => setActiveTab('How To')}
+              style={[styles.tabButton, activeTab === 'How To' && styles.tabButtonActive]}
+            >
+              <Text style={[styles.tabText, activeTab === 'How To' && styles.tabTextActive]}>How To</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => setActiveTab('Tips')}
+              style={[styles.tabButton, activeTab === 'Tips' && styles.tabButtonActive]}
+            >
+              <Text style={[styles.tabText, activeTab === 'Tips' && styles.tabTextActive]}>Tips</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.instructionContent}>
+            {activeTab === 'How To' ? (
+              typeof currentExercise !== 'string' && currentExercise.instructions ? (
                 (Array.isArray(currentExercise.instructions)
                   ? currentExercise.instructions
                   : typeof currentExercise.instructions === 'string'
-                  ? currentExercise.instructions.split('.').filter((s: string) => s.trim().length > 0)
+                  ? currentExercise.instructions
+                      .split(/\d+\.|\n|•/)
+                      .map(s => s.trim())
+                      .filter(s => s.length > 0)
                   : []
-                ).map((step: string, idx: number) => (
-                  <View key={idx} style={styles.stepRow}>
-                    <View style={styles.stepLine} />
-                    <Text style={styles.instructionsText}>{`${step.trim()}.`}</Text>
-                  </View>
-                ))
+                ).map((step: string, idx: number) => {
+                  // If the step contains a colon, use it as title:desc
+                  const hasColon = step.includes(':');
+                  const title = hasColon ? step.split(':')[0].trim() : step.split(' ').slice(0, 2).join(' ');
+                  const description = hasColon ? step.split(':')[1].trim() : step.trim();
+                  
+                  return (
+                    <View key={idx} style={styles.stepRow}>
+                      <View style={styles.stepBadge}>
+                        <Text style={styles.stepBadgeText}>{idx + 1}</Text>
+                      </View>
+                      <View style={styles.stepTextContainer}>
+                        <Text style={styles.stepTitle}>{title}</Text>
+                        <Text style={styles.stepDescription}>{description}</Text>
+                      </View>
+                    </View>
+                  );
+                })
               ) : (
-                <Text style={styles.instructionsText}>Follow the animation above carefully.</Text>
-              )}
-            </View>
+                <View style={styles.emptyInstructions}>
+                  <Ionicons name="information-circle-outline" size={32} color={COLORS.OUTLINE} />
+                  <Text style={styles.emptyText}>Follow the video demonstration for correct form and technique. Always maintain a controlled pace.</Text>
+                </View>
+              )
+            ) : (
+              <View style={styles.tipsContainer}>
+                <View style={styles.tipItem}>
+                  <Ionicons name="bulb-outline" size={20} color={COLORS.PRIMARY} />
+                  <Text style={styles.tipText}>Focus on slow, controlled movements for maximum engagement.</Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <Ionicons name="water-outline" size={20} color={COLORS.PRIMARY} />
+                  <Text style={styles.tipText}>Remember to stay hydrated between sets.</Text>
+                </View>
+              </View>
+            )}
           </View>
-          <View style={{ height: 100 }} />
         </View>
+
+        <View style={{ height: 240 }} />
       </ScrollView>
-      <View style={styles.footer}>
-        <TouchableOpacity style={[styles.navBtnWrapper, currentIndex === 0 && styles.navBtnWrapperDisabled]} onPress={handlePrevious} disabled={currentIndex === 0}>
-          <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? "#CBD5E1" : "#1E293B"} />
+
+      {/* Fixed Footer Actions */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+        <TouchableOpacity 
+          style={styles.primaryActionButton} 
+          onPress={isTimerRunning ? toggleTimer : toggleTimer}
+        >
+          <Ionicons 
+            name={isTimerRunning ? "pause" : "play"} 
+            size={24} color={COLORS.ON_PRIMARY_CONTAINER} 
+          />
+          <Text style={styles.primaryActionButtonText}>
+            {isTimerRunning ? "PAUSE WORKOUT" : "START WORKOUT"}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.finishBtn} onPress={handleNext} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={styles.finishBtnText}>{isLastExercise ? "COMPLETE WORKOUT" : "NEXT EXERCISE"}</Text>
-              <Ionicons name={isLastExercise ? "checkmark-circle" : "chevron-forward"} size={20} color="#FFFFFF" />
-            </View>
-          )}
-        </TouchableOpacity>
+        
+        {currentIndex > 0 && (
+          <TouchableOpacity 
+            style={styles.secondaryActionButton} 
+            onPress={handleNext}
+          >
+            <Text style={styles.secondaryActionButtonText}>
+              {isLastExercise ? "COMPLETE WORKOUT" : "NEXT EXERCISE"}
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -347,275 +494,291 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  heroWrapper: {
-    width: '100%',
-    height: 300, // Increased for better visibility
-    backgroundColor: '#000',
-    marginTop: 10,
-    overflow: 'hidden',
-    borderRadius: 0,
-  },
-  webView: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
+    backgroundColor: COLORS.BACKGROUND,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 10,
-    backgroundColor: '#F8FAFC',
+    paddingBottom: 12,
+    backgroundColor: COLORS.BACKGROUND,
     zIndex: 10,
   },
   iconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   progressPill: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: '#EDEEEF',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 4,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   progressText: {
-    color: '#0F172A',
-    fontWeight: '800',
+    color: COLORS.TEXT,
+    fontWeight: '600',
     fontSize: 14,
-    letterSpacing: 1,
   },
   scrollContent: {
     flexGrow: 1,
-  },
-  surface: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    marginTop: -32, 
-    flex: 1, 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 10,
+    paddingHorizontal: 20,
   },
   titleWrapper: {
-    marginBottom: 28,
+    marginTop: 16,
+    marginBottom: 24,
   },
   exerciseName: {
     fontSize: 32,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: COLORS.TEXT,
     textAlign: 'center',
   },
-  metricsRow: {
+  heroWrapper: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#000',
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 24,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  formCheckPill: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    backgroundColor: COLORS.PRIMARY_CONTAINER,
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 24,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  formCheckPillText: {
+    color: COLORS.ON_PRIMARY_CONTAINER,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
     marginBottom: 32,
   },
   metricCard: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 20,
-    paddingVertical: 20,
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 24,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  metricVal: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#1E293B',
-    marginTop: 8,
-  },
-  metricLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#64748B',
-    letterSpacing: 1,
-    marginTop: 4,
-  },
-  timerContainer: {
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 24,
-    padding: 32,
-    marginBottom: 32,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-  },
-  timerDisplay: {
-    fontSize: 64,
-    fontWeight: '900',
-    color: '#10B981',
-    fontVariant: ['tabular-nums'],
-    marginBottom: 20,
-  },
-  timerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 30,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  timerButtonIdle: {
-    backgroundColor: '#1E293B', 
-  },
-  timerButtonActive: {
-    backgroundColor: '#EF4444',
-  },
-  timerButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    letterSpacing: 1,
-    fontSize: 14,
-  },
-  instructionsWrapper: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.OUTLINE_VARIANT,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  instructionsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 20,
+  metricValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.TEXT,
   },
-  coachingBadge: {
-    backgroundColor: '#10B981',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  coachingBadgeText: {
-    color: '#FFFFFF',
+  metricLabel: {
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '600',
+    color: COLORS.OUTLINE,
     letterSpacing: 1,
+    marginTop: 2,
   },
-  instructionsTitle: {
-    fontSize: 16,
+  circularTimerContainer: {
+    width: 64,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timerCenter: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timerTextSmall: {
+    fontSize: 14,
     fontWeight: '800',
-    color: '#1E293B',
-    letterSpacing: 0.5,
+    color: COLORS.PRIMARY,
+  },
+  instructionsCard: {
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 32,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.OUTLINE_VARIANT,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  emptyInstructions: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 16,
+  },
+  tabHeader: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E7E8E9',
+    marginBottom: 24,
+  },
+  tabButton: {
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    marginRight: 16,
+  },
+  tabButtonActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.PRIMARY,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.OUTLINE,
+  },
+  tabTextActive: {
+    color: COLORS.PRIMARY,
   },
   instructionContent: {
-    gap: 12,
+    gap: 20,
   },
   stepRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+    gap: 16,
   },
-  stepLine: {
-    width: 3,
-    backgroundColor: '#10B981',
-    borderRadius: 2,
-    alignSelf: 'stretch',
-    marginVertical: 2,
-    opacity: 0.3,
+  stepBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 109, 51, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  instructionsText: {
+  stepBadgeText: {
+    color: COLORS.PRIMARY,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  stepTextContainer: {
     flex: 1,
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#475569',
-    fontWeight: '500',
+  },
+  stepTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.TEXT,
+    marginBottom: 4,
+  },
+  stepDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.TEXT_VARIANT,
+  },
+  tipsContainer: {
+    gap: 16,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F3F4F5',
+    padding: 16,
+    borderRadius: 16,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.TEXT_VARIANT,
+    lineHeight: 20,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.8)',
     paddingHorizontal: 20,
-    gap: 12,
     paddingTop: 16,
-    paddingBottom: 20,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EDEEEF',
   },
-  navBtnWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F8FAFC',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  navBtnWrapperDisabled: {
-    opacity: 0.5,
-  },
-  finishBtn: {
-    flex: 1,
+  primaryActionButton: {
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.PRIMARY_CONTAINER,
     flexDirection: 'row',
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#10B981',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#10B981',
+    gap: 12,
+    shadowColor: COLORS.PRIMARY_CONTAINER,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  finishBtnText: {
-    color: '#FFFFFF',
+  primaryActionButtonText: {
+    color: COLORS.ON_PRIMARY_CONTAINER,
     fontWeight: '800',
-    fontSize: 15,
-    letterSpacing: 1,
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  secondaryActionButton: {
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: COLORS.OUTLINE_VARIANT,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  secondaryActionButtonText: {
+    color: COLORS.TEXT,
+    fontWeight: '700',
+    fontSize: 14,
   },
   errorContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.BACKGROUND,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
     gap: 24,
   },
   errorText: {
-    color: '#64748B',
+    color: COLORS.OUTLINE,
     fontSize: 16,
   },
   restContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: COLORS.SURFACE,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 30,
@@ -625,29 +788,29 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   restLabel: {
-    color: '#64748B',
+    color: COLORS.OUTLINE,
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 2,
     marginBottom: 10,
   },
   restTimer: {
-    color: '#10B981',
+    color: COLORS.PRIMARY,
     fontSize: 80,
     fontWeight: '900',
   },
   upNextCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.BACKGROUND,
     width: '100%',
     borderRadius: 32,
     padding: 24,
     alignItems: 'center',
     marginBottom: 40,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.OUTLINE_VARIANT,
   },
   upNextLabel: {
-    color: '#94A3B8',
+    color: COLORS.OUTLINE,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1,
@@ -656,18 +819,18 @@ const styles = StyleSheet.create({
   upNextImage: {
     width: '100%',
     height: 180,
-    borderRadius: 20,
+    borderRadius: 24,
     marginBottom: 20,
   },
   upNextTitle: {
-    color: '#0F172A',
+    color: COLORS.TEXT,
     fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
   },
   upNextDetails: {
-    color: '#10B981',
+    color: COLORS.PRIMARY,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -677,59 +840,36 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 15,
     paddingHorizontal: 30,
-    borderRadius: 30,
+    borderRadius: 32,
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: COLORS.PRIMARY,
   },
   skipRestText: {
-    color: '#10B981',
+    color: COLORS.PRIMARY,
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 1,
   },
-  formCheckBanner: {
-    backgroundColor: '#F1F5F9',
+  finishBtn: {
+    height: 48,
     borderRadius: 24,
-    padding: 20,
-    flexDirection: 'row',
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 32,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    marginTop: 16,
   },
-  formCheckTextContent: {
-    flex: 1,
-    marginRight: 12,
+  finishBtnText: {
+    color: COLORS.SURFACE,
+    fontWeight: '700',
+    fontSize: 14,
   },
-  formCheckTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  formCheckSubtext: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  formCheckBtn: {
-    backgroundColor: '#3B82F6', 
-    flexDirection: 'row',
+  emptyText: {
+    fontSize: 14,
+    color: COLORS.OUTLINE,
+    textAlign: 'center',
+    lineHeight: 20,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    gap: 8,
-    alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  formCheckBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 0.5,
   },
 });
+

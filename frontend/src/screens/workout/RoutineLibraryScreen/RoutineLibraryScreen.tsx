@@ -1,12 +1,13 @@
 import { CustomAlert } from '../../../components/common/CustomAlert';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { theme } from '../../../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRoutineLibrary, generateWorkoutDetails } from '../../../services/api/workoutService';
 
 export const RoutineLibraryScreen = () => {
@@ -16,6 +17,30 @@ export const RoutineLibraryScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const userId = 1; // TODO: Get from context
+  const [darkTheme, setDarkTheme] = useState(false);
+
+  const colors = {
+    background:    darkTheme ? '#0F172A' : theme.colors.background,
+    cardBg:        darkTheme ? '#1E293B' : theme.colors.surface,
+    text:          darkTheme ? '#F8FAFC' : theme.colors.text,
+    textSecondary: darkTheme ? '#94A3B8' : theme.colors.textSecondary,
+    border:        darkTheme ? '#334155' : theme.colors.border,
+    inputBg:       darkTheme ? '#1E293B' : theme.colors.surface,
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+          if (saved) {
+            const prefs = JSON.parse(saved);
+            if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
+          }
+        } catch (e) {}
+      })();
+    }, [userId])
+  );
 
   useEffect(() => {
     loadLibrary();
@@ -55,23 +80,23 @@ export const RoutineLibraryScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Routine Library</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Routine Library</Text>
         <TouchableOpacity style={styles.filterButton} onPress={loadLibrary}>
           <Ionicons name="refresh-outline" size={24} color={theme.colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color={theme.colors.textSecondary} style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+        <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput 
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="Search your AI routines..."
-          placeholderTextColor={theme.colors.textSecondary}
+          placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -80,13 +105,13 @@ export const RoutineLibraryScreen = () => {
       {loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading your library...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading your library...</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>YOUR SAVED AI ROUTINES</Text>
-            <Text style={styles.countText}>{filteredRoutines.length} items</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>YOUR SAVED AI ROUTINES</Text>
+            <Text style={[styles.countText, { color: colors.textSecondary }]}>{filteredRoutines.length} items</Text>
           </View>
 
           {filteredRoutines && filteredRoutines.length > 0 ? (
@@ -94,7 +119,7 @@ export const RoutineLibraryScreen = () => {
               {filteredRoutines.map((routine, index) => (
                 <TouchableOpacity 
                   key={index} 
-                  style={styles.routineCard}
+                  style={[styles.routineCard, { backgroundColor: colors.cardBg }]}
                   onPress={() => handleRoutinePress(routine)}
                 >
                   <Image source={{ uri: routine.image_url }} style={styles.routineImage} />
@@ -113,8 +138,8 @@ export const RoutineLibraryScreen = () => {
           ) : searchQuery.length > 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="sparkles-outline" size={60} color={theme.colors.primary} />
-              <Text style={styles.emptyTitle}>No matching routines</Text>
-              <Text style={styles.emptySub}>Would you like Fitrova AI to create a "{searchQuery}" routine for you?</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No matching routines</Text>
+              <Text style={[styles.emptySub, { color: colors.textSecondary }]}>Would you like Fitrova AI to create a "{searchQuery}" routine for you?</Text>
               <TouchableOpacity 
                 style={styles.generateSearchBtn} 
                 onPress={() => handleRoutinePress({ name: searchQuery })}
@@ -125,9 +150,9 @@ export const RoutineLibraryScreen = () => {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="library-outline" size={60} color={theme.colors.border} />
-              <Text style={styles.emptyTitle}>Library is empty</Text>
-              <Text style={styles.emptySub}>Generate your first AI workout to see it here!</Text>
+              <Ionicons name="library-outline" size={60} color={colors.border} />
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>Library is empty</Text>
+              <Text style={[styles.emptySub, { color: colors.textSecondary }]}>Generate your first AI workout to see it here!</Text>
             </View>
           )}
 

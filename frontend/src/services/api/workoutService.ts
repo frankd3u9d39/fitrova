@@ -41,6 +41,7 @@ export interface WorkoutRecommendation {
     completed: number;
     goal: number;
   };
+  ai_provider?: string;
 }
 
 // Fallback data if AI service is not available
@@ -117,9 +118,9 @@ const getFallbackData = (): WorkoutRecommendation => {
   };
 };
 
-export const getWorkoutRecommendations = async (userId: number): Promise<WorkoutRecommendation> => {
+export const getWorkoutRecommendations = async (userId: number, ecoMode: boolean = false): Promise<WorkoutRecommendation> => {
   try {
-    console.log('Fetching AI workout recommendations from PHP backend');
+    console.log(`Fetching AI workout recommendations from PHP backend (Eco Mode: ${ecoMode})`);
     
     // Create a timeout promise to give Gemini AI enough time to generate the JSON (up to 45s)
     const timeoutPromise = new Promise((_, reject) => {
@@ -127,12 +128,12 @@ export const getWorkoutRecommendations = async (userId: number): Promise<Workout
     });
     
     // Create the fetch promise - using Gemini AI endpoint
-    const fetchPromise = fetch(`${AI_SERVICE_URL}/app/controllers/workout/ai_workout_gemini.php`, {
+    const fetchPromise = fetch(`${API_BASE_URL}/app/controllers/workout/ai_workout_gemini.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ user_id: userId }),
+      body: JSON.stringify({ user_id: userId, eco_mode: ecoMode }),
     });
     
     // Race between fetch and timeout
@@ -183,37 +184,46 @@ export const saveWorkoutPlan = async (userId: number, workouts: Workout[]): Prom
   }
 };
 
+export interface WorkoutCompletionResult {
+  newly_unlocked: string[];
+  total_workouts: number;
+  streak_days: number;
+}
+
 export const completeWorkout = async (
   userId: number,
   workoutName: string,
   duration: number
-): Promise<void> => {
+): Promise<WorkoutCompletionResult> => {
   try {
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Request timeout')), 5000);
     });
-    
+
     const fetchPromise = fetch(`${AI_SERVICE_URL}/app/controllers/workout/complete_workout.php`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, workout_name: workoutName, duration }),
     });
-    
+
     const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
-    
+
     if (!response.ok) {
       throw new Error(`Failed to complete workout: ${response.status}`);
     }
-    
+
     const result = await response.json();
 
     if (result.status !== 'success') {
       throw new Error(result.message || 'Failed to complete workout');
     }
-    
-    console.log('✅ Workout logged to AI service');
+
+    console.log('✅ Workout logged. Newly unlocked:', result.newly_unlocked);
+    return {
+      newly_unlocked: result.newly_unlocked ?? [],
+      total_workouts: result.total_workouts ?? 0,
+      streak_days: result.streak_days ?? 0,
+    };
   } catch (error) {
     console.warn('⚠️ AI service unavailable for workout logging');
     throw error;

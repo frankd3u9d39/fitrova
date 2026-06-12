@@ -14,7 +14,7 @@ const PADDING_H = 20;
 
 export const DynamicTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const tabWidth = (TAB_BAR_WIDTH - PADDING_H * 2) / state.routes.length;
-  
+
   // Use React Native's built-in Animated to completely avoid react-native-reanimated native crashes
   const slideAnim = useRef(new Animated.Value(state.index)).current;
   const pathRef = useRef<any>(null);
@@ -24,11 +24,11 @@ export const DynamicTabBar = ({ state, descriptors, navigation }: BottomTabBarPr
 
   const generatePath = (centerX: number) => {
     const curveDepth = 40;
-    const curveWidth = 90; 
+    const curveWidth = 90;
 
     const startCurveX = centerX - curveWidth / 2;
     const endCurveX = centerX + curveWidth / 2;
-    
+
     const safeStartCurveX = Math.max(CORNER_RADIUS, startCurveX);
     const safeEndCurveX = Math.min(TAB_BAR_WIDTH - CORNER_RADIUS, endCurveX);
 
@@ -102,7 +102,7 @@ export const DynamicTabBar = ({ state, descriptors, navigation }: BottomTabBarPr
 
   const indicatorTranslateX = slideAnim.interpolate({
     inputRange: state.routes.map((_, i) => i),
-    outputRange: state.routes.map(i => PADDING_H + (i + 0.5) * tabWidth - 24), // 24 is half indicator width
+    outputRange: state.routes.map((_, i) => PADDING_H + (i + 0.5) * tabWidth - 24), // 24 is half indicator width
   });
 
   return (
@@ -111,11 +111,11 @@ export const DynamicTabBar = ({ state, descriptors, navigation }: BottomTabBarPr
         <AnimatedPath ref={pathRef} fill="#1F2937" />
       </Svg>
 
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.activeIndicator, 
+          styles.activeIndicator,
           { transform: [{ translateX: indicatorTranslateX }, { translateY: -24 }] }
-        ]} 
+        ]}
       />
 
       <View style={styles.tabsContainer}>
@@ -147,16 +147,25 @@ export const DynamicTabBar = ({ state, descriptors, navigation }: BottomTabBarPr
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={options.tabBarAccessibilityLabel}
-              testID={options.tabBarTestID}
+              testID={(options as any).tabBarTestID}
               onPress={onPress}
               style={styles.tabButton}
               activeOpacity={1}
             >
-              <Animated.View style={[styles.iconContainer, { transform: [{ translateY: iconTranslateY }] }]}>
+              <Animated.View
+                style={[
+                  styles.iconContainer,
+                  {
+                    transform: [{ translateY: iconTranslateY }],
+                    elevation: isFocused ? 8 : 0,
+                    zIndex: isFocused ? 5 : 2
+                  }
+                ]}
+              >
                 <Ionicons
                   name={getIconName(route.name, isFocused)}
                   size={24}
-                  color={isFocused ? '#10B981' : '#9CA3AF'}
+                  color={isFocused ? '#FFFFFF' : '#9CA3AF'}
                 />
               </Animated.View>
             </TouchableOpacity>
@@ -179,6 +188,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 10,
+    overflow: 'visible',
   },
   svgBackground: {
     position: 'absolute',
@@ -191,11 +201,15 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     paddingHorizontal: PADDING_H,
+    zIndex: 10,
+    elevation: 12,
+    overflow: 'visible',
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'visible',
   },
   iconContainer: {
     width: 48,
@@ -204,15 +218,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
+    overflow: 'visible',
   },
   activeIndicator: {
     position: 'absolute',
-    top: (TAB_BAR_HEIGHT - 48) / 2, 
+    top: (TAB_BAR_HEIGHT - 48) / 2,
     left: 0,
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#10B981', 
+    backgroundColor: '#10B981',
     zIndex: 1,
     shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 4 },

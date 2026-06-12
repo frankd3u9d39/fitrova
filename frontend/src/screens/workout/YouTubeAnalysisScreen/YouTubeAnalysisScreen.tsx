@@ -13,21 +13,55 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../../navigation/types';
 import { theme } from '../../../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../services/api/apiClient';
 import { WebView } from 'react-native-webview';
+import YoutubePlayer from 'react-native-youtube-iframe';
 
 const { width } = Dimensions.get('window');
 
 export const YouTubeAnalysisScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [searchQuery, setSearchQuery] = useState('');
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [darkTheme, setDarkTheme] = useState(false);
+
+  const colors = {
+    background:    darkTheme ? '#0F172A' : theme.colors.background,
+    cardBg:        darkTheme ? '#1E293B' : theme.colors.surface,
+    text:          darkTheme ? '#F8FAFC' : theme.colors.text,
+    textSecondary: darkTheme ? '#94A3B8' : theme.colors.textSecondary,
+    border:        darkTheme ? '#334155' : theme.colors.border,
+    inputBg:       darkTheme ? '#1E293B' : theme.colors.surface,
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          const saved = await AsyncStorage.getItem('user_session');
+          if (saved) {
+            const session = JSON.parse(saved);
+            const userId = session.id || 1;
+            const prefs = await AsyncStorage.getItem(`user_prefs_${userId}`);
+            if (prefs) {
+              const parsed = JSON.parse(prefs);
+              if (parsed.darkTheme !== undefined) setDarkTheme(parsed.darkTheme);
+            }
+          }
+        } catch (e) {}
+      })();
+    }, [])
+  );
 
   const searchVideos = async () => {
     if (!searchQuery.trim()) return;
@@ -46,6 +80,7 @@ export const YouTubeAnalysisScreen = () => {
   const analyzeVideo = async (video: any) => {
     setSelectedVideo(video);
     setAnalysis(null);
+    setError(null);
     setAnalyzing(true);
     
     const videoUrl = `https://www.youtube.com/watch?v=${video.id.videoId}`;
@@ -60,41 +95,46 @@ export const YouTubeAnalysisScreen = () => {
         })
       });
       const data = await response.json();
-      setAnalysis(data.analysis);
-    } catch (error) {
-      console.error('Analysis error:', error);
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setAnalysis(data.analysis);
+      }
+    } catch (err: any) {
+      console.error('Analysis error:', err);
+      setError('Connection to AI Service failed. Please ensure the AI backend server is running.');
     } finally {
       setAnalyzing(false);
     }
   };
 
   const renderVideoItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.videoCard} onPress={() => analyzeVideo(item)}>
+    <TouchableOpacity style={[styles.videoCard, { backgroundColor: colors.cardBg }]} onPress={() => analyzeVideo(item)}>
       <Image source={{ uri: item.snippet.thumbnails.medium.url }} style={styles.thumbnail} />
       <View style={styles.videoInfo}>
-        <Text style={styles.videoTitle} numberOfLines={2}>{item.snippet.title}</Text>
-        <Text style={styles.channelTitle}>{item.snippet.channelTitle}</Text>
+        <Text style={[styles.videoTitle, { color: colors.text }]} numberOfLines={2}>{item.snippet.title}</Text>
+        <Text style={[styles.channelTitle, { color: colors.textSecondary }]}>{item.snippet.channelTitle}</Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>AI Video Analysis</Text>
+        <Text style={[styles.title, { color: colors.text }]}>AI Video Analysis</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
+        <View style={[styles.searchBar, { backgroundColor: colors.inputBg }]}>
+          <Ionicons name="search" size={20} color={colors.textSecondary} />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: colors.text }]}
             placeholder="Search exercise (e.g. Squat, Pushup)"
-            placeholderTextColor={theme.colors.textSecondary}
+            placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={searchVideos}
@@ -106,12 +146,17 @@ export const YouTubeAnalysisScreen = () => {
       </View>
 
       {selectedVideo ? (
-        <ScrollView style={styles.analysisContent}>
+        <ScrollView style={[styles.analysisContent, { backgroundColor: colors.background }]}>
           <View style={styles.videoPlayerContainer}>
-            <WebView
-              style={styles.webView}
-              javaScriptEnabled={true}
-              source={{ uri: `https://www.youtube.com/embed/${selectedVideo.id.videoId}` }}
+            <YoutubePlayer
+              height={220}
+              play={true}
+              videoId={selectedVideo.id.videoId}
+              initialPlayerParams={{
+                preventFullScreen: false,
+                controls: true,
+                origin: 'https://www.youtube.com',
+              }}
             />
           </View>
           
@@ -121,15 +166,20 @@ export const YouTubeAnalysisScreen = () => {
           </TouchableOpacity>
 
           <View style={styles.analysisSection}>
-            <Text style={styles.analysisHeader}>AI FORM COACHING</Text>
+            <Text style={[styles.analysisHeader, { color: colors.textSecondary }]}>AI FORM COACHING</Text>
             
             {analyzing ? (
               <View style={styles.analyzingContainer}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.analyzingText}>Extracting Pose Data & Analyzing...</Text>
+                <Text style={[styles.analyzingText, { color: colors.textSecondary }]}>Extracting Pose Data & Analyzing...</Text>
+              </View>
+            ) : error ? (
+              <View style={[styles.errorContainer, { backgroundColor: colors.cardBg }]}>
+                <Ionicons name="alert-circle" size={40} color={theme.colors.warning} />
+                <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error}</Text>
               </View>
             ) : analysis ? (
-              <View style={styles.resultCard}>
+              <View style={[styles.resultCard, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.scoreRow}>
                   <View style={[
                     styles.scoreBadge,
@@ -139,16 +189,16 @@ export const YouTubeAnalysisScreen = () => {
                     <Text style={styles.scoreValue}>{analysis.accuracy_score}%</Text>
                     <Text style={styles.scoreLabel}>{analysis.status || 'ACCURACY'}</Text>
                   </View>
-                  <Text style={styles.exerciseName}>{analysis.exercise}</Text>
+                  <Text style={[styles.exerciseName, { color: colors.text }]}>{analysis.exercise}</Text>
                 </View>
 
-                <Text style={styles.summaryText}>{analysis.summary}</Text>
+                <Text style={[styles.summaryText, { color: colors.textSecondary }]}>{analysis.summary}</Text>
 
-                <Text style={styles.tipsHeader}>COACHING TIPS</Text>
+                <Text style={[styles.tipsHeader, { color: colors.text }]}>COACHING TIPS</Text>
                 {analysis.pro_tips.map((tip: string, index: number) => (
                   <View key={index} style={styles.tipItem}>
                     <Ionicons name="flash" size={16} color={theme.colors.primary} />
-                    <Text style={styles.tipText}>{tip}</Text>
+                    <Text style={[styles.tipText, { color: colors.textSecondary }]}>{tip}</Text>
                   </View>
                 ))}
 
@@ -165,7 +215,7 @@ export const YouTubeAnalysisScreen = () => {
                 </TouchableOpacity>
               </View>
             ) : (
-              <Text style={styles.placeholderText}>Select a video to start analysis</Text>
+              <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>Select a video to start analysis</Text>
             )}
           </View>
         </ScrollView>
@@ -181,8 +231,8 @@ export const YouTubeAnalysisScreen = () => {
               contentContainerStyle={styles.listContent}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                  <Ionicons name="videocam-outline" size={80} color={theme.colors.surface} />
-                  <Text style={styles.emptyText}>Search for a workout video to get AI form coaching</Text>
+                  <Ionicons name="videocam-outline" size={80} color={colors.cardBg} />
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Search for a workout video to get AI form coaching</Text>
                 </View>
               }
             />
@@ -407,5 +457,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: theme.colors.textSecondary,
     paddingVertical: 50,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 15,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 24,
+    padding: 20,
+  },
+  errorText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+    textAlign: 'center',
+    fontSize: 14,
   }
 });

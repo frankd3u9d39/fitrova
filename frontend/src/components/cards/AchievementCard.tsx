@@ -10,6 +10,7 @@ interface AchievementCardProps {
   unlocked?: boolean;
   style?: ViewStyle;
   size?: 'small' | 'medium' | 'large';
+  dark?: boolean;
 }
 
 export const AchievementCard: React.FC<AchievementCardProps> = ({
@@ -20,25 +21,38 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
   unlocked = true,
   style,
   size = 'medium',
+  dark = false,
 }) => {
   const isDark = color === '#1F2937';
   const iconColor = unlocked
     ? isDark
       ? '#FFFFFF'
       : '#10B981'
-    : '#9CA3AF';
+    : dark
+      ? '#4B5563'
+      : '#9CA3AF';
   const titleColor = unlocked
     ? isDark
       ? '#FFFFFF'
-      : '#065F46'
-    : '#6B7280';
-  const descriptionColor = unlocked ? '#059669' : '#9CA3AF';
+      : dark
+        ? '#D1FAE5'
+        : '#065F46'
+    : dark
+      ? '#94A3B8'
+      : '#6B7280';
+  const descriptionColor = unlocked 
+    ? dark
+      ? '#A7F3D0'
+      : '#059669'
+    : dark
+      ? '#64748B'
+      : '#9CA3AF';
 
   return (
     <View
       style={[
         styles.container,
-        { backgroundColor: unlocked ? color : '#E5E7EB' },
+        { backgroundColor: unlocked ? (dark && color === '#D1FAE5' ? '#064E3B' : color) : (dark ? '#1E293B' : '#E5E7EB') },
         size === 'small' && styles.containerSmall,
         size === 'large' && styles.containerLarge,
         style,

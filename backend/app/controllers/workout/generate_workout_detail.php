@@ -25,33 +25,52 @@ try {
     }
 
     // AI Configuration (Re-using Gemini logic from main script)
-    $GEMINI_API_KEY = 'AQ.Ab8RN6K04-jc_xK7I1yOSz291VKJ1pwm0j5izQMReuOhalV7uA';
+    // Fetch dynamic configuration
+    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key = 'ai_gemini_api_key'");
+    $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
     
-    $prompt = "You are a professional trainer. Generate a detailed workout plan for: '$workoutName'.\n";
-    $prompt .= "Return ONLY valid JSON in this format:\n";
+    $prompt = "Trainer AI. Generate workout plan for '$workoutName'. Strict JSON:\n";
     $prompt .= "{\n";
     $prompt .= '  "name": "' . $workoutName . '",';
-    $prompt .= '  "exercises": [';
-    $prompt .= '    {"name": "Exercise Name", "sets": 3, "reps": 12, "instructions": "Form tip", "search_term": "standard name"}';
-    $prompt .= '  ],';
-    $prompt .= '  "duration": 45,';
-    $prompt .= '  "difficulty": "intermediate",';
-    $prompt .= '  "type": "strength"';
+    $prompt .= '  "exercises": [{"name": "Exercise", "sets": 3, "reps": 12, "instructions": "Form instructions", "search_term": "name"}],';
+    $prompt .= '  "duration": 45, "difficulty": "intermediate", "type": "strength"';
     $prompt .= "\n}";
 
-    // Call Gemini (Simplified call)
+    // Call Gemini (Optimized and simplified)
     $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $GEMINI_API_KEY;
-    $data = ['contents' => [['parts' => [['text' => $prompt]]]]];
-    
+    $data = [
+        'contents' => [['parts' => [['text' => $prompt]]]],
+        'generationConfig' => [
+            'temperature' => 0.7,
+            'maxOutputTokens' => 1500,
+            'response_mime_type' => 'application/json'
+        ]
+    ];
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    
     $response = curl_exec($ch);
+    $curlError = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
+    if ($response === false) {
+        throw new Exception('cURL Error: ' . $curlError);
+    }
+
+    if ($httpCode !== 200) {
+        throw new Exception('Gemini API error (HTTP ' . $httpCode . '): ' . $response);
+    }
+
     $result = json_decode($response, true);
+    if (!isset($result['candidates'][0]['content']['parts'][0]['text'])) {
+        throw new Exception('Invalid response structure from Gemini API: ' . $response);
+    }
     $aiJson = $result['candidates'][0]['content']['parts'][0]['text'];
     
     // Clean JSON

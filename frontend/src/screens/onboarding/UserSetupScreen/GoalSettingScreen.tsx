@@ -266,7 +266,7 @@ export const GoalSettingScreen = () => {
               <View style={styles.aiIconContainer}>
                 <Ionicons name="sparkles" size={18} color="#FFFFFF" />
               </View>
-              <Text style={styles.recommendationTitle}>Gemini 2.5 Flash</Text>
+              <Text style={styles.recommendationTitle}>AI</Text>
               {isAiLoading && <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginLeft: 'auto' }} />}
             </View>
             

@@ -20,6 +20,19 @@ function loadEnv($path) {
         // Remove quotes if present
         $value = trim($value, '"\'');
 
+        // Resolve ${VAR:-DEFAULT} or ${VAR} syntax
+        if (preg_match('/^\$\{([a-zA-Z0-9_]+)(?::-([^}]*))?\}$/', $value, $matches)) {
+            $varName = $matches[1];
+            $defaultValue = $matches[2] ?? '';
+            
+            $envVal = getenv($varName);
+            if ($envVal !== false) {
+                $value = $envVal;
+            } else {
+                $value = $defaultValue;
+            }
+        }
+
         if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
             putenv(sprintf('%s=%s', $name, $value));
             $_ENV[$name] = $value;

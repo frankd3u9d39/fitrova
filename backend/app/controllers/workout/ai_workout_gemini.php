@@ -15,57 +15,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../../config/db_config.php';
-
-// API Configuration
-$GEMINI_API_KEY = 'AQ.Ab8RN6K04-jc_xK7I1yOSz291VKJ1pwm0j5izQMReuOhalV7uA';
-$PIXABAY_API_KEY = '55510128-80706278b60fe59adb3d443e4';
-$YOUTUBE_API_KEY = 'AIzaSyD-tOfE-vkGE4mBNzJLadLb_U6CCfztqUE'; // Added from ai-service/.env
+require_once __DIR__ . '/../../middleware/AISubscriptionGate.php';
+use App\Middleware\AISubscriptionGate;
 
 // ═══════════════════════════════════════════════════════════════
-// CURATED EXERCISE VIDEO LIBRARY - Verified videos per exercise
-// Each entry maps keywords to a specific, correct video URL
+// DYNAMIC CONFIGURATION - Loaded from Database
 // ═══════════════════════════════════════════════════════════════
-$EXERCISE_VIDEO_MAP = [
-    // CARDIO
-    ['keywords' => ['jumping jack', 'star jump'],           'video' => 'https://www.youtube.com/watch?v=VjO-y9oN5C0',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['high knee', 'high knees'],             'video' => 'https://www.youtube.com/watch?v=kYv9d5Nn-y4',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['burpee'],                              'video' => 'https://www.youtube.com/watch?v=dZgVxmf6jkA',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['mountain climber'],                    'video' => 'https://www.youtube.com/watch?v=zJg13E1C55w',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['jump rope', 'skipping'],               'video' => 'https://www.youtube.com/watch?v=vVj4u651L9w',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['running', 'jogging', 'jog', 'run'],    'video' => 'https://www.youtube.com/watch?v=P9W2h9825bM',  'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+$settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // UPPER BODY
-    ['keywords' => ['push up', 'pushup', 'push-up'],        'video' => 'https://www.youtube.com/watch?v=IODxDxX7oi4',  'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['bench press'],                         'video' => 'https://www.youtube.com/watch?v=vcBig73ojpE',  'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
-    ['keywords' => ['shoulder press', 'overhead press', 'military press'], 'video' => 'https://www.youtube.com/watch?v=B-aVuyhvLHU', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
-    ['keywords' => ['bicep curl', 'curl', 'dumbbell curl'],  'video' => 'https://www.youtube.com/watch?v=F08VqG0k-gI', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['lateral raise', 'side raise'],          'video' => 'https://www.youtube.com/watch?v=3VcKaXpzqRo', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
-    ['keywords' => ['tricep', 'dip', 'pushdown'],            'video' => 'https://www.youtube.com/watch?v=1Fw_0V12UoE', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['pull up', 'pullup', 'chin up'],         'video' => 'https://www.youtube.com/watch?v=eGo4IYlbE5g', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['row', 'barbell row', 'dumbbell row'],   'video' => 'https://www.youtube.com/watch?v=gT_nJ9P4F9s', 'image' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+if (($settings['maintenance_mode'] ?? 'false') === 'true') {
+    http_response_code(503);
+    echo json_encode(['status' => 'error', 'message' => 'System is under maintenance. Please try again later.']);
+    exit();
+}
 
-    // LOWER BODY
-    ['keywords' => ['squat', 'back squat', 'goblet squat'],  'video' => 'https://www.youtube.com/watch?v=aclHkVaku9U', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['lunge', 'walking lunge', 'reverse lunge'], 'video' => 'https://www.youtube.com/watch?v=QOVaHwm-Q6U', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['deadlift', 'romanian deadlift', 'rdl'],  'video' => 'https://www.youtube.com/watch?v=op9kVnSso6Q', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['calf raise', 'calf'],                   'video' => 'https://www.youtube.com/watch?v=-M4-G8p8fmc', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['leg press', 'leg extension', 'leg curl'], 'video' => 'https://www.youtube.com/watch?v=yZmx_7igP2A', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-    ['keywords' => ['glute bridge', 'hip thrust'],           'video' => 'https://www.youtube.com/watch?v=wPM8icPu6H8', 'image' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+$PRIMARY_MODEL = $settings['ai_model_primary'] ?? 'gemini-3.1-flash';
+$SYSTEM_PROMPT = $settings['ai_system_prompt'] ?? 'You are a professional fitness trainer. Generate a personalized workout plan.';
+$AI_TEMPERATURE = (float)($settings['ai_temperature'] ?? 0.7);
+$GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
+$YOUTUBE_API_KEY = $settings['ai_youtube_api_key'] ?? '';
 
-    // CORE
-    ['keywords' => ['plank', 'forearm plank'],               'video' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['crunch', 'sit up', 'situp', 'ab'],      'video' => 'https://www.youtube.com/watch?v=Xyd_fa5zoEU', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['russian twist'],                        'video' => 'https://www.youtube.com/watch?v=Nm0h97Y4uqA', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-    ['keywords' => ['leg raise', 'hanging leg'],             'video' => 'https://www.youtube.com/watch?v=K3u-yT588Ew', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+// ═══════════════════════════════════════════════════════════════
+// DYNAMIC EXERCISE LIBRARY - Loaded from Database
+// ═══════════════════════════════════════════════════════════════
+$exerciseStmt = $pdo->query("SELECT keywords, video_url as video, image_url as image FROM exercise_library");
+$EXERCISE_VIDEO_MAP = [];
+while ($row = $exerciseStmt->fetch(PDO::FETCH_ASSOC)) {
+    $row['keywords'] = explode(',', $row['keywords']);
+    $EXERCISE_VIDEO_MAP[] = $row;
+}
 
-    // FLEXIBILITY / RECOVERY
-    ['keywords' => ['stretch', 'yoga', 'cooldown', 'cool down'], 'video' => 'https://www.youtube.com/watch?v=tXWh-dowiLg', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-
-    // FULL BODY
-    ['keywords' => ['kettlebell swing', 'kettlebell'],       'video' => 'https://www.youtube.com/watch?v=Y5U-uGj7V9E', 'image' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-    ['keywords' => ['box jump', 'jump squat', 'plyometric'],  'video' => 'https://www.youtube.com/watch?v=52r_Ul5k03g', 'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-
-];
+// Hardcoded list removed - now using database-driven $EXERCISE_VIDEO_MAP
 
 // Fallback categories for exercises that don't match any keyword
 $CATEGORY_FALLBACK_VIDEOS = [
@@ -135,7 +116,11 @@ function searchYouTube($searchTerm, $apiKey) {
                 
                 // VERIFY AVAILABILITY (Deep Search Retry)
                 if (isYoutubeVideoAvailable($videoUrl)) {
-                    return $videoUrl;
+                    $imageUrl = $item['snippet']['thumbnails']['high']['url'] ?? "https://img.youtube.com/vi/$videoId/hqdefault.jpg";
+                    return [
+                        'video' => $videoUrl,
+                        'image' => $imageUrl
+                    ];
                 }
             }
         }
@@ -148,31 +133,30 @@ function searchYouTube($searchTerm, $apiKey) {
  * Finds the best matching video for an exercise name.
  * Now prioritized: Curated Map -> Dynamic YouTube "Deep Search" -> Category Fallback
  */
-function findExerciseVideo($exerciseName, $searchTerm, $exerciseVideoMap, $categoryFallbacks, $ytApiKey, $workoutType = 'general') {
+function findExerciseVideo($exerciseName, $searchTerm, $exerciseVideoMap, $categoryFallbacks, $ytApiKey, $workoutType = 'general', $skipCuratedMap = false) {
     $nameLower = strtolower($exerciseName);
     
-    // 1. Try our curated library first (Verified high-quality results)
-    foreach ($exerciseVideoMap as $entry) {
-        foreach ($entry['keywords'] as $keyword) {
-            if (strpos($nameLower, $keyword) !== false) {
-                $videoUrl = $entry['video'];
-                if (isYoutubeVideoAvailable($videoUrl)) {
-                    return [
-                        'video' => $videoUrl,
-                        'image' => $entry['image']
-                    ];
+    // 1. Try our curated library first (Verified high-quality results) - skipped if skipCuratedMap is true (Premium AI Coach)
+    if (!$skipCuratedMap) {
+        foreach ($exerciseVideoMap as $entry) {
+            foreach ($entry['keywords'] as $keyword) {
+                if (strpos($nameLower, $keyword) !== false) {
+                    $videoUrl = $entry['video'];
+                    if (isYoutubeVideoAvailable($videoUrl)) {
+                        return [
+                            'video' => $videoUrl,
+                            'image' => $entry['image']
+                        ];
+                    }
                 }
             }
         }
     }
     
     // 2. Dynamic YouTube "Deep Search" (Tries multiple results)
-    $dynamicVideo = searchYouTube($searchTerm ?: $exerciseName, $ytApiKey);
-    if ($dynamicVideo) {
-        return [
-            'video' => $dynamicVideo,
-            'image' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'
-        ];
+    $dynamicResult = searchYouTube($searchTerm ?: $exerciseName, $ytApiKey);
+    if ($dynamicResult) {
+        return $dynamicResult;
     }
     
     // 3. Last Resort Fallback (Stock Video instead of static image)
@@ -183,16 +167,434 @@ function findExerciseVideo($exerciseName, $searchTerm, $exerciseVideoMap, $categ
     ];
 }
 
-function callGemini($prompt, $apiKey) {
+/**
+ * Saves a generated or dynamically matched exercise to the dynamic database library.
+ * This ensures every new AI-generated content automatically registers and displays
+ * inside the Admin Nexus "Content Control" Exercise Library dashboard page!
+ */
+function saveExerciseToLibrary($pdo, $exercise, $workoutType = 'strength', $difficulty = 'intermediate') {
+    $name = trim($exercise['name'] ?? '');
+    if (empty($name)) return;
+    
+    // Check if it already exists (case-insensitive)
+    $stmt = $pdo->prepare("SELECT id FROM exercise_library WHERE LOWER(name) = LOWER(?)");
+    $stmt->execute([$name]);
+    if ($stmt->fetch()) {
+        return; // Already exists, do not duplicate!
+    }
+    
+    // Determine category matching database enum: 'cardio','strength','core','recovery','full_body'
+    $category = 'strength';
+    $typeLower = strtolower($workoutType);
+    if (strpos($typeLower, 'cardio') !== false) {
+        $category = 'cardio';
+    } elseif (strpos($typeLower, 'core') !== false || strpos($typeLower, 'abs') !== false) {
+        $category = 'core';
+    } elseif (strpos($typeLower, 'recovery') !== false || strpos($typeLower, 'stretch') !== false) {
+        $category = 'recovery';
+    } elseif (strpos($typeLower, 'full') !== false) {
+        $category = 'full_body';
+    }
+    
+    // Determine difficulty matching database enum: 'beginner','intermediate','advanced'
+    $diffLower = strtolower($difficulty);
+    $diffValue = 'intermediate';
+    if ($diffLower === 'beginner' || $diffLower === 'intermediate' || $diffLower === 'advanced') {
+        $diffValue = $diffLower;
+    }
+    
+    // Auto-generate standard search-friendly keywords
+    $keywords = implode(', ', array_unique(array_filter([
+        strtolower($name), 
+        strtolower($category),
+        strtolower($diffValue)
+    ])));
+    
+    // Insert new exercise into library
+    try {
+        $insert = $pdo->prepare("
+            INSERT INTO exercise_library (name, keywords, video_url, image_url, category, difficulty)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $insert->execute([
+            $name,
+            $keywords,
+            $exercise['video_url'] ?? null,
+            $exercise['image_url'] ?? null,
+            $category,
+            $diffValue
+        ]);
+    } catch (Exception $e) {
+        error_log("Failed to insert exercise to library: " . $e->getMessage());
+    }
+}
+
+function getLocalSmartWorkout($profile, $hasEquipment, $categoryFallbacks) {
+    $firstName = $profile['first_name'] ?? 'User';
+    $goal = strtolower($profile['fitness_goal'] ?? 'general fitness');
+    $activity = strtolower($profile['activity_level'] ?? 'moderate');
+    
+    // Determine level
+    $level = 'intermediate';
+    if ($activity === 'sedentary' || $activity === 'lightly active' || $activity === 'moderate') {
+        $level = 'beginner';
+    } elseif ($activity === 'active' || $activity === 'very active') {
+        $level = 'advanced';
+    }
+    
+    // Choose workout type and difficulty
+    $workoutType = 'strength';
+    $workoutName = "{$firstName}'s Strength & Tone Starter";
+    
+    if (strpos($goal, 'lose') !== false || strpos($goal, 'weight') !== false) {
+        $workoutType = 'cardio';
+        $workoutName = "{$firstName}'s High-Intensity Metabolic Burner";
+    } elseif (strpos($goal, 'muscle') !== false || strpos($goal, 'gain') !== false) {
+        $workoutType = 'strength';
+        $workoutName = "{$firstName}'s Hypertrophy Muscle Builder";
+    } elseif (strpos($goal, 'endurance') !== false || strpos($goal, 'cardio') !== false) {
+        $workoutType = 'cardio';
+        $workoutName = "{$firstName}'s Aerobic Endurance Conditioning";
+    } elseif (strpos($goal, 'health') !== false || strpos($goal, 'general') !== false) {
+        $workoutType = 'Full Body';
+        $workoutName = "{$firstName}'s Foundational Health & Tone";
+    }
+    
+    $exercises = [];
+    if (!$hasEquipment) {
+        // Bodyweight Exercises
+        if ($workoutType === 'cardio') {
+            $exercises = [
+                [
+                    'name' => 'Jumping Jacks',
+                    'sets' => 3, 'reps' => 25, 'duration' => 45,
+                    'image_url' => 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=7Pxr4xOrhNk',
+                    'instructions' => 'Stand with feet together and arms at sides. Jump and spread legs while swinging arms overhead.'
+                ],
+                [
+                    'name' => 'Bodyweight Squats',
+                    'sets' => 3, 'reps' => 15, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1574680096145-d05b474e2158?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=aclHkVaku9U',
+                    'instructions' => 'Lower your hips down and back as if sitting in a chair, keeping your chest up and weight on your heels.'
+                ],
+                [
+                    'name' => 'Mountain Climbers',
+                    'sets' => 3, 'reps' => 30, 'duration' => 45,
+                    'image_url' => 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=cnyTQDSE884',
+                    'instructions' => 'Start in a plank position. Alternately drive your knees toward your chest as fast as possible.'
+                ],
+                [
+                    'name' => 'Plank Hold',
+                    'sets' => 3, 'reps' => 1, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw',
+                    'instructions' => 'Hold a forearm plank position with a straight back and core fully engaged.'
+                ],
+                [
+                    'name' => 'High Knees',
+                    'sets' => 3, 'reps' => 40, 'duration' => 45,
+                    'image_url' => 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=QA6Vn5tV_mY',
+                    'instructions' => 'Run in place, bringing knees up high to chest level while keeping core engaged.'
+                ]
+            ];
+        } else {
+            $exercises = [
+                [
+                    'name' => 'Push Ups',
+                    'sets' => 3, 'reps' => 12, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=IODxDxX7oi4',
+                    'instructions' => 'Keep your body in a straight line, lower your chest close to the floor, and push back up.'
+                ],
+                [
+                    'name' => 'Bodyweight Squats',
+                    'sets' => 3, 'reps' => 15, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1574680096145-d05b474e2158?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=aclHkVaku9U',
+                    'instructions' => 'Lower your hips down and back as if sitting in a chair, keeping your chest up and weight on your heels.'
+                ],
+                [
+                    'name' => 'Mountain Climbers',
+                    'sets' => 3, 'reps' => 20, 'duration' => 45,
+                    'image_url' => 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=cnyTQDSE884',
+                    'instructions' => 'Start in a plank position. Alternately drive your knees toward your chest as fast as possible.'
+                ],
+                [
+                    'name' => 'Plank Hold',
+                    'sets' => 3, 'reps' => 1, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw',
+                    'instructions' => 'Hold a forearm plank position with a straight back and core fully engaged.'
+                ],
+                [
+                    'name' => 'Burpees',
+                    'sets' => 3, 'reps' => 10, 'duration' => 45,
+                    'image_url' => 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=dZgVxmf6jkA',
+                    'instructions' => 'Drop to a squat, kick feet back, do a pushup, jump feet forward, and explosively jump up.'
+                ]
+            ];
+        }
+    } else {
+        // Equipment (Gym/Dumbbell) Exercises
+        if ($workoutType === 'cardio') {
+            $exercises = [
+                [
+                    'name' => 'Dumbbell Goblet Squats',
+                    'sets' => 3, 'reps' => 12, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1574680096145-d05b474e2158?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=Xjo_fY9Hl9w',
+                    'instructions' => 'Hold a dumbbell vertically at your chest and perform a deep squat, keeping your chest proud.'
+                ],
+                [
+                    'name' => 'Dumbbell Thrusters',
+                    'sets' => 3, 'reps' => 10, 'duration' => 45,
+                    'image_url' => 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=qnOikHllwWc',
+                    'instructions' => 'Hold dumbbells at shoulders, squat down, and explosively press them overhead as you stand.'
+                ],
+                [
+                    'name' => 'Dumbbell Rows',
+                    'sets' => 3, 'reps' => 12, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=OL8yGrkXyiQ',
+                    'instructions' => 'Bend at the hips, keep your back flat, and pull dumbbells up to your ribcage.'
+                ],
+                [
+                    'name' => 'Plank Hold',
+                    'sets' => 3, 'reps' => 1, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw',
+                    'instructions' => 'Hold a forearm plank position with a straight back and core fully engaged.'
+                ],
+                [
+                    'name' => 'Dumbbell Kettlebell Swings',
+                    'sets' => 3, 'reps' => 15, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=S2S6c9vplgU',
+                    'instructions' => 'Hinge at the hips, swing the dumbbell between your legs, and drive hips forward to swing it to shoulder height.'
+                ]
+            ];
+        } else {
+            $exercises = [
+                [
+                    'name' => 'Dumbbell Chest Press',
+                    'sets' => 3, 'reps' => 10, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=mTaiQemkEpU',
+                    'instructions' => 'Lie flat on a bench, grip dumbbells at chest level, and press them straight up over your chest.'
+                ],
+                [
+                    'name' => 'Dumbbell Goblet Squats',
+                    'sets' => 3, 'reps' => 12, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1574680096145-d05b474e2158?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=Xjo_fY9Hl9w',
+                    'instructions' => 'Hold a dumbbell vertically at your chest and perform a deep squat, keeping your chest proud.'
+                ],
+                [
+                    'name' => 'Dumbbell Rows',
+                    'sets' => 3, 'reps' => 10, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=OL8yGrkXyiQ',
+                    'instructions' => 'Bend at the hips, keep your back flat, and pull dumbbells up to your ribcage.'
+                ],
+                [
+                    'name' => 'Plank Hold',
+                    'sets' => 3, 'reps' => 1, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw',
+                    'instructions' => 'Hold a forearm plank position with a straight back and core fully engaged.'
+                ],
+                [
+                    'name' => 'Dumbbell Shoulder Press',
+                    'sets' => 3, 'reps' => 10, 'duration' => 60,
+                    'image_url' => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
+                    'video_url' => 'https://www.youtube.com/watch?v=qEwKCR5JCog',
+                    'instructions' => 'Press dumbbells straight overhead from shoulder level until arms are locked, then lower slowly.'
+                ]
+            ];
+        }
+    }
+    
+    $upcomingWorkouts = [
+        [
+            'name' => 'Upper Body Power',
+            'scheduled_date' => date('Y-m-d', strtotime('+1 day')),
+            'day_name' => date('l', strtotime('+1 day')),
+            'duration' => 45,
+            'exercises_count' => 5,
+            'exercises' => $hasEquipment ? [
+                ['name' => 'Push Ups', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=IODxDxX7oi4', 'image_url' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+                ['name' => 'Dumbbell Rows', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=OL8yGrkXyiQ', 'image_url' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
+                ['name' => 'Dumbbell Chest Press', 'sets' => 3, 'reps' => 10, 'video_url' => 'https://www.youtube.com/watch?v=mTaiQemkEpU', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+                ['name' => 'Dumbbell Bicep Curls', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=ykJmrZ5v0Oo', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+                ['name' => 'Dumbbell Lateral Raises', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=3VcKaXatLD0', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800']
+            ] : [
+                ['name' => 'Push Ups', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=IODxDxX7oi4', 'image_url' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+                ['name' => 'Mountain Climbers', 'sets' => 3, 'reps' => 20, 'video_url' => 'https://www.youtube.com/watch?v=cnyTQDSE884', 'image_url' => 'https://images.pexels.com/photos/5178382/pexels-photo-5178382.jpeg?w=800'],
+                ['name' => 'Plank Shoulder Taps', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=VfwCQ14soUo', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+                ['name' => 'Tricep Dips', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=0326dy_-CzM', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+                ['name' => 'Bear Crawls', 'sets' => 3, 'reps' => 10, 'video_url' => 'https://www.youtube.com/watch?v=7ZfXGgVsh04', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800']
+            ]
+        ],
+        [
+            'name' => 'Core and Stability',
+            'scheduled_date' => date('Y-m-d', strtotime('+2 days')),
+            'day_name' => date('l', strtotime('+2 days')),
+            'duration' => 30,
+            'exercises_count' => 5,
+            'exercises' => [
+                ['name' => 'Forearm Plank', 'sets' => 3, 'reps' => 60, 'video_url' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+                ['name' => 'Russian Twists', 'sets' => 3, 'reps' => 20, 'video_url' => 'https://www.youtube.com/watch?v=Nm0h97Y4uqA', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+                ['name' => 'Bird Dog', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=wiF5XMDjsVM', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+                ['name' => 'Dead Bug', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=g_BYB0R1bf8', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+                ['name' => 'Side Plank', 'sets' => 3, 'reps' => 30, 'video_url' => 'https://www.youtube.com/watch?v=NXr4Fwkuq0Y', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800']
+            ]
+        ]
+    ];
+
+    return [
+        'todays_workout' => [
+            'name' => $workoutName,
+            'exercises' => $exercises,
+            'exercises_count' => count($exercises),
+            'duration' => count($exercises) * 10,
+            'difficulty' => $level,
+            'type' => $workoutType
+        ],
+        'upcoming_workouts' => $upcomingWorkouts
+    ];
+}
+
+function sanitizeAndForceBodyweight(&$workoutData) {
+    if (!isset($workoutData['todays_workout']['exercises'])) {
+        return;
+    }
+    
+    $bodyweightReplacements = [
+        'Jumping Jacks' => [
+            'name' => 'Jumping Jacks',
+            'video_url' => 'https://www.youtube.com/watch?v=7Pxr4xOrhNk',
+            'image_url' => 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=800&q=80',
+            'instructions' => 'Stand with feet together and arms at sides. Jump and spread legs while swinging arms overhead.'
+        ],
+        'Bodyweight Squats' => [
+            'name' => 'Bodyweight Squats',
+            'video_url' => 'https://www.youtube.com/watch?v=aclHkVaku9U',
+            'image_url' => 'https://images.unsplash.com/photo-1574680096145-d05b474e2158?w=800&q=80',
+            'instructions' => 'Lower your hips down and back as if sitting in a chair, keeping your chest up and weight on your heels.'
+        ],
+        'Mountain Climbers' => [
+            'name' => 'Mountain Climbers',
+            'video_url' => 'https://www.youtube.com/watch?v=cnyTQDSE884',
+            'image_url' => 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&q=80',
+            'instructions' => 'Start in a plank position. Alternately drive your knees toward your chest as fast as possible.'
+        ],
+        'Plank Hold' => [
+            'name' => 'Plank Hold',
+            'video_url' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw',
+            'image_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+            'instructions' => 'Hold a forearm plank position with a straight back and core fully engaged.'
+        ],
+        'Push Ups' => [
+            'name' => 'Push Ups',
+            'video_url' => 'https://www.youtube.com/watch?v=IODxDxX7oi4',
+            'image_url' => 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+            'instructions' => 'Keep your body in a straight line, lower your chest close to the floor, and push back up.'
+        ],
+        'Plank Shoulder Taps' => [
+            'name' => 'Plank Shoulder Taps',
+            'video_url' => 'https://www.youtube.com/watch?v=VfwCQ14soUo',
+            'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800',
+            'instructions' => 'In a high plank position, tap your left shoulder with your right hand, then tap your right shoulder with your left hand.'
+        ]
+    ];
+    
+    $equipmentKeywords = ['dumbbell', 'barbell', 'kettlebell', 'bench press', 'cable', 'machine', 'weight', 'curl', 'row', 'fly', 'thruster', 'smith', 'lat pulldown', 'leg press', 'leg extension', 'leg curl'];
+    
+    // Sanitize Today's Workout Exercises
+    foreach ($workoutData['todays_workout']['exercises'] as $idx => &$exercise) {
+        $nameLower = strtolower($exercise['name'] ?? '');
+        $hasEquipmentInExercise = false;
+        foreach ($equipmentKeywords as $kw) {
+            if (strpos($nameLower, $kw) !== false) {
+                $hasEquipmentInExercise = true;
+                break;
+            }
+        }
+        
+        if ($hasEquipmentInExercise) {
+            $replacement = $bodyweightReplacements['Push Ups']; // default
+            
+            if (strpos($nameLower, 'squat') !== false || strpos($nameLower, 'leg') !== false || strpos($nameLower, 'lunge') !== false) {
+                $replacement = $bodyweightReplacements['Bodyweight Squats'];
+            } elseif (strpos($nameLower, 'row') !== false || strpos($nameLower, 'pull') !== false || strpos($nameLower, 'deadlift') !== false || strpos($nameLower, 'back') !== false) {
+                $replacement = $bodyweightReplacements['Plank Shoulder Taps'];
+            } elseif (strpos($nameLower, 'cardio') !== false || strpos($nameLower, 'jump') !== false || strpos($nameLower, 'thruster') !== false) {
+                $replacement = $bodyweightReplacements['Jumping Jacks'];
+            }
+            
+            $exercise['name'] = $replacement['name'];
+            $exercise['video_url'] = $replacement['video_url'];
+            $exercise['image_url'] = $replacement['image_url'];
+            $exercise['instructions'] = $replacement['instructions'];
+            if (isset($exercise['search_term'])) {
+                $exercise['search_term'] = $replacement['name'];
+            }
+        }
+    }
+    
+    // Sanitize Upcoming Workouts
+    if (isset($workoutData['upcoming_workouts']) && is_array($workoutData['upcoming_workouts'])) {
+        foreach ($workoutData['upcoming_workouts'] as &$upcoming) {
+            if (isset($upcoming['exercises']) && is_array($upcoming['exercises'])) {
+                foreach ($upcoming['exercises'] as &$exercise) {
+                    $nameLower = strtolower($exercise['name'] ?? '');
+                    $hasEquipmentInExercise = false;
+                    foreach ($equipmentKeywords as $kw) {
+                        if (strpos($nameLower, $kw) !== false) {
+                            $hasEquipmentInExercise = true;
+                            break;
+                        }
+                    }
+                    
+                    if ($hasEquipmentInExercise) {
+                        $replacement = $bodyweightReplacements['Push Ups'];
+                        
+                        if (strpos($nameLower, 'squat') !== false || strpos($nameLower, 'leg') !== false || strpos($nameLower, 'lunge') !== false) {
+                            $replacement = $bodyweightReplacements['Bodyweight Squats'];
+                        } elseif (strpos($nameLower, 'row') !== false || strpos($nameLower, 'pull') !== false || strpos($nameLower, 'deadlift') !== false || strpos($nameLower, 'back') !== false) {
+                            $replacement = $bodyweightReplacements['Plank Shoulder Taps'];
+                        } elseif (strpos($nameLower, 'cardio') !== false || strpos($nameLower, 'jump') !== false || strpos($nameLower, 'thruster') !== false) {
+                            $replacement = $bodyweightReplacements['Jumping Jacks'];
+                        }
+                        
+                        $exercise['name'] = $replacement['name'];
+                        $exercise['video_url'] = $replacement['video_url'];
+                        $exercise['image_url'] = $replacement['image_url'];
+                        if (isset($exercise['instructions'])) {
+                            $exercise['instructions'] = $replacement['instructions'];
+                        }
+                        if (isset($exercise['search_term'])) {
+                            $exercise['search_term'] = $replacement['name'];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+function callGemini($prompt, $apiKey, $primaryModel = 'gemini-1.5-pro-latest', $temp = 0.7) {
     $logFile = __DIR__ . '/gemini_debug.log';
     
-    // Multi-Model Resilience: Using 2026 stable models verified for generateContent
-    $models = [
-        'gemini-flash-latest',
-        'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-pro-latest'
-    ];
+    // Priority Model from Admin Settings + active fallback models
+    $models = [$primaryModel, 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
     
     foreach ($models as $modelName) {
         $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $modelName . ':generateContent?key=' . $apiKey;
@@ -202,8 +604,8 @@ function callGemini($prompt, $apiKey) {
                 ['parts' => [['text' => $prompt]]]
             ],
             'generationConfig' => [
-                'temperature' => 0.7,
-                'maxOutputTokens' => 4096,
+                'temperature' => $temp,
+                'maxOutputTokens' => 2048,
                 'response_mime_type' => 'application/json'
             ]
         ];
@@ -214,8 +616,8 @@ function callGemini($prompt, $apiKey) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 45);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
         curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         
@@ -243,10 +645,16 @@ function callGemini($prompt, $apiKey) {
 
     throw new Exception('All Gemini models failed or were throttled.');
 }
-
 try {
     $input = json_decode(file_get_contents('php://input'), true);
     $userId = $input['user_id'] ?? null;
+    
+    // Self-Heal Database Schema (Ensure ai_engine column exists)
+    try {
+        $pdo->exec("ALTER TABLE user_profiles ADD COLUMN ai_engine VARCHAR(20) DEFAULT 'eco'");
+    } catch (PDOException $e) {
+        // Already exists
+    }
     
     if (!$userId) {
         http_response_code(400);
@@ -264,7 +672,26 @@ try {
     $stmt->execute([$userId]);
     $profile = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // Get workout history
+    // Active AI Engine setting, managed solely by the Admin in the dashboard (defaults to Eco)
+    $activeEngine = $profile['ai_engine'] ?? 'eco';
+    $ecoMode = ($activeEngine === 'eco');
+    
+    // Dynamically force AI-generated workouts for Premium and Advanced Premium users to deliver full value!
+    $tier = strtolower($profile['subscription_tier'] ?? 'free');
+    if ($tier === 'premium' || $tier === 'advanced_premium') {
+        $ecoMode = false;
+    }
+    $isTrialSession = false;
+
+    if (!$ecoMode) {
+        // Enforce paywall gatekeeper subscription check (unsubscribed users get exactly ONE free trial)
+        $access = AISubscriptionGate::verifyAccess($pdo, $userId, 'premium', 'Premium AI Coach Workouts');
+        if ($access['is_trial']) {
+            $isTrialSession = true;
+        }
+    }
+    
+    // Get workout history (last 30 days for AI context)
     $historyStmt = $pdo->prepare("
         SELECT COUNT(*) as total_workouts,
                MAX(completed_date) as last_workout
@@ -273,6 +700,55 @@ try {
     ");
     $historyStmt->execute([$userId]);
     $history = $historyStmt->fetch(PDO::FETCH_ASSOC);
+
+    // Get THIS WEEK's workout count (Monday to Sunday)
+    $weeklyStmt = $pdo->prepare("
+        SELECT COUNT(*) as week_workouts
+        FROM workout_logs
+        WHERE user_id = ? AND YEARWEEK(completed_date, 1) = YEARWEEK(CURDATE(), 1)
+    ");
+    $weeklyStmt->execute([$userId]);
+    $weeklyHistory = $weeklyStmt->fetch(PDO::FETCH_ASSOC);
+    $weeklyCompleted = (int)($weeklyHistory['week_workouts'] ?? 0);
+
+    // Get nutrition context for today
+    $nutritionStmt = $pdo->prepare("
+        SELECT 
+            COALESCE(SUM(calories), 0) as total_calories,
+            COALESCE(SUM(protein), 0) as total_protein,
+            COALESCE(SUM(carbs), 0) as total_carbs,
+            COALESCE(SUM(fats), 0) as total_fats
+        FROM nutrition_logs
+        WHERE user_id = ? AND logged_date = CURDATE()
+    ");
+    $nutritionStmt->execute([$userId]);
+    $nutrition = $nutritionStmt->fetch(PDO::FETCH_ASSOC);
+    $caloriesConsumed = intval($nutrition['total_calories']);
+    $calorieGoal = intval($profile['daily_calorie_goal'] ?? 2000);
+
+    // Fetch Today's Detailed Meals
+    $mealsStmt = $pdo->prepare("SELECT meal_name, calories, protein, carbs, fats FROM nutrition_logs WHERE user_id = ? AND logged_date = CURDATE() ORDER BY created_at DESC LIMIT 5");
+    $mealsStmt->execute([$userId]);
+    $todayMeals = $mealsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch Recent Workout History (God Mode Intelligence)
+    $workoutHistoryStmt = $pdo->prepare("SELECT workout_name, duration_minutes, calories_burned, completed_date FROM workout_logs WHERE user_id = ? ORDER BY completed_date DESC LIMIT 3");
+    $workoutHistoryStmt->execute([$userId]);
+    $recentPerformance = $workoutHistoryStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get weight change (last 2 records)
+    $weightStmt = $pdo->prepare("
+        SELECT weight FROM weight_history 
+        WHERE user_id = ? 
+        ORDER BY recorded_date DESC LIMIT 2
+    ");
+    $weightStmt->execute([$userId]);
+    $weights = $weightStmt->fetchAll(PDO::FETCH_COLUMN);
+    $weightTrend = "stable";
+    if (count($weights) >= 2) {
+        if ($weights[0] > $weights[1]) $weightTrend = "increasing";
+        else if ($weights[0] < $weights[1]) $weightTrend = "decreasing";
+    }
     
     // 1. PERSISTENCE CHECK: Load existing plan for today if it exists
     $planStmt = $pdo->prepare("
@@ -286,8 +762,19 @@ try {
 
     if ($existingPlan) {
         $workoutData = json_decode($existingPlan['plan_data'], true);
+        $hasEquipment = (bool)($profile['has_equipment'] ?? true);
+        if (!$hasEquipment) {
+            sanitizeAndForceBodyweight($workoutData);
+        }
         $ai_provider = 'Database (Previously Generated)';
         goto finalize_response; // Skip AI generation
+    }
+
+    // 2. ECO MODE BYPASS: If in Eco Smart Engine mode, bypass AI generation entirely
+    if ($ecoMode) {
+        $workoutData = getLocalSmartWorkout($profile, $hasEquipment, $CATEGORY_FALLBACK_VIDEOS);
+        $ai_provider = 'Fitrova Smart Engine (Eco Mode)';
+        goto finalize_response;
     }
 
     // Calculate days since last workout for the AI prompt
@@ -303,69 +790,53 @@ try {
     $isBeginner = ($activityLevel === 'sedentary' || $activityLevel === 'lightly active' || $activityLevel === 'moderate');
     $hasEquipment = (bool)($profile['has_equipment'] ?? true);
     
-    // 2. Build AI prompt
-    $prompt = "You are a professional fitness trainer. Generate a personalized workout plan.\n\n";
-    $prompt .= "User Profile:\n";
-    $prompt .= "- Name: " . ($profile['first_name'] ?? 'User') . "\n";
-    $prompt .= "- Fitness Goal: " . ($profile['fitness_goal'] ?? 'general fitness') . "\n";
-    $prompt .= "- Activity Level: " . ($profile['activity_level'] ?? 'moderate') . "\n";
-    $prompt .= "- Equipment Available: " . ($hasEquipment ? "Full Gym Access" : "NO EQUIPMENT (Bodyweight Only)") . "\n";
-    $prompt .= "- Workouts in last 30 days: " . ($history['total_workouts'] ?? 0) . "\n";
-    $prompt .= "- Days since last workout: " . $daysSince . "\n";
-    $prompt .= "- Age: " . ($profile['age'] ?? 'not specified') . "\n\n";
+    // 2. Build Compressed AI prompt
+    $prompt = $SYSTEM_PROMPT . "\n\n";
+    $prompt .= "Profile: " . ($profile['first_name'] ?? 'User') . " | Goal: " . ($profile['fitness_goal'] ?? 'fitness') . " | Level: " . ($profile['activity_level'] ?? 'moderate') . " | Equipment: " . ($hasEquipment ? "Gym" : "None (Bodyweight Only)") . " | Age: " . ($profile['age'] ?? 'not specified') . "\n";
+    $prompt .= "Stats: Workouts (30d): " . ($history['total_workouts'] ?? 0) . " | Days since last: " . $daysSince . " | Calories Today: " . $caloriesConsumed . "/" . $calorieGoal . " kcal | Trend: " . $weightTrend . "\n";
 
-    if (($history['total_workouts'] ?? 0) === 0) {
-        $prompt .= "NOTE: This is a NEW user account. They have not started their journey yet. Do NOT return any 'missed_workouts'.\n";
+    if (!empty($todayMeals)) {
+        $mealSummaries = [];
+        foreach ($todayMeals as $m) {
+            $mealSummaries[] = $m['meal_name'] . " (" . $m['calories'] . "kcal)";
+        }
+        $prompt .= "Meals Today: " . implode(', ', $mealSummaries) . "\n";
     }
-    
+
+    if (!empty($recentPerformance)) {
+        $perfSummaries = [];
+        foreach ($recentPerformance as $w) {
+            $perfSummaries[] = $w['workout_name'] . " (" . $w['duration_minutes'] . "m, " . $w['calories_burned'] . "kcal)";
+        }
+        $prompt .= "Recent Workouts: " . implode(', ', $perfSummaries) . "\n";
+    }
+
+    if ($caloriesConsumed > $calorieGoal) {
+        $prompt .= "Calorie Surplus: +" . ($caloriesConsumed - $calorieGoal) . " kcal. GOAL: Increase intensity/cardio.\n";
+    } else if ($weightTrend === "increasing") {
+        $prompt .= "Weight Trend Up. GOAL: Boost metabolism.\n";
+    }
+
     if (!$hasEquipment) {
-        $prompt .= "CRITICAL: The user has NO equipment. ONLY suggest bodyweight exercises. DO NOT mention weights, bars, or gym machinery.\n";
+        $prompt .= "NO EQUIPMENT: Bodyweight exercises ONLY. No machinery/weights.\n";
     }
-
     if ($isBeginner) {
-        $prompt .= "CRITICAL: The user is a BEGINNER. Choose exercises that are safe and easy to follow. Avoid complex compound movements unless specified.\n";
-        $prompt .= "VIDEO STRATEGY: Provide a 'search_term' optimized for finding slow-paced instructional videos (e.g., 'pushups tutorial').\n";
-        $prompt .= "INSTRUCTION STRATEGY: Provide 3-4 clear, numbered steps for perfect form. Make them easy for a first-timer to understand.\n\n";
+        $prompt .= "BEGINNER: Safe, easy exercises. search_term = slow instructional video (e.g. 'pushups tutorial'). instructions = 3-4 numbered steps.\n";
     } else {
-        $prompt .= "VIDEO STRATEGY: For each exercise, provide a 'search_term' which is a standard fitness name for finding a video.\n";
-        $prompt .= "CRITICAL: If the user has NO equipment, include 'bodyweight' or 'no equipment' in the search_term for every exercise.\n";
-        $prompt .= "Instructions should be 1-2 powerful cues for correct form.\n\n";
+        $prompt .= "ADVANCED: Standard exercise names. search_term = standard name. instructions = 1-2 cues.\n";
     }
 
-    $prompt .= "3D ANIMATION STRATEGY:\n";
-    $prompt .= "For each exercise, provide an 'ai_motion' object to drive a simplified 3D skeleton.\n";
-    $prompt .= "Available targets: wrist_l, wrist_r, ankle_l, ankle_r (Positions relative to hips).\n";
-    $prompt .= "Available joint rotations: hips, spine, neck, head, shoulder_l, shoulder_r, elbow_l, elbow_r, leg_l, leg_r.\n";
-    $prompt .= "USE TARGETS FOR HANDS/FEET whenever possible. Example for Jumping Jacks:\n";
-    $prompt .= "- Start: wrist_l: [0.5, -0.8, 0], wrist_r: [-0.5, -0.8, 0], ankle_l: [-0.2, -1.0, 0]\n";
-    $prompt .= "- Jump: wrist_l: [0.3, 0.8, 0], wrist_r: [-0.3, 0.8, 0], ankle_l: [-0.6, -1.0, 0], hips: [0, 0.5, 0]\n";
-    $prompt .= "Rotations are in RADIANS. Positions are in METERS relative to hips.\n";
-    $prompt .= "Provide 3-5 keyframes (time 0.0 to 1.0) for one repetition.\n\n";
-    
-    $prompt .= "JSON FORMAT:\n";
+    $prompt .= "CRITICAL: You MUST include exactly 5 high-quality, relevant exercises in todays_workout.exercises. Do not generate 3 or 4; there must be exactly 5 exercises. Also, for each upcoming workout in upcoming_workouts, you must include exactly 5 exercises in their exercises array.\n";
+
+    $prompt .= "\nFormat JSON:\n";
     $prompt .= "{\n";
-    $prompt .= '  "todays_workout": {';
-    $prompt .= '    "name": "Workout Title",';
-    $prompt .= '    "exercises": [';
-    $prompt .= '      {"name": "Exercise Name", "search_term": "name", "sets": 3, "reps": 10, "instructions": "cues", "ai_motion": {"keyframes": [{"time": 0, "targets": {"wrist_l": [0.5, -0.8, 0]}, "joints": {"hips": [0,0,0]}, "position": [0,0,0]}]}}';
-    $prompt .= '    ],';
-    $prompt .= '    "exercises_count": 1,';
-    $prompt .= '    "duration": 30,';
-    $prompt .= '    "difficulty": "beginner",';
-    $prompt .= '    "type": "strength"';
-    $prompt .= '  },';
-    $prompt .= '  "recovery_score": 90,';
-    $prompt .= '  "status": "READY FOR SESSION",';
-    $prompt .= '  "missed_workouts": [],' . "\n";
-    $prompt .= '  "upcoming_workouts": [' . "\n";
-    $prompt .= '    {"name": "Upper Body Power", "scheduled_date": "YYYY-MM-DD", "duration": 45, "exercises_count": 6}' . "\n";
-    $prompt .= '  ]' . "\n";
-    $prompt .= '}' . "\n";
-    $prompt .= 'IMPORTANT: Always return "name" and "scheduled_date" (YYYY-MM-DD) for upcoming workouts.';
+    $prompt .= '  "todays_workout": {"name": "Title", "exercises": [{"name": "Name", "search_term": "query", "sets": 3, "reps": 10, "instructions": "cues"}], "exercises_count": 5, "duration": 50, "difficulty": "beginner", "type": "strength"},';
+    $prompt .= '  "recovery_score": 90, "status": "READY FOR SESSION", "missed_workouts": [], "upcoming_workouts": [{"name": "Upper Body Power", "scheduled_date": "YYYY-MM-DD", "duration": 45, "exercises_count": 5, "exercises": [{"name": "Name", "sets": 3, "reps": 10, "instructions": "cues"}]}]';
+    $prompt .= "}\n";
     
-    // Call Gemini with graceful fallback
+    // Call Gemini with dynamic config
     try {
-        $aiResponse = callGemini($prompt, $GEMINI_API_KEY);
+        $aiResponse = callGemini($prompt, $GEMINI_API_KEY, $PRIMARY_MODEL, $AI_TEMPERATURE);
         
         // Clean response (remove markdown if present)
         $aiResponse = preg_replace('/```json\s*/', '', $aiResponse);
@@ -387,41 +858,21 @@ try {
             $exerciseName = $exercise['name'] ?? 'general exercise';
             $searchTerm = $exercise['search_term'] ?? $exerciseName;
             
-            $media = findExerciseVideo($exerciseName, $searchTerm, $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY, $workoutType);
+            // Premium AI Coach: Skip curated mapping to fetch direct dynamic AI results & live YouTube API
+            $media = findExerciseVideo($exerciseName, $searchTerm, $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY, $workoutType, true);
             $exercise['video_url'] = $media['video'];
             $exercise['image_url'] = $media['image'];
+
+            // Register this dynamic AI content inside the global Exercise Library!
+            saveExerciseToLibrary($pdo, $exercise, $workoutType, $workoutData['todays_workout']['difficulty'] ?? 'intermediate');
         }
     }
 
-    // 1. AUTO-HEALING: If AI fails or returns malformed data, use the high-quality mock
+    // 1. AUTO-HEALING: If AI fails or returns malformed data, use the high-quality backup generator
     if (!$workoutData || isset($workoutData['error']) || !isset($workoutData['todays_workout'])) {
-        error_log("⚠️ Gemini AI error or malformed data, fallback to mock.");
-        $workoutData = [
-            'todays_workout' => [
-                'name' => 'Fitrova Strength Starter',
-                'exercises' => [
-                    [
-                        'name' => 'Jumping Jacks',
-                        'sets' => 3, 'reps' => 20, 'duration' => 60,
-                        'image_url' => 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=800&q=80',
-                        'video_url' => $CATEGORY_FALLBACK_VIDEOS['cardio'],
-                        'instructions' => 'Stand with feet together and arms at sides. Jump and spread legs while swinging arms overhead.'
-                    ],
-                    [
-                        'name' => 'Deep Squats',
-                        'sets' => 3, 'reps' => 15, 'duration' => 60,
-                        'image_url' => 'https://images.unsplash.com/photo-1574680096145-d05b474e2158?w=800&q=80',
-                        'video_url' => $CATEGORY_FALLBACK_VIDEOS['strength'],
-                        'instructions' => 'Lower your hips as if sitting in a chair, keeping your chest up and weight on your heels.'
-                    ]
-                ],
-                'exercises_count' => 2,
-                'duration' => 20,
-                'difficulty' => 'beginner',
-                'type' => 'Full Body'
-            ]
-        ];
-        $ai_provider = 'Fitrova Internal (Fallback)';
+        error_log("⚠️ Gemini AI error or malformed data, fallback to local smart generator.");
+        $workoutData = getLocalSmartWorkout($profile, $hasEquipment, $CATEGORY_FALLBACK_VIDEOS);
+        $ai_provider = 'Fitrova Smart Engine (Backup)';
     } else {
         $ai_provider = 'Google Gemini Pro';
         
@@ -437,17 +888,54 @@ try {
                 $workoutData['todays_workout']['type'] ?? 'mixed',
                 json_encode($workoutData)
             ]);
+
+            // If this was generated as their one-off free trial session, mark trial as consumed!
+            if ($isTrialSession) {
+                AISubscriptionGate::consumeTrial($pdo, $userId);
+            }
         } catch (Exception $e) {
             error_log("Failed to save workout plan: " . $e->getMessage());
         }
     }
 
 finalize_response:
+    $hasEquipment = (bool)($profile['has_equipment'] ?? true);
+    if (!$hasEquipment) {
+        sanitizeAndForceBodyweight($workoutData);
+    }
+
+    // Auto-register today's exercises in the dynamic database library (handles loaded cached plans)
+    if (isset($workoutData['todays_workout']['exercises']) && is_array($workoutData['todays_workout']['exercises'])) {
+        $workoutType = $workoutData['todays_workout']['type'] ?? 'strength';
+        $difficulty = $workoutData['todays_workout']['difficulty'] ?? 'intermediate';
+        foreach ($workoutData['todays_workout']['exercises'] as $ex) {
+            saveExerciseToLibrary($pdo, $ex, $workoutType, $difficulty);
+        }
+    }
+
+    // Insert dynamic workout status as an AI insight notification
+    if (isset($workoutData['status']) && !empty($workoutData['status'])) {
+        // Check if this notification already exists for today to avoid spamming
+        $checkInsight = $pdo->prepare("
+            SELECT id FROM ai_insights 
+            WHERE user_id = ? AND insight_text = ? AND created_at >= CURDATE()
+        ");
+        $checkInsight->execute([$userId, $workoutData['status']]);
+        if (!$checkInsight->fetch()) {
+            $insightStmt = $pdo->prepare("
+                INSERT INTO ai_insights (user_id, insight_text, insight_type, is_read)
+                VALUES (?, ?, 'tip', FALSE)
+            ");
+            $insightStmt->execute([$userId, $workoutData['status']]);
+        }
+    }
 
     // 2. MANDATORY METADATA ENRICHMENT (Ensures frontend fields like 'completed' never crash)
+    // Weekly goal: count only workouts done this calendar week (Mon-Sun), capped at goal (4)
+    $goalPerWeek = 4;
     $workoutData['weekly_progress'] = [
-        'completed' => (int)($history['total_workouts'] ?? 0),
-        'goal' => 4
+        'completed' => min($weeklyCompleted, $goalPerWeek),
+        'goal'      => $goalPerWeek
     ];
     
     if (!isset($workoutData['status'])) $workoutData['status'] = 'READY FOR SESSION';
@@ -479,14 +967,21 @@ finalize_response:
                 $upcoming['exercises'] = [
                     ['name' => 'Forearm Plank', 'sets' => 3, 'reps' => 60, 'duration' => 60],
                     ['name' => 'Mountain Climbers', 'sets' => 3, 'reps' => 20, 'duration' => 60],
+                    ['name' => 'Bird Dog', 'sets' => 3, 'reps' => 12, 'duration' => 60],
+                    ['name' => 'Dead Bug', 'sets' => 3, 'reps' => 12, 'duration' => 60],
+                    ['name' => 'Side Plank', 'sets' => 3, 'reps' => 30, 'duration' => 60],
                 ];
             }
             
             // Match videos for upcoming exercises too
             foreach ($upcoming['exercises'] as &$ex) {
-                $m = findExerciseVideo($ex['name'], $ex['search_term'] ?? $ex['name'], $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY);
+                // Premium AI Coach: Skip curated mapping to fetch direct dynamic AI results & live YouTube API
+                $m = findExerciseVideo($ex['name'], $ex['search_term'] ?? $ex['name'], $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY, 'general', true);
                 $ex['video_url'] = $m['video'];
                 $ex['image_url'] = $m['image'];
+
+                // Register this dynamic AI content inside the global Exercise Library!
+                saveExerciseToLibrary($pdo, $ex, $upcoming['type'] ?? 'general', $upcoming['difficulty'] ?? 'intermediate');
             }
 
             if (!isset($upcoming['duration'])) $upcoming['duration'] = 45;
@@ -500,11 +995,19 @@ finalize_response:
                 'scheduled_date' => date('Y-m-d', strtotime('+1 day')),
                 'day_name' => date('l', strtotime('+1 day')),
                 'duration' => 45,
-                'exercises_count' => 3,
-                'exercises' => [
+                'exercises_count' => 5,
+                'exercises' => $hasEquipment ? [
                     ['name' => 'Push Ups', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=IODxDxX7oi4', 'image_url' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
-                    ['name' => 'Dumbbell Curls', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=F08VqG0k-gI', 'image_url' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
-                    ['name' => 'Lateral Raises', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=3VcKaXpzqRo', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800']
+                    ['name' => 'Dumbbell Rows', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=OL8yGrkXyiQ', 'image_url' => 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?w=800'],
+                    ['name' => 'Dumbbell Chest Press', 'sets' => 3, 'reps' => 10, 'video_url' => 'https://www.youtube.com/watch?v=mTaiQemkEpU', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+                    ['name' => 'Dumbbell Bicep Curls', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=ykJmrZ5v0Oo', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+                    ['name' => 'Dumbbell Lateral Raises', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=3VcKaXatLD0', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800']
+                ] : [
+                    ['name' => 'Push Ups', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=IODxDxX7oi4', 'image_url' => 'https://images.pexels.com/photos/4162451/pexels-photo-4162451.jpeg?w=800'],
+                    ['name' => 'Mountain Climbers', 'sets' => 3, 'reps' => 20, 'video_url' => 'https://www.youtube.com/watch?v=cnyTQDSE884', 'image_url' => 'https://images.pexels.com/photos/5178382/pexels-photo-5178382.jpeg?w=800'],
+                    ['name' => 'Plank Shoulder Taps', 'sets' => 3, 'reps' => 15, 'video_url' => 'https://www.youtube.com/watch?v=VfwCQ14soUo', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+                    ['name' => 'Tricep Dips', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=0326dy_-CzM', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800'],
+                    ['name' => 'Bear Crawls', 'sets' => 3, 'reps' => 10, 'video_url' => 'https://www.youtube.com/watch?v=7ZfXGgVsh04', 'image_url' => 'https://images.pexels.com/photos/3838937/pexels-photo-3838937.jpeg?w=800']
                 ]
             ],
             [
@@ -512,16 +1015,20 @@ finalize_response:
                 'scheduled_date' => date('Y-m-d', strtotime('+2 days')),
                 'day_name' => date('l', strtotime('+2 days')),
                 'duration' => 30,
-                'exercises_count' => 2,
+                'exercises_count' => 5,
                 'exercises' => [
                     ['name' => 'Forearm Plank', 'sets' => 3, 'reps' => 60, 'video_url' => 'https://www.youtube.com/watch?v=pSHjTRCQxIw', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
-                    ['name' => 'Russian Twists', 'sets' => 3, 'reps' => 20, 'video_url' => 'https://www.youtube.com/watch?v=Nm0h97Y4uqA', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800']
+                    ['name' => 'Russian Twists', 'sets' => 3, 'reps' => 20, 'video_url' => 'https://www.youtube.com/watch?v=Nm0h97Y4uqA', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+                    ['name' => 'Bird Dog', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=wiF5XMDjsVM', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+                    ['name' => 'Dead Bug', 'sets' => 3, 'reps' => 12, 'video_url' => 'https://www.youtube.com/watch?v=g_BYB0R1bf8', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800'],
+                    ['name' => 'Side Plank', 'sets' => 3, 'reps' => 30, 'video_url' => 'https://www.youtube.com/watch?v=NXr4Fwkuq0Y', 'image_url' => 'https://images.pexels.com/photos/6740056/pexels-photo-6740056.jpeg?w=800']
                 ]
             ]
         ];
     }
     
     // 4. SEND CLEAN RESPONSE
+    $workoutData['ai_provider'] = $ai_provider;
     echo json_encode([
         'status' => 'success',
         'data' => $workoutData,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,142 +7,478 @@ import {
   TouchableOpacity,
   Switch,
   Platform,
-  Alert
+  Alert,
+  Modal,
+  TextInput,
+  Linking,
+  KeyboardAvoidingView,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { changePassword, savePreferences } from '../../../services/api/settingsService';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+const LANGUAGES = [
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'pt', label: 'Português', flag: '🇧🇷' },
+  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
+];
+
+const FAQ_ITEMS = [
+  { q: 'How does AI Form Check work?', a: 'The AI Form Check uses your camera to record a 5-second video of your movement. Our AI analyzes your joint alignment and posture, then gives you a form score and corrections.' },
+  { q: 'Can I use Fitrova without equipment?', a: 'Yes! Fitrova generates bodyweight workout plans for users without equipment. Update your profile to set "No Equipment" and your plans will adapt accordingly.' },
+  { q: 'How is my calorie goal calculated?', a: 'Your daily calorie goal is based on your age, gender, height, weight, and activity level using the Mifflin-St Jeor formula, adjusted for your fitness goal.' },
+  { q: 'How do I unlock achievements?', a: 'Achievements unlock automatically when you complete workouts. For example, "First Step" unlocks after your first workout, and "7-Day Streak" requires 7 consecutive days of working out.' },
+  { q: 'Is my data safe?', a: 'Yes. Your data is stored securely on our servers. We never share your personal information with third parties. You can request data deletion at any time by contacting support.' },
+];
+
 export const SettingsScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [pushEnabled, setPushEnabled] = React.useState(true);
-  const [darkTheme, setDarkTheme] = React.useState(false);
+  const route = useRoute<RouteProp<RootStackParamList, 'Settings'>>();
+  const userId = route.params?.userId || 1;
+
+  // ── Preferences state ─────────────────────────────
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [darkTheme, setDarkTheme] = useState(false);
+  const [units, setUnits] = useState<'metric' | 'imperial'>('metric');
+  const [language, setLanguage] = useState('en');
+
+  // ── Modal visibility ──────────────────────────────
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showUnitsModal, setShowUnitsModal] = useState(false);
+
+  // ── Change password form ──────────────────────────
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  // ── FAQ accordion ─────────────────────────────────
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  // Dynamic theme colors
+  const colors = {
+    background: darkTheme ? '#0F172A' : '#F3F4F6', 
+    cardBg: darkTheme ? '#1E293B' : '#FFFFFF',     
+    text: darkTheme ? '#F8FAFC' : '#1F2937',       
+    textSecondary: darkTheme ? '#94A3B8' : '#6B7280', 
+    border: darkTheme ? '#334155' : '#F3F4F6',     
+    separator: darkTheme ? '#334155' : '#F3F4F6',
+    inputBg: darkTheme ? '#0F172A' : '#F9FAFB',
+    inputBorder: darkTheme ? '#334155' : '#E5E7EB',
+  };
+
+  // Load saved preferences from AsyncStorage on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+        if (saved) {
+          const prefs = JSON.parse(saved);
+          if (prefs.pushEnabled !== undefined) setPushEnabled(prefs.pushEnabled);
+          if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
+          if (prefs.units) setUnits(prefs.units);
+          if (prefs.language) setLanguage(prefs.language);
+        }
+      } catch (e) {}
+    })();
+  }, [userId]);
+
+  const persistPrefs = async (patch: object) => {
+    try {
+      const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+      const current = saved ? JSON.parse(saved) : {};
+      await AsyncStorage.setItem(`user_prefs_${userId}`, JSON.stringify({ ...current, ...patch }));
+    } catch (e) {}
+  };
+
+  const handleTogglePush = async (val: boolean) => {
+    setPushEnabled(val);
+    persistPrefs({ pushEnabled: val });
+    try { await savePreferences(userId, { notification_enabled: val }); } catch (_) {}
+  };
+
+  const handleToggleDark = async (val: boolean) => {
+    setDarkTheme(val);
+    persistPrefs({ darkTheme: val });
+  };
+
+  const handleSelectLanguage = async (code: string) => {
+    setLanguage(code);
+    setShowLanguageModal(false);
+    persistPrefs({ language: code });
+    try { await savePreferences(userId, { language: code }); } catch (_) {}
+  };
+
+  const handleSelectUnits = async (val: 'metric' | 'imperial') => {
+    setUnits(val);
+    setShowUnitsModal(false);
+    persistPrefs({ units: val });
+    try { await savePreferences(userId, { unit_preference: val }); } catch (_) {}
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPw || !newPw || !confirmPw) {
+      CustomAlert.alert('Missing Fields', 'Please fill in all password fields.');
+      return;
+    }
+    if (newPw.length < 8) {
+      CustomAlert.alert('Too Short', 'New password must be at least 8 characters.');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      CustomAlert.alert('Mismatch', 'New passwords do not match.');
+      return;
+    }
+    try {
+      setPwLoading(true);
+      await changePassword(userId, currentPw, newPw);
+      setShowPasswordModal(false);
+      setCurrentPw(''); setNewPw(''); setConfirmPw('');
+      CustomAlert.alert('✅ Password Changed', 'Your password has been updated successfully.');
+    } catch (err: any) {
+      CustomAlert.alert('Failed', err.message || 'Could not change password.');
+    } finally {
+      setPwLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out of your Fitrova account?",
+      'Log Out',
+      'Are you sure you want to log out of your Fitrova account?',
       [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Log Out", 
-          style: "destructive",
-          onPress: () => {
-            // Navigate back to the initial Welcome screen, clearing the stack
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Welcome' }],
-            });
-          }
-        }
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            try { await AsyncStorage.removeItem('user_session'); } catch (e) {}
+            navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
+          },
+        },
       ]
     );
   };
 
-  const renderSectionHeader = (title: string) => (
-    <Text style={styles.sectionTitle}>{title}</Text>
+  const currentLang = LANGUAGES.find(l => l.code === language);
+
+  // ── Render helpers ────────────────────────────────
+  const renderSection = (title: string) => (
+    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
   );
 
-  const renderSettingRow = (
+  const renderRow = (
     icon: keyof typeof Ionicons.glyphMap,
     title: string,
     onPress?: () => void,
     control?: React.ReactNode,
     isDestructive?: boolean
   ) => (
-    <TouchableOpacity 
-      style={styles.settingRow} 
-      onPress={onPress} 
+    <TouchableOpacity
+      style={[styles.settingRow, { backgroundColor: colors.cardBg }]}
+      onPress={onPress}
       disabled={!onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconBox, isDestructive && styles.iconBoxDestructive]}>
-        <Ionicons name={icon} size={20} color={isDestructive ? "#EF4444" : "#10B981"} />
+      <View style={[
+        styles.iconBox, 
+        isDestructive ? styles.iconBoxDestructive : (darkTheme && { backgroundColor: '#064E3B' })
+      ]}>
+        <Ionicons name={icon} size={20} color={isDestructive ? '#EF4444' : '#34D399'} />
       </View>
-      <Text style={[styles.settingTitle, isDestructive && styles.settingTitleDestructive]}>
+      <Text style={[
+        styles.settingTitle, 
+        { color: isDestructive ? '#EF4444' : colors.text }
+      ]}>
         {title}
       </Text>
       <View style={styles.controlContainer}>
-        {control ? control : <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />}
+        {control !== undefined ? control : <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Account Section */}
-        {renderSectionHeader('ACCOUNT')}
-        <View style={styles.card}>
-          {renderSettingRow('person-outline', 'Edit Profile', () => {})}
-          <View style={styles.separator} />
-          {renderSettingRow('lock-closed-outline', 'Security & Password', () => {})}
-          <View style={styles.separator} />
-          {renderSettingRow('shield-checkmark-outline', 'Privacy Preferences', () => {})}
+
+        {/* ACCOUNT */}
+        {renderSection('ACCOUNT')}
+        <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          {renderRow('person-outline', 'Edit Profile', () => navigation.navigate('EditProfile', { userId }))}
+          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
+          {renderRow('lock-closed-outline', 'Security & Password', () => setShowPasswordModal(true))}
+          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
+          {renderRow('shield-checkmark-outline', 'Unit Preferences', () => setShowUnitsModal(true), (
+            <Text style={[styles.valueText, { color: colors.textSecondary }]}>{units === 'metric' ? 'kg / cm' : 'lbs / ft'}</Text>
+          ))}
         </View>
 
-        {/* Preferences Section */}
-        {renderSectionHeader('PREFERENCES')}
-        <View style={styles.card}>
-          {renderSettingRow(
-            'notifications-outline', 
-            'Push Notifications', 
-            undefined, 
-            <Switch 
-              value={pushEnabled} 
-              onValueChange={setPushEnabled}
-              trackColor={{ false: '#E2E8F0', true: '#34D399' }}
+        {/* PREFERENCES */}
+        {renderSection('PREFERENCES')}
+        <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          {renderRow(
+            'notifications-outline',
+            'Push Notifications',
+            undefined,
+            <Switch
+              value={pushEnabled}
+              onValueChange={handleTogglePush}
+              trackColor={{ false: darkTheme ? '#334155' : '#E2E8F0', true: '#34D399' }}
               thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : pushEnabled ? '#10B981' : '#F8FAFC'}
             />
           )}
-          <View style={styles.separator} />
-          {renderSettingRow(
-            'moon-outline', 
-            'Dark Mode', 
-            undefined, 
-            <Switch 
-              value={darkTheme} 
-              onValueChange={setDarkTheme}
-              trackColor={{ false: '#E2E8F0', true: '#34D399' }}
+          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
+          {renderRow(
+            'moon-outline',
+            'Dark Mode',
+            undefined,
+            <Switch
+              value={darkTheme}
+              onValueChange={handleToggleDark}
+              trackColor={{ false: darkTheme ? '#334155' : '#E2E8F0', true: '#34D399' }}
               thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : darkTheme ? '#10B981' : '#F8FAFC'}
             />
           )}
-          <View style={styles.separator} />
-          {renderSettingRow('language-outline', 'Language', () => {}, <Text style={styles.valueText}>English</Text>)}
+          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
+          {renderRow('language-outline', 'Language', () => setShowLanguageModal(true), (
+            <Text style={[styles.valueText, { color: colors.textSecondary }]}>{currentLang?.flag} {currentLang?.label}</Text>
+          ))}
         </View>
 
-        {/* Support Section */}
-        {renderSectionHeader('SUPPORT')}
-        <View style={styles.card}>
-          {renderSettingRow('help-buoy-outline', 'Help Center', () => {})}
-          <View style={styles.separator} />
-          {renderSettingRow('bug-outline', 'Report a Bug', () => {})}
-          <View style={styles.separator} />
-          {renderSettingRow('document-text-outline', 'Terms of Service', () => {})}
+        {/* SUPPORT */}
+        {renderSection('SUPPORT')}
+        <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          {renderRow('help-buoy-outline', 'Help Center', () => setShowHelpModal(true))}
+          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
+          {renderRow('bug-outline', 'Report a Bug', () =>
+            Linking.openURL('mailto:support@fitrova.app?subject=Bug%20Report&body=Describe%20the%20bug%20here...')
+          )}
+          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
+          {renderRow('document-text-outline', 'Terms of Service', () =>
+            Linking.openURL('https://www.fitrova.app/terms')
+          )}
+          <View style={[styles.separator, { backgroundColor: colors.separator }]} />
+          {renderRow('information-circle-outline', 'Privacy Policy', () =>
+            Linking.openURL('https://www.fitrova.app/privacy')
+          )}
         </View>
 
-        {/* App Info / Logout */}
-        <View style={[styles.card, styles.logoutCard]}>
-          {renderSettingRow('log-out-outline', 'Log Out', handleLogout, <View />, true)}
+        {/* LOGOUT */}
+        <View style={[styles.card, styles.logoutCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          {renderRow('log-out-outline', 'Log Out', handleLogout, <View />, true)}
         </View>
-        <Text style={styles.versionText}>Fitrova v1.2.0 (Build 42)</Text>
-
+        <Text style={[styles.versionText, { color: colors.textSecondary }]}>Fitrova v1.2.0 · Build 42</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── Change Password Modal ──────────────────── */}
+      <Modal visible={showPasswordModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPasswordModal(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Change Password</Text>
+              <TouchableOpacity onPress={() => { setShowPasswordModal(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); }}>
+                <Ionicons name="close" size={26} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <Text style={[styles.modalSubtext, { color: colors.textSecondary }]}>Enter your current password, then choose a new one (min. 8 characters).</Text>
+
+              {/* Current password */}
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Current Password</Text>
+              <View style={[styles.passwordRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
+                <TextInput
+                  style={[styles.passwordInput, { color: colors.text }]}
+                  value={currentPw}
+                  onChangeText={setCurrentPw}
+                  secureTextEntry={!showCurrentPw}
+                  placeholder="Enter current password"
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowCurrentPw(p => !p)} style={styles.eyeBtn}>
+                  <Ionicons name={showCurrentPw ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* New password */}
+              <Text style={[styles.inputLabel, { color: colors.text }]}>New Password</Text>
+              <View style={[styles.passwordRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
+                <TextInput
+                  style={[styles.passwordInput, { color: colors.text }]}
+                  value={newPw}
+                  onChangeText={setNewPw}
+                  secureTextEntry={!showNewPw}
+                  placeholder="At least 8 characters"
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowNewPw(p => !p)} style={styles.eyeBtn}>
+                  <Ionicons name={showNewPw ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Confirm */}
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Confirm New Password</Text>
+              <View style={[styles.passwordRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
+                <TextInput
+                  style={[styles.passwordInput, { color: colors.text }]}
+                  value={confirmPw}
+                  onChangeText={setConfirmPw}
+                  secureTextEntry
+                  placeholder="Repeat new password"
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, pwLoading && { opacity: 0.6 }]}
+                onPress={handleChangePassword}
+                disabled={pwLoading}
+              >
+                <Text style={styles.saveBtnText}>{pwLoading ? 'Saving...' : 'Update Password'}</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Units Modal ──────────────────────────────── */}
+      <Modal visible={showUnitsModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowUnitsModal(false)}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Unit Preferences</Text>
+            <TouchableOpacity onPress={() => setShowUnitsModal(false)}>
+              <Ionicons name="close" size={26} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
+            <Text style={[styles.modalSubtext, { color: colors.textSecondary }]}>Choose how weight and height are displayed throughout the app.</Text>
+            {[
+              { val: 'metric' as const, label: 'Metric', detail: 'Kilograms (kg) · Centimetres (cm)', icon: '🌍' },
+              { val: 'imperial' as const, label: 'Imperial', detail: 'Pounds (lbs) · Feet & Inches (ft)', icon: '🌎' },
+            ].map(opt => (
+              <TouchableOpacity
+                key={opt.val}
+                style={[styles.optionRow, { backgroundColor: darkTheme ? '#1E293B' : '#FAFAFA', borderColor: colors.inputBorder }, units === opt.val && styles.optionRowActive]}
+                onPress={() => handleSelectUnits(opt.val)}
+              >
+                <Text style={styles.optionFlag}>{opt.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.optionLabel, { color: colors.text }, units === opt.val && styles.optionLabelActive]}>{opt.label}</Text>
+                  <Text style={[styles.optionDetail, { color: colors.textSecondary }]}>{opt.detail}</Text>
+                </View>
+                {units === opt.val && <Ionicons name="checkmark-circle" size={22} color="#10B981" />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Language Modal ────────────────────────────── */}
+      <Modal visible={showLanguageModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowLanguageModal(false)}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Language</Text>
+            <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
+              <Ionicons name="close" size={26} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent} style={{ backgroundColor: colors.cardBg }}>
+            <Text style={[styles.modalSubtext, { color: colors.textSecondary }]}>Select your preferred display language.</Text>
+            {LANGUAGES.map(lang => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[styles.optionRow, { backgroundColor: darkTheme ? '#1E293B' : '#FAFAFA', borderColor: colors.inputBorder }, language === lang.code && styles.optionRowActive]}
+                onPress={() => handleSelectLanguage(lang.code)}
+              >
+                <Text style={styles.optionFlag}>{lang.flag}</Text>
+                <Text style={[styles.optionLabel, { color: colors.text }, language === lang.code && styles.optionLabelActive]}>{lang.label}</Text>
+                {language === lang.code && <Ionicons name="checkmark-circle" size={22} color="#10B981" />}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Help Center / FAQ Modal ──────────────────── */}
+      <Modal visible={showHelpModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowHelpModal(false)}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Help Center</Text>
+            <TouchableOpacity onPress={() => setShowHelpModal(false)}>
+              <Ionicons name="close" size={26} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent} style={{ backgroundColor: colors.cardBg }}>
+            <Text style={[styles.modalSubtext, { color: colors.textSecondary }]}>Frequently asked questions about Fitrova.</Text>
+
+            {FAQ_ITEMS.map((item, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[styles.faqItem, { backgroundColor: darkTheme ? '#1E293B' : '#F9FAFB', borderColor: colors.inputBorder }]}
+                onPress={() => setOpenFaq(openFaq === i ? null : i)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.faqQuestion}>
+                  <Text style={[styles.faqQuestionText, { color: colors.text }]}>{item.q}</Text>
+                  <Ionicons
+                    name={openFaq === i ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={colors.textSecondary}
+                  />
+                </View>
+                {openFaq === i && (
+                  <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>{item.a}</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+
+            <View style={[styles.contactBox, { backgroundColor: darkTheme ? '#064E3B' : '#F0FDF4', borderColor: darkTheme ? '#065F46' : '#D1FAE5' }]}>
+              <Ionicons name="mail-outline" size={24} color="#10B981" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.contactTitle, { color: colors.text }]}>Still need help?</Text>
+                <Text style={[styles.contactSub, { color: colors.textSecondary }]}>Our team is here to help you.</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.contactBtn}
+                onPress={() => Linking.openURL('mailto:support@fitrova.app')}
+              >
+                <Text style={styles.contactBtnText}>Email Us</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -150,7 +486,7 @@ export const SettingsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6', // slightly darker off-white for contrast against white cards
+    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
@@ -231,10 +567,10 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#F3F4F6',
-    marginLeft: 68, // Aligns exactly with the text start
+    marginLeft: 68,
   },
   valueText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
   },
@@ -248,5 +584,168 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontWeight: '600',
     letterSpacing: 0.5,
-  }
+  },
+
+  // ── Modals ────────────────────────────────────────
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  modalContent: {
+    padding: 24,
+    gap: 16,
+  },
+  modalSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+
+  // Password inputs
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    height: 52,
+    marginBottom: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1F2937',
+  },
+  eyeBtn: {
+    padding: 4,
+  },
+  saveBtn: {
+    backgroundColor: '#10B981',
+    height: 52,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  // Options (units/language)
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    gap: 14,
+    backgroundColor: '#FAFAFA',
+  },
+  optionRowActive: {
+    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  optionFlag: {
+    fontSize: 24,
+  },
+  optionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  optionLabelActive: {
+    color: '#10B981',
+  },
+  optionDetail: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+
+  // FAQ
+  faqItem: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    gap: 10,
+  },
+  faqQuestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  faqQuestionText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  faqAnswer: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+
+  // Contact box
+  contactBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+    marginTop: 8,
+  },
+  contactTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  contactSub: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  contactBtn: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  contactBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });
