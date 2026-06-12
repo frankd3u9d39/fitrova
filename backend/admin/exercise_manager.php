@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/auth_check.php';
 require_once __DIR__ . '/../config/db_config.php';
 
 // Handle Add/Edit/Delete via POST

@@ -58,6 +58,12 @@ $stats = ['ai_generations' => $aiGenerationsToday];
             <span class="material-symbols-outlined" <?php echo activeIcon('ai_control.php', $current_page); ?>>insights</span>
             Analytics
         </a>
+        
+        <!-- Logout -->
+        <a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 text-red-500 hover:bg-red-500/10 hover:text-red-600" href="logout.php">
+            <span class="material-symbols-outlined">logout</span>
+            Logout
+        </a>
     </div>
     
     <div class="mt-auto pt-4 space-y-3">
