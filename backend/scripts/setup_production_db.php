@@ -328,6 +328,7 @@ $settings = [
     ['ai_model_primary', 'gemini-1.5-flash', 'The main AI model for workout generation', 'ai'],
     ['ai_system_prompt', 'You are a professional fitness trainer. Generate a personalized workout plan based on the users nutrition and weight trends.', 'The base personality of the AI', 'ai'],
     ['ai_temperature', '0.7', 'Creativity level of the AI (0.0 to 1.0)', 'ai'],
+    ['hf_token', '', 'Hugging Face Access Token for Serverless Inference model fallbacks (Gemma 2)', 'ai'],
     ['maintenance_mode', 'false', 'Disable app access for maintenance', 'system']
 ];
 
