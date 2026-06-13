@@ -6,6 +6,7 @@ export interface ChallengeParticipant {
   initials: string;
   color: string;
   is_me?: boolean;
+  profile_picture?: string | null;
 }
 
 export interface Challenge {

@@ -129,6 +129,11 @@ try {
     $calorieGoal = isset($profile['daily_calorie_goal']) ? intval($profile['daily_calorie_goal']) : 2000;
     $proteinGoal = round(($calorieGoal * 0.30) / 4);
 
+    // Dynamic daily offset (-2 to +2) based on date to make counts change every day
+    $dayOfYear = intval(date('z'));
+    $year = intval(date('Y'));
+    $dailyOffset = (($dayOfYear * 7 + $year) % 5) - 2;
+
     $rawChallenges = [];
 
     // Challenge 1: Custom based on Weight Goal
@@ -140,7 +145,7 @@ try {
             'difficulty' => 'Intermediate',
             'duration' => '5 Days',
             'target_value' => $calorieGoal,
-            'base_participants' => 24,
+            'base_participants' => 7,
         ];
     } else if ($weight < $target) {
         $rawChallenges[] = [
@@ -150,7 +155,7 @@ try {
             'difficulty' => 'Advanced',
             'duration' => '7 Days',
             'target_value' => $proteinGoal,
-            'base_participants' => 21,
+            'base_participants' => 6,
         ];
     } else {
         $rawChallenges[] = [
@@ -160,7 +165,7 @@ try {
             'difficulty' => 'Beginner',
             'duration' => '5 Days',
             'target_value' => $calorieGoal,
-            'base_participants' => 20,
+            'base_participants' => 5,
         ];
     }
 
@@ -174,7 +179,7 @@ try {
             'difficulty' => 'Advanced',
             'duration' => '7 Days',
             'target_value' => 4,
-            'base_participants' => 28,
+            'base_participants' => 9,
         ];
     } else {
         $rawChallenges[] = [
@@ -184,7 +189,7 @@ try {
             'difficulty' => 'Intermediate',
             'duration' => '7 Days',
             'target_value' => 3,
-            'base_participants' => 22,
+            'base_participants' => 6,
         ];
     }
 
@@ -196,24 +201,24 @@ try {
         'difficulty' => 'Beginner',
         'duration' => '7 Days',
         'target_value' => 3,
-        'base_participants' => 33,
+        'base_participants' => 11,
     ];
 
-    // Mock participants database
+    // Mock participants database with profile picture URLs
     $mockPeople = [
-        ['first_name' => 'Sarah', 'last_name' => 'Jenkins', 'initials' => 'SJ', 'color' => '#10B981'],
-        ['first_name' => 'Michael', 'last_name' => 'Chen', 'initials' => 'MC', 'color' => '#3B82F6'],
-        ['first_name' => 'Jessica', 'last_name' => 'Taylor', 'initials' => 'JT', 'color' => '#F59E0B'],
-        ['first_name' => 'David', 'last_name' => 'Ross', 'initials' => 'DR', 'color' => '#EF4444'],
-        ['first_name' => 'Emily', 'last_name' => 'Davis', 'initials' => 'ED', 'color' => '#8B5CF6'],
-        ['first_name' => 'James', 'last_name' => 'Wilson', 'initials' => 'JW', 'color' => '#EC4899'],
+        ['first_name' => 'Sarah', 'last_name' => 'Jenkins', 'initials' => 'SJ', 'color' => '#10B981', 'profile_picture' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'],
+        ['first_name' => 'Michael', 'last_name' => 'Chen', 'initials' => 'MC', 'color' => '#3B82F6', 'profile_picture' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'],
+        ['first_name' => 'Jessica', 'last_name' => 'Taylor', 'initials' => 'JT', 'color' => '#F59E0B', 'profile_picture' => 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150'],
+        ['first_name' => 'David', 'last_name' => 'Ross', 'initials' => 'DR', 'color' => '#EF4444', 'profile_picture' => null],
+        ['first_name' => 'Emily', 'last_name' => 'Davis', 'initials' => 'ED', 'color' => '#8B5CF6', 'profile_picture' => 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150'],
+        ['first_name' => 'James', 'last_name' => 'Wilson', 'initials' => 'JW', 'color' => '#EC4899', 'profile_picture' => null],
     ];
 
     $challenges = [];
     foreach ($rawChallenges as $idx => $chal) {
         $key = $chal['key'];
         $joined = in_array($key, $joinedKeys);
-        $count = $chal['base_participants'] + ($joined ? 1 : 0);
+        $count = max(3, $chal['base_participants'] + $dailyOffset) + ($joined ? 1 : 0);
         
         // Take a deterministic slice of mock people based on index
         $sliceOffset = ($idx * 2) % count($mockPeople);
@@ -225,6 +230,7 @@ try {
                 'last_name' => $profile['last_name'] ?? '',
                 'initials' => strtoupper(substr($profile['first_name'] ?? 'Y', 0, 1) . substr($profile['last_name'] ?? '', 0, 1)),
                 'color' => '#10B981',
+                'profile_picture' => $profile['profile_picture'] ?? null,
                 'is_me' => true
             ];
             array_unshift($participants, $currentUser);

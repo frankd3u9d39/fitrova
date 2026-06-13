@@ -518,10 +518,17 @@ export const DashboardScreen = () => {
                         key={index} 
                         style={[
                           styles.participantAvatarCircle, 
-                          { backgroundColor: participant.color, zIndex: 10 - index }
+                          { backgroundColor: participant.profile_picture ? 'transparent' : participant.color, zIndex: 10 - index }
                         ]}
                       >
-                        <Text style={styles.participantAvatarText}>{participant.initials}</Text>
+                        {participant.profile_picture ? (
+                          <Image 
+                            source={{ uri: participant.profile_picture }} 
+                            style={styles.participantAvatarImage} 
+                          />
+                        ) : (
+                          <Text style={styles.participantAvatarText}>{participant.initials}</Text>
+                        )}
                       </View>
                     ))}
                     {challenge.participants_count > challenge.participants.length && (
@@ -1293,6 +1300,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '800',
+  },
+  participantAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
   },
   othersText: {
     fontSize: 11,
