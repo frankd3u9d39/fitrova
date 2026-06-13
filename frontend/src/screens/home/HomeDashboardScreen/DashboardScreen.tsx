@@ -9,6 +9,7 @@ import { MainTabParamList } from '../../../navigation/types';
 import { getDashboardData, DashboardData, logWeight, joinChallenge } from '../../../services/api/dashboardService';
 import { notificationService, Notification } from '../../../services/api/notificationService';
 import { AICoachModal } from '../../../components/common/AICoachModal';
+import LottieView from 'lottie-react-native';
 
 type DashboardRouteProp = RouteProp<MainTabParamList, 'Home'>;
 
@@ -28,6 +29,7 @@ export const DashboardScreen = () => {
   const [weightInput, setWeightInput] = useState('');
   const [loggingWeight, setLoggingWeight] = useState(false);
   const [joiningChallengeKey, setJoiningChallengeKey] = useState<string | null>(null);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   // Notification states
   const [unreadCount, setUnreadCount] = useState(0);
@@ -56,22 +58,22 @@ export const DashboardScreen = () => {
         }).start();
       });
     }, 10000); // 10 seconds interval (calmer transition)
-    
+
     return () => clearInterval(interval);
   }, [fadeAnim]);
-  
+
   // Get userId from route params or use default (you should pass this from login)
   const userId = route.params?.userId || 1; // TODO: Get from auth context
 
   // Dynamic theme palette
   const colors = {
     background: darkTheme ? '#0F172A' : '#F9FAFB',
-    cardBg:     darkTheme ? '#1E293B' : '#FFFFFF',
-    text:       darkTheme ? '#F8FAFC' : '#1F2937',
+    cardBg: darkTheme ? '#1E293B' : '#FFFFFF',
+    text: darkTheme ? '#F8FAFC' : '#1F2937',
     textSecondary: darkTheme ? '#94A3B8' : '#6B7280',
-    border:     darkTheme ? '#334155' : '#E5E7EB',
-    surface:    darkTheme ? '#1E293B' : '#FFFFFF',
-    barEmpty:   darkTheme ? 'rgba(51,65,85,0.6)' : 'rgba(229,231,235,0.3)',
+    border: darkTheme ? '#334155' : '#E5E7EB',
+    surface: darkTheme ? '#1E293B' : '#FFFFFF',
+    barEmpty: darkTheme ? 'rgba(51,65,85,0.6)' : 'rgba(229,231,235,0.3)',
   };
 
   const getGreeting = () => {
@@ -80,7 +82,7 @@ export const DashboardScreen = () => {
     if (hour < 18) return 'Good Afternoon';
     return 'Good Evening';
   };
-  
+
   useFocusEffect(
     React.useCallback(() => {
       // Load dark mode preference
@@ -91,7 +93,7 @@ export const DashboardScreen = () => {
             const prefs = JSON.parse(saved);
             if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
           }
-        } catch (e) {}
+        } catch (e) { }
       })();
       loadDashboardData();
       fetchNotifications();
@@ -100,7 +102,7 @@ export const DashboardScreen = () => {
 
   useEffect(() => {
     let timer: any;
-    
+
     const checkDismissalAndSchedule = async () => {
       if (!loading && dashboardData) {
         try {
@@ -123,9 +125,9 @@ export const DashboardScreen = () => {
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         const todayDateStr = `${year}-${month}-${day}`;
-        
+
         const loggedToday = dashboardData.weight.history.some(w => w.recorded_date === todayDateStr);
-        
+
         if (!loggedToday) {
           timer = setTimeout(() => {
             setShowAIPromptModal(true);
@@ -174,7 +176,7 @@ export const DashboardScreen = () => {
       console.error('Error saving weight prompt dismissal status:', e);
     }
   };
-  
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -213,14 +215,14 @@ export const DashboardScreen = () => {
       setJoiningChallengeKey(challengeKey);
       const action = currentJoined ? 'leave' : 'join';
       await joinChallenge(userId, challengeKey, action);
-      
+
       // Update local state to feel snappy
       if (dashboardData) {
         const updatedChallenges = dashboardData.challenges.map((c) => {
           if (c.key === challengeKey) {
             const countOffset = currentJoined ? -1 : 1;
             const updatedJoined = !currentJoined;
-            
+
             // Recompute mock participants slice for me
             let updatedParticipants = [...c.participants];
             if (updatedJoined) {
@@ -253,34 +255,42 @@ export const DashboardScreen = () => {
           challenges: updatedChallenges,
         });
       }
+
+      if (action === 'join') {
+        setShowSuccessAnimation(true);
+        setTimeout(() => {
+          setShowSuccessAnimation(false);
+        }, 2000);
+      }
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not update challenge.');
     } finally {
       setJoiningChallengeKey(null);
     }
   };
-  
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading your dashboard...</Text>
-          <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 8, textAlign: 'center' }}>
-            If this takes too long, check your network connection.
-          </Text>
+          <LottieView
+            source={require('../../../../assets/animations/watermelon.json')}
+            autoPlay
+            loop
+            style={{ width: 120, height: 120 }}
+          />
         </View>
       </SafeAreaView>
     );
   }
-  
+
   if (error || !dashboardData) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
           <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error || 'Unable to load data'}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={loadDashboardData}
             style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: theme.colors.primary, borderRadius: 12 }}
           >
@@ -291,7 +301,7 @@ export const DashboardScreen = () => {
     );
   }
 
-  
+
   const firstName = dashboardData.user.first_name;
   const lastName = dashboardData.user.last_name;
   const profilePicture = dashboardData.user.profile_picture;
@@ -302,11 +312,11 @@ export const DashboardScreen = () => {
   const weightHistory = dashboardData.weight.history;
   const todayWorkout = dashboardData.today_workout;
   const insight = dashboardData.insight;
-  
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Header Section */}
         <View style={styles.header}>
           <View style={styles.headerTextContainer}>
@@ -314,8 +324,8 @@ export const DashboardScreen = () => {
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{"Ready to crush your goals today?"}</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity 
-              style={[styles.bellButton, { backgroundColor: colors.cardBg, borderColor: colors.border }]} 
+            <TouchableOpacity
+              style={[styles.bellButton, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
               onPress={() => navigation.navigate('Notifications', { userId })}
               activeOpacity={0.7}
             >
@@ -343,42 +353,42 @@ export const DashboardScreen = () => {
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          
+
           {/* AI Health Score Card */}
           <View style={[styles.statCard, styles.healthCard, { backgroundColor: colors.cardBg }]}>
             <View style={styles.cardHeaderRow}>
-               <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>AI HEALTH SCORE</Text>
-               <Ionicons name="sparkles" size={14} color={theme.colors.primary} />
+              <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>AI HEALTH SCORE</Text>
+              <Ionicons name="sparkles" size={14} color={theme.colors.primary} />
             </View>
             <View style={styles.healthScoreContent}>
               <View style={styles.scoreCircle}>
                 <Text style={[styles.scoreNumber, { color: colors.text }]}>{healthScore}</Text>
               </View>
               <View style={styles.scoreDetails}>
-                 <Text style={styles.scoreChange}>↗ +5 pts</Text>
-                 <Text style={[styles.scoreSubtext, { color: colors.textSecondary }]}>Out of 100</Text>
+                <Text style={styles.scoreChange}>↗ +5 pts</Text>
+                <Text style={[styles.scoreSubtext, { color: colors.textSecondary }]}>Out of 100</Text>
               </View>
             </View>
           </View>
 
           {/* Calories Card */}
           <View style={[styles.statCard, styles.caloriesCard, { backgroundColor: colors.cardBg }]}>
-             <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>CALORIES</Text>
-             <View style={styles.caloriesContent}>
-               <View style={styles.fireIconContainer}>
-                 <Ionicons name="flame" size={20} color="#FF6B35" />
-               </View>
-               <Text style={[styles.calorieValue, { color: colors.text }]}>{caloriesConsumed.toLocaleString()}</Text>
-               <Text style={[styles.calorieTarget, { color: colors.textSecondary }]}>/ {caloriesGoal.toLocaleString()}</Text>
-             </View>
+            <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>CALORIES</Text>
+            <View style={styles.caloriesContent}>
+              <View style={styles.fireIconContainer}>
+                <Ionicons name="flame" size={20} color="#FF6B35" />
+              </View>
+              <Text style={[styles.calorieValue, { color: colors.text }]}>{caloriesConsumed.toLocaleString()}</Text>
+              <Text style={[styles.calorieTarget, { color: colors.textSecondary }]}>/ {caloriesGoal.toLocaleString()}</Text>
+            </View>
           </View>
 
         </View>
 
         {/* Today's Workout Hero */}
         <View style={styles.workoutCard}>
-          <Animated.Image 
-            source={workoutImages[currentWorkoutImageIndex]} 
+          <Animated.Image
+            source={workoutImages[currentWorkoutImageIndex]}
             style={[
               StyleSheet.absoluteFillObject,
               { opacity: fadeAnim, borderRadius: theme.borderRadius.xl }
@@ -386,79 +396,79 @@ export const DashboardScreen = () => {
             resizeMode="cover"
           />
           <View style={styles.workoutCardOverlay}>
-             <Text style={styles.workoutSubtitle}>TODAY'S WORKOUT</Text>
-             {todayWorkout ? (
-               <>
-                 <Text style={styles.workoutTitle}>{todayWorkout.name}</Text>
-                 <View style={styles.durationBadge}>
-                   <Ionicons name="time-outline" size={12} color="#fff" />
-                   <Text style={styles.durationText}> {todayWorkout.duration} min</Text>
-                 </View>
-               </>
-             ) : (
-               <Text style={styles.workoutTitle}>No workout{'\n'}scheduled</Text>
-             )}
+            <Text style={styles.workoutSubtitle}>TODAY'S WORKOUT</Text>
+            {todayWorkout ? (
+              <>
+                <Text style={styles.workoutTitle}>{todayWorkout.name}</Text>
+                <View style={styles.durationBadge}>
+                  <Ionicons name="time-outline" size={12} color="#fff" />
+                  <Text style={styles.durationText}> {todayWorkout.duration} min</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.workoutTitle}>No workout{'\n'}scheduled</Text>
+            )}
           </View>
         </View>
 
         {/* Weight Trend */}
         <View style={styles.trendSection}>
-           <View style={styles.trendHeader}>
-              <Text style={[styles.trendTitle, { color: colors.textSecondary }]}>WEIGHT TREND</Text>
-               <View>
-                 <Text style={[styles.trendValue, { color: colors.text }]}>
-                   {currentWeight > 0 ? currentWeight.toFixed(1) : '--'}
-                   <Text style={[styles.trendUnit, { color: colors.textSecondary }]}> kg</Text>
-                 </Text>
-               </View>
-           </View>
-           
-           <View style={[styles.chartContainer, { backgroundColor: colors.cardBg }]}>
-             <View style={styles.chartBars}>
-                {(() => {
-                  const last7Days = [];
-                  const today = new Date();
-                  for (let i = 6; i >= 0; i--) {
-                    const date = new Date(today);
-                    date.setDate(date.getDate() - i);
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    const dateStr = `${year}-${month}-${day}`;
-                    const entry = weightHistory.find(w => w.recorded_date === dateStr);
-                    last7Days.push({
-                      date: dateStr,
-                      dayName: ['SUN','MON','TUE','WED','THU','FRI','SAT'][date.getDay()],
-                      weight: entry ? Number(entry.weight) : null,
-                      isToday: i === 0,
-                    });
-                  }
-                  const weights = last7Days.filter(d => d.weight !== null).map(d => d.weight!);
-                  const maxWeight = weights.length > 0 ? Math.max(...weights) : 100;
-                  const minWeight = weights.length > 0 ? Math.min(...weights) : 90;
-                  const range = maxWeight - minWeight || 5;
-                  return last7Days.map((day, index) => {
-                    const h = day.weight
-                      ? ((day.weight - minWeight) / range) * 70 + 30
-                      : 15;
-                    return (
-                      <View key={index} style={styles.barWrapper}>
-                        <View style={styles.barContainer}>
-                          <View style={[
-                            styles.barFill,
-                            { backgroundColor: colors.border },
-                            day.isToday && styles.barFillActive,
-                            !day.weight && { backgroundColor: colors.barEmpty },
-                            { height: `${h}%` }
-                          ]} />
-                        </View>
-                        <Text style={[styles.chartLabel, { color: colors.textSecondary }, day.isToday && styles.chartLabelActive]}>{day.dayName}</Text>
-                      </View>
-                    );
+          <View style={styles.trendHeader}>
+            <Text style={[styles.trendTitle, { color: colors.textSecondary }]}>WEIGHT TREND</Text>
+            <View>
+              <Text style={[styles.trendValue, { color: colors.text }]}>
+                {currentWeight > 0 ? currentWeight.toFixed(1) : '--'}
+                <Text style={[styles.trendUnit, { color: colors.textSecondary }]}> kg</Text>
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.chartContainer, { backgroundColor: colors.cardBg }]}>
+            <View style={styles.chartBars}>
+              {(() => {
+                const last7Days = [];
+                const today = new Date();
+                for (let i = 6; i >= 0; i--) {
+                  const date = new Date(today);
+                  date.setDate(date.getDate() - i);
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  const dateStr = `${year}-${month}-${day}`;
+                  const entry = weightHistory.find(w => w.recorded_date === dateStr);
+                  last7Days.push({
+                    date: dateStr,
+                    dayName: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][date.getDay()],
+                    weight: entry ? Number(entry.weight) : null,
+                    isToday: i === 0,
                   });
-                })()}
-             </View>
-           </View>
+                }
+                const weights = last7Days.filter(d => d.weight !== null).map(d => d.weight!);
+                const maxWeight = weights.length > 0 ? Math.max(...weights) : 100;
+                const minWeight = weights.length > 0 ? Math.min(...weights) : 90;
+                const range = maxWeight - minWeight || 5;
+                return last7Days.map((day, index) => {
+                  const h = day.weight
+                    ? ((day.weight - minWeight) / range) * 70 + 30
+                    : 15;
+                  return (
+                    <View key={index} style={styles.barWrapper}>
+                      <View style={styles.barContainer}>
+                        <View style={[
+                          styles.barFill,
+                          { backgroundColor: colors.border },
+                          day.isToday && styles.barFillActive,
+                          !day.weight && { backgroundColor: colors.barEmpty },
+                          { height: `${h}%` }
+                        ]} />
+                      </View>
+                      <Text style={[styles.chartLabel, { color: colors.textSecondary }, day.isToday && styles.chartLabelActive]}>{day.dayName}</Text>
+                    </View>
+                  );
+                });
+              })()}
+            </View>
+          </View>
         </View>
 
         {/* Personalized AI Challenges Section */}
@@ -467,19 +477,19 @@ export const DashboardScreen = () => {
             <Text style={[styles.challengesSectionTitle, { color: colors.textSecondary }]}>PERSONALIZED AI CHALLENGES</Text>
             <View style={styles.gemmaBadge}>
               <Ionicons name="sparkles" size={12} color={theme.colors.primary} />
-              <Text style={styles.gemmaBadgeText}>Gemma AI</Text>
+              <Text style={styles.gemmaBadgeText}>Fitrova AI</Text>
             </View>
           </View>
 
           {dashboardData.challenges && dashboardData.challenges.length > 0 ? (
             dashboardData.challenges.map((challenge) => (
-              <View 
-                key={challenge.key} 
+              <View
+                key={challenge.key}
                 style={[styles.challengeCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
               >
                 <View style={styles.challengeCardHeader}>
                   <View style={styles.challengeMeta}>
-                    <Text style={[styles.challengeDifficulty, { 
+                    <Text style={[styles.challengeDifficulty, {
                       color: challenge.difficulty === 'Advanced' ? '#EF4444' : challenge.difficulty === 'Intermediate' ? '#F59E0B' : '#10B981',
                       backgroundColor: challenge.difficulty === 'Advanced' ? 'rgba(239, 68, 68, 0.1)' : challenge.difficulty === 'Intermediate' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)'
                     }]}>
@@ -514,17 +524,17 @@ export const DashboardScreen = () => {
                 <View style={styles.challengeFooter}>
                   <View style={styles.participantAvatars}>
                     {challenge.participants.map((participant, index) => (
-                      <View 
-                        key={index} 
+                      <View
+                        key={index}
                         style={[
-                          styles.participantAvatarCircle, 
+                          styles.participantAvatarCircle,
                           { backgroundColor: participant.profile_picture ? 'transparent' : participant.color, zIndex: 10 - index }
                         ]}
                       >
                         {participant.profile_picture ? (
-                          <Image 
-                            source={{ uri: participant.profile_picture }} 
-                            style={styles.participantAvatarImage} 
+                          <Image
+                            source={{ uri: participant.profile_picture }}
+                            style={styles.participantAvatarImage}
                           />
                         ) : (
                           <Text style={styles.participantAvatarText}>{participant.initials}</Text>
@@ -620,7 +630,7 @@ export const DashboardScreen = () => {
 
               {/* Action Buttons */}
               <View style={styles.promptActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.promptPrimaryBtn}
                   onPress={() => {
                     setShowAIPromptModal(false);
@@ -632,7 +642,7 @@ export const DashboardScreen = () => {
                   <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.promptSecondaryBtn, { borderColor: colors.border }]}
                   onPress={handleDismissPrompt}
                   activeOpacity={0.85}
@@ -645,6 +655,21 @@ export const DashboardScreen = () => {
         </Modal>
 
       </ScrollView>
+
+      {showSuccessAnimation && (
+        <View style={styles.animationOverlay}>
+          <View style={[styles.animationCard, { backgroundColor: colors.cardBg }]}>
+            <LottieView
+              source={require('../../../../assets/animations/success.json')}
+              autoPlay
+              loop={false}
+              style={styles.successLottie}
+            />
+            <Text style={[styles.successText, { color: colors.text }]}>Challenge Joined!</Text>
+            <Text style={[styles.successSubtext, { color: colors.textSecondary }]}>Let's crush this goal together.</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -653,7 +678,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    marginBottom:theme.spacing.xxl, 
+    marginBottom: theme.spacing.xxl,
   },
   loadingContainer: {
     flex: 1,
@@ -682,7 +707,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
-  
+
   },
   header: {
     flexDirection: 'row',
@@ -1326,5 +1351,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+  },
+  animationOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  animationCard: {
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+    width: '80%',
+    maxWidth: 320,
+  },
+  successLottie: {
+    width: 150,
+    height: 150,
+  },
+  successText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  successSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
