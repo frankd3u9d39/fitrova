@@ -387,7 +387,12 @@ export const DashboardScreen = () => {
             <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>CALORIES</Text>
             <View style={styles.caloriesContent}>
               <View style={styles.fireIconContainer}>
-                <Ionicons name="flame" size={20} color="#FF6B35" />
+                <LottieView
+                  source={require('../../../../assets/animations/fire.json')}
+                  autoPlay
+                  loop
+                  style={{ width: 28, height: 28 }}
+                />
               </View>
               <Text style={[styles.calorieValue, { color: colors.text }]}>{caloriesConsumed.toLocaleString()}</Text>
               <Text style={[styles.calorieTarget, { color: colors.textSecondary }]}>/ {caloriesGoal.toLocaleString()}</Text>
