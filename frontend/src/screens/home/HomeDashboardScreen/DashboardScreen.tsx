@@ -183,8 +183,12 @@ export const DashboardScreen = () => {
       setError(null);
       const data = await getDashboardData(userId);
       setDashboardData(data);
-    } catch (err) {
-      setError('Failed to load dashboard data');
+    } catch (err: any) {
+      let msg = err?.message || 'Failed to load dashboard data';
+      if (msg.includes('Network request failed') || msg.includes('Failed to fetch') || msg.includes('AbortError') || msg.includes('timed out')) {
+        msg = 'Network connection failed. Please check your internet connection and try again.';
+      }
+      setError(msg);
       console.error('Dashboard error:', err);
     } finally {
       setLoading(false);
