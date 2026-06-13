@@ -42,12 +42,15 @@ export const DashboardScreen = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      // 1. Fade out smoothly
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 1000,
         useNativeDriver: true,
       }).start(() => {
+        // 2. Switch image source
         setCurrentWorkoutImageIndex((prev) => (prev + 1) % 3);
+        // 3. Fade back in smoothly
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 1000,
@@ -398,51 +401,29 @@ export const DashboardScreen = () => {
 
         </View>
 
-        {/* Today's Workout Hero (3D Pop-out Lottie Character Card) */}
-        <View style={styles.workoutCardContainer}>
-          <View style={[styles.workoutCardImageContainer, { borderColor: colors.border }]}>
-            <Animated.Image
-              source={workoutImages[currentWorkoutImageIndex]}
-              style={[
-                StyleSheet.absoluteFillObject,
-                { opacity: fadeAnim, borderRadius: theme.borderRadius.xl }
-              ]}
-              resizeMode="cover"
-            />
-            <View style={styles.workoutCardOverlay}>
-              <View style={styles.workoutCardTextContent}>
-                <Text style={[styles.workoutSubtitle, { color: theme.colors.primary }]}>
-                  TODAY'S WORKOUT
-                </Text>
-                {todayWorkout ? (
-                  <>
-                    <Text style={styles.workoutTitle} numberOfLines={2} adjustsFontSizeToFit>
-                      {todayWorkout.name}
-                    </Text>
-                    <View style={styles.durationBadge}>
-                      <Ionicons name="time-outline" size={14} color="#fff" />
-                      <Text style={styles.durationText}>
-                        {' '}{todayWorkout.duration} min
-                      </Text>
-                    </View>
-                  </>
-                ) : (
-                  <Text style={styles.workoutTitle} numberOfLines={2}>
-                    No workout{'\n'}scheduled
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-
-          {/* 3D Pop-out Lottie Character */}
-          <View pointerEvents="none" style={styles.workoutLottieCharacterContainer}>
-            <LottieView
-              source={require('../../../../assets/animations/workout_character.json')}
-              autoPlay
-              loop
-              style={styles.workoutLottieCharacter}
-            />
+        {/* Today's Workout Hero */}
+        <View style={styles.workoutCard}>
+          <Animated.Image
+            source={workoutImages[currentWorkoutImageIndex]}
+            style={[
+              StyleSheet.absoluteFillObject,
+              { opacity: fadeAnim, borderRadius: theme.borderRadius.xl }
+            ]}
+            resizeMode="cover"
+          />
+          <View style={styles.workoutCardOverlay}>
+            <Text style={styles.workoutSubtitle}>TODAY'S WORKOUT</Text>
+            {todayWorkout ? (
+              <>
+                <Text style={styles.workoutTitle}>{todayWorkout.name}</Text>
+                <View style={styles.durationBadge}>
+                  <Ionicons name="time-outline" size={12} color="#fff" />
+                  <Text style={styles.durationText}> {todayWorkout.duration} min</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.workoutTitle}>No workout{'\n'}scheduled</Text>
+            )}
           </View>
         </View>
 
@@ -874,41 +855,19 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-  workoutCardContainer: {
-    position: 'relative',
-    height: 140,
-    marginBottom: theme.spacing.xl,
-    overflow: 'visible',
-  },
-  workoutCardImageContainer: {
-    flex: 1,
+  workoutCard: {
+    height: 160,
+    backgroundColor: '#1E2C26', // Dark green slate
     borderRadius: theme.borderRadius.xl,
+    marginBottom: theme.spacing.xl,
     overflow: 'hidden',
-    borderWidth: 1,
-    backgroundColor: '#0F172A',
+    position: 'relative',
   },
   workoutCardOverlay: {
     flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-  },
-  workoutCardTextContent: {
-    width: '60%',
-    zIndex: 2,
-  },
-  workoutLottieCharacter: {
-    width: '100%',
-    height: '100%',
-  },
-  workoutLottieCharacterContainer: {
-    position: 'absolute',
-    right: -10,
-    bottom: -12,
-    top: -42,
-    width: 170,
-    height: 194,
-    zIndex: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)', // Premium semi-transparent overlay
   },
   workoutSubtitle: {
     fontSize: 10,
@@ -919,24 +878,25 @@ const styles = StyleSheet.create({
   },
   workoutTitle: {
     ...theme.typography.h2,
-    color: '#ffffff',
+    color: '#fff',
     lineHeight: 32,
     marginBottom: theme.spacing.sm,
   },
   durationBadge: {
-    alignSelf: 'flex-start',
+    position: 'absolute',
+    bottom: theme.spacing.lg,
+    right: theme.spacing.lg,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.full,
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
   durationText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: '600',
+    color: '#fff',
   },
   trendSection: {
     marginBottom: theme.spacing.xl,
