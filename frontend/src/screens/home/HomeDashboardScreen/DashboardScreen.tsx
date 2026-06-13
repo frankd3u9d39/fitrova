@@ -410,7 +410,7 @@ export const DashboardScreen = () => {
           {/* 3D Pop-out Lottie Character */}
           <View pointerEvents="none" style={styles.workoutLottieCharacterContainer}>
             <LottieView
-              source={require('../../../../assets/animations/workout_character.json')}
+              source={require('../../../../assets/animations/workout_character.lottie')}
               autoPlay
               loop
               style={styles.workoutLottieCharacter}
