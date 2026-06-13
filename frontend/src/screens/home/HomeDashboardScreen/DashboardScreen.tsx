@@ -10,11 +10,14 @@ import { getDashboardData, DashboardData, logWeight, joinChallenge } from '../..
 import { notificationService, Notification } from '../../../services/api/notificationService';
 import { AICoachModal } from '../../../components/common/AICoachModal';
 import LottieView from 'lottie-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 type DashboardRouteProp = RouteProp<MainTabParamList, 'Home'>;
 
-// Workout images removed for 3D Lottie workout character pop-out effect
+const workoutImages = [
+  require('../../../../assets/workout_athletes.png'),
+  require('../../../../assets/workout_athlete_girl.png'),
+  require('../../../../assets/workout_athlete_boy.png'),
+];
 
 export const DashboardScreen = () => {
   const route = useRoute<DashboardRouteProp>();
@@ -34,7 +37,27 @@ export const DashboardScreen = () => {
   const [showAIModal, setShowAIModal] = useState(false);
   const [showAIPromptModal, setShowAIPromptModal] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
-  // Slideshow transition removed for 3D Lottie workout character pop-out effect
+  const [currentWorkoutImageIndex, setCurrentWorkoutImageIndex] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentWorkoutImageIndex((prev) => (prev + 1) % 3);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 10000); // 10 seconds interval (calmer transition)
+
+    return () => clearInterval(interval);
+  }, [fadeAnim]);
 
   // Get userId from route params or use default (you should pass this from login)
   const userId = route.params?.userId || 1; // TODO: Get from auth context
@@ -377,35 +400,40 @@ export const DashboardScreen = () => {
 
         {/* Today's Workout Hero (3D Pop-out Lottie Character Card) */}
         <View style={styles.workoutCardContainer}>
-          <LinearGradient
-            colors={darkTheme ? ['#1E293B', '#0F172A'] : ['#ECFDF5', '#D1FAE5']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.workoutCardGradient, { borderColor: colors.border }]}
-          >
-            <View style={styles.workoutCardTextContent}>
-              <Text style={[styles.workoutSubtitle, { color: darkTheme ? theme.colors.primary : '#059669' }]}>
-                TODAY'S WORKOUT
-              </Text>
-              {todayWorkout ? (
-                <>
-                  <Text style={[styles.workoutTitle, { color: colors.text }]} numberOfLines={2} adjustsFontSizeToFit>
-                    {todayWorkout.name}
-                  </Text>
-                  <View style={[styles.durationBadge, { backgroundColor: darkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-                    <Ionicons name="time-outline" size={14} color={darkTheme ? '#fff' : '#059669'} />
-                    <Text style={[styles.durationText, { color: darkTheme ? '#fff' : '#059669' }]}>
-                      {' '}{todayWorkout.duration} min
-                    </Text>
-                  </View>
-                </>
-              ) : (
-                <Text style={[styles.workoutTitle, { color: colors.text }]} numberOfLines={2}>
-                  No workout{'\n'}scheduled
+          <View style={[styles.workoutCardImageContainer, { borderColor: colors.border }]}>
+            <Animated.Image
+              source={workoutImages[currentWorkoutImageIndex]}
+              style={[
+                StyleSheet.absoluteFillObject,
+                { opacity: fadeAnim, borderRadius: theme.borderRadius.xl }
+              ]}
+              resizeMode="cover"
+            />
+            <View style={styles.workoutCardOverlay}>
+              <View style={styles.workoutCardTextContent}>
+                <Text style={[styles.workoutSubtitle, { color: theme.colors.primary }]}>
+                  TODAY'S WORKOUT
                 </Text>
-              )}
+                {todayWorkout ? (
+                  <>
+                    <Text style={styles.workoutTitle} numberOfLines={2} adjustsFontSizeToFit>
+                      {todayWorkout.name}
+                    </Text>
+                    <View style={styles.durationBadge}>
+                      <Ionicons name="time-outline" size={14} color="#fff" />
+                      <Text style={styles.durationText}>
+                        {' '}{todayWorkout.duration} min
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.workoutTitle} numberOfLines={2}>
+                    No workout{'\n'}scheduled
+                  </Text>
+                )}
+              </View>
             </View>
-          </LinearGradient>
+          </View>
 
           {/* 3D Pop-out Lottie Character */}
           <View pointerEvents="none" style={styles.workoutLottieCharacterContainer}>
@@ -852,12 +880,18 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
     overflow: 'visible',
   },
-  workoutCardGradient: {
+  workoutCardImageContainer: {
     flex: 1,
     borderRadius: theme.borderRadius.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    backgroundColor: '#0F172A',
+  },
+  workoutCardOverlay: {
+    flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
-    borderWidth: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
   },
   workoutCardTextContent: {
     width: '60%',
@@ -885,11 +919,13 @@ const styles = StyleSheet.create({
   },
   workoutTitle: {
     ...theme.typography.h2,
+    color: '#ffffff',
     lineHeight: 32,
     marginBottom: theme.spacing.sm,
   },
   durationBadge: {
     alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.full,
@@ -900,6 +936,7 @@ const styles = StyleSheet.create({
   durationText: {
     fontSize: 12,
     fontWeight: '700',
+    color: '#ffffff',
   },
   trendSection: {
     marginBottom: theme.spacing.xl,
