@@ -100,8 +100,7 @@ export default function App() {
       console.log(`🤖 AI Service URL: ${config.aiServiceUrl}`);
     }
 
-    // Initialize reminders on app start
-    localNotificationService.resetReminders();
+
 
     // AppState change listener to manage local reminders lifecycle
     const handleAppStateChange = (nextAppState: AppStateStatus) => {

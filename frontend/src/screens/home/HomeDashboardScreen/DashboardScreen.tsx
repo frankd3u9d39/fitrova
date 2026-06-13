@@ -10,6 +10,7 @@ import { getDashboardData, DashboardData, logWeight, joinChallenge } from '../..
 import { notificationService, Notification } from '../../../services/api/notificationService';
 import { AICoachModal } from '../../../components/common/AICoachModal';
 import LottieView from 'lottie-react-native';
+import { localNotificationService } from '../../../services/notifications/localNotificationService';
 
 type DashboardRouteProp = RouteProp<MainTabParamList, 'Home'>;
 
@@ -97,6 +98,8 @@ export const DashboardScreen = () => {
       })();
       loadDashboardData();
       fetchNotifications();
+      // Initialize local notifications on dashboard focus
+      localNotificationService.resetReminders();
     }, [userId])
   );
 

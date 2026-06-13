@@ -66,6 +66,9 @@ export const localNotificationService = {
    */
   scheduleDailyReminder: async () => {
     try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') return;
+
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "Today's Workout Awaits! 🏋️‍♂️",
@@ -74,9 +77,9 @@ export const localNotificationService = {
           priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour: 9,
           minute: 0,
-          repeats: true,
         } as any,
       });
       console.log('[Local Notifications] Scheduled daily reminder at 09:00');
@@ -90,6 +93,9 @@ export const localNotificationService = {
    */
   scheduleInactivityReminder: async () => {
     try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') return;
+
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "We miss you! ❤️",
@@ -98,6 +104,7 @@ export const localNotificationService = {
           priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: 86400, // 24 hours
         } as any,
       });
