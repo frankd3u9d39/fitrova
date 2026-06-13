@@ -21,6 +21,7 @@ import { notificationService, Notification } from '../../../services/api/notific
 import { AICoachModal } from '../../../components/common/AICoachModal';
 import { theme } from '../../../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LottieView from 'lottie-react-native';
 
 // Module-level cache to persist data across tab switches (unmounts/mounts)
 let sessionWorkoutCache: WorkoutRecommendation | null = null;
@@ -224,13 +225,12 @@ export const WorkoutScreen = () => {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-          <Animated.View style={[
-            styles.loadingIconContainer, 
-            { transform: [{ scale: pulseAnim }] },
-            darkTheme && { backgroundColor: '#1E293B', shadowColor: '#10B981' }
-          ]}>
-            <Ionicons name="barbell" size={64} color="#10B981" />
-          </Animated.View>
+          <LottieView
+            source={require('../../../../assets/animations/workout_character.json')}
+            autoPlay
+            loop
+            style={{ width: 120, height: 120 }}
+          />
           
           <View style={styles.loadingStepsContainer}>
             {loadingSteps.map((step, index) => (

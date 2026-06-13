@@ -255,22 +255,7 @@ $trendsJson = json_encode($statsData['trends']);
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- TopNavBar Component -->
-    <header class="hidden md:flex justify-between items-center h-16 px-8 ml-64 fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface/80 backdrop-blur-xl focus-within:ring-2 focus-within:ring-primary/50 border-b border-outline/20">
-        <div class="flex-1">
-            <!-- Search left placeholder -->
-        </div>
-        <div class="flex items-center gap-4">
-            <button class="p-2 rounded-full text-on-surface-variant hover:text-primary transition-colors focus:outline-none">
-                <span class="material-symbols-outlined">notifications</span>
-            </button>
-            <button class="p-2 rounded-full text-on-surface-variant hover:text-primary transition-colors focus:outline-none">
-                <span class="material-symbols-outlined">settings</span>
-            </button>
-            <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-surface-container-high">
-                <img alt="Admin Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTAuJFaXpSIu4rY3b_5gxkaAT61pW8S-Kyovo6HcsMbnEIG47n1bT01w-6ij_o6WRNMU7oiDnPbuczKUDzHZurd4iKzlqkq28ImZK1fKLVDuF9dUyHMCqRYvN3vlcZg9KO9yermPLC-BhxluGcYkKEAT5BrNpa8rFPNuDaCjjhI3qvIyw6B2EnKYAHxnm5FuPxhponBfnDnGfqPkkFHJexelUaN5HHdyqimigN3uxZyVaA5K1wueB_Mm3yCR_3K0AA3P2DnC5LWA"/>
-            </div>
-        </div>
-    </header>
+    <?php include __DIR__ . '/includes/header.php'; ?>
 
     <!-- Main Content Canvas -->
     <main class="ml-0 md:ml-64 pt-20 md:pt-24 p-6 md:p-10 min-h-screen">

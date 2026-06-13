@@ -416,110 +416,11 @@ if (empty($notifications)) {
     <!-- Main Content Area -->
     <main class="ml-64 flex-1 flex flex-col relative min-h-screen">
         <!-- TopNavBar -->
-        <header
-            class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface/80 backdrop-blur-xl flex justify-between items-center h-16 px-8 border-b border-outline/20">
-            <div class="flex items-center gap-4 w-1/3">
-                <div
-                    class="relative w-full focus-within:ring-2 focus-within:ring-primary/50 rounded-full transition-all">
-                    <span
-                        class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-                    <input
-                        class="w-full bg-surface-variant/50 border-none rounded-full py-2 pl-10 pr-4 text-sm font-body text-on-surface focus:ring-0 placeholder:text-on-surface-variant"
-                        placeholder="Search analytics..." type="text" />
-                </div>
-            </div>
-            <div class="flex items-center gap-6 relative">
-                <!-- Notification Bell Dropdown Button -->
-                <div class="relative">
-                    <button onclick="toggleBellDropdown(event)"
-                        class="text-on-surface-variant hover:text-primary transition-colors relative flex items-center">
-                        <span class="material-symbols-outlined">notifications</span>
-                        <?php if (!empty($notifications)): ?>
-                            <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-primary rounded-full neon-glow"></span>
-                        <?php endif; ?>
-                    </button>
-
-                    <!-- Bell Dropdown Panel -->
-                    <div id="bell-dropdown"
-                        class="hidden absolute right-0 mt-3 w-80 bg-surface-bright rounded-2xl shadow-2xl border border-outline/10 p-4 z-50 text-left">
-                        <h4
-                            class="font-display font-extrabold text-sm text-on-surface mb-3 flex items-center justify-between">
-                            <span>System Notifications</span>
-                            <span
-                                class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Realtime</span>
-                        </h4>
-                        <div class="space-y-3 max-h-60 overflow-y-auto">
-                            <?php foreach ($notifications as $n):
-                                $nIcon = $n['type'] === 'payment' ? 'payments' : ($n['type'] === 'scan' ? 'auto_awesome' : 'info');
-                                $nColor = $n['type'] === 'payment' ? 'text-primary' : ($n['type'] === 'scan' ? 'text-secondary' : 'text-on-surface-variant');
-                                ?>
-                                <div class="flex gap-3 hover:bg-surface-variant/30 p-2 rounded-xl transition-colors">
-                                    <span
-                                        class="material-symbols-outlined <?php echo $nColor; ?> shrink-0 text-[18px]"><?php echo $nIcon; ?></span>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold text-on-surface truncate"><?php echo $n['title']; ?></p>
-                                        <p class="text-[10px] text-on-surface-variant mt-0.5 leading-relaxed">
-                                            <?php echo $n['desc']; ?></p>
-                                    </div>
-                                    <span
-                                        class="text-[9px] text-on-surface-variant shrink-0 font-medium"><?php echo $n['time']; ?></span>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Settings Quick Scroll -->
-                <a href="#settings-forms"
-                    class="text-on-surface-variant hover:text-primary transition-colors flex items-center">
-                    <span class="material-symbols-outlined">settings</span>
-                </a>
-
-                <!-- Avatar Popover Button -->
-                <div class="relative">
-                    <button onclick="toggleAvatarPopover(event)"
-                        class="w-8 h-8 rounded-full overflow-hidden border-2 border-surface-container-high flex items-center justify-center hover:border-primary transition-all">
-                        <img alt="Admin Profile" class="w-full h-full object-cover"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtr4qFlKr0bjqfJhrtnlq5JuqeLMv4BDrGfo7RiyRU48E7j4iKH1c0qDxvfa0vbMRL8Y-AvCzFgJbTWiPLqbQtU58U2ySLzcpEk19mkUdWOI3GPUqmOF0Fug-SsZUH71PD-32jvr1VtahfMNVbuCz1xnW24ez0JxclvhjXnuOUNGk-Gzpld98eJgLfVOs6ve0Xup9PXcqkH5zLLgtIK_dna7Nr-nxffaxLhQLxkAfK_OKxu8w_jTlVGEzmruQhdXCCMDxnBeQNvw" />
-                    </button>
-
-                    <!-- Avatar Popover Panel -->
-                    <div id="avatar-popover"
-                        class="hidden absolute right-0 mt-3 w-64 bg-surface-bright rounded-2xl shadow-2xl border border-outline/10 p-5 z-50 text-left">
-                        <div class="flex items-center gap-3 border-b border-outline/10 pb-4 mb-4">
-                            <div class="w-10 h-10 rounded-full overflow-hidden shrink-0">
-                                <img alt="Admin Profile" class="w-full h-full object-cover"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtr4qFlKr0bjqfJhrtnlq5JuqeLMv4BDrGfo7RiyRU48E7j4iKH1c0qDxvfa0vbMRL8Y-AvCzFgJbTWiPLqbQtU58U2ySLzcpEk19mkUdWOI3GPUqmOF0Fug-SsZUH71PD-32jvr1VtahfMNVbuCz1xnW24ez0JxclvhjXnuOUNGk-Gzpld98eJgLfVOs6ve0Xup9PXcqkH5zLLgtIK_dna7Nr-nxffaxLhQLxkAfK_OKxu8w_jTlVGEzmruQhdXCCMDxnBeQNvw" />
-                            </div>
-                            <div class="min-w-0">
-                                <h4 class="text-sm font-bold text-on-surface truncate">Ibrahim Admin</h4>
-                                <span
-                                    class="text-[10px] text-primary font-bold uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded-full">Nexus
-                                    Superuser</span>
-                            </div>
-                        </div>
-                        <div class="space-y-2 text-xs">
-                            <div class="flex justify-between text-on-surface-variant">
-                                <span>Status:</span>
-                                <span class="text-primary font-bold">Active Node</span>
-                            </div>
-                            <div class="flex justify-between text-on-surface-variant">
-                                <span>Environment:</span>
-                                <span class="font-medium text-on-surface">Online</span>
-                            </div>
-                            <div class="flex justify-between text-on-surface-variant pb-2">
-                                <span>Security Level:</span>
-                                <span class="font-medium text-on-surface">Root Access</span>
-                            </div>
-                            <a href="index.php"
-                                class="w-full block text-center py-2.5 rounded-xl bg-slate-900 text-white font-bold hover:bg-primary hover:text-on-primary transition-all active:scale-95 duration-200">
-                                Admin Dashboard
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </header>
+        <?php
+        $headerSearchPlaceholder = "Search analytics...";
+        $headerSearchInputId = "searchAnalyticsInput";
+        include __DIR__ . '/includes/header.php';
+        ?>
 
         <!-- Canvas -->
         <div class="p-8 pt-20 pb-24 flex-1 mt-4">
@@ -974,38 +875,6 @@ if (empty($notifications)) {
             </div>
         </div>
     </main>
-    <script>
-        function toggleBellDropdown(event) {
-            event.stopPropagation();
-            const bellDropdown = document.getElementById('bell-dropdown');
-            const avatarPopover = document.getElementById('avatar-popover');
-
-            bellDropdown.classList.toggle('hidden');
-            avatarPopover.classList.add('hidden');
-        }
-
-        function toggleAvatarPopover(event) {
-            event.stopPropagation();
-            const bellDropdown = document.getElementById('bell-dropdown');
-            const avatarPopover = document.getElementById('avatar-popover');
-
-            avatarPopover.classList.toggle('hidden');
-            bellDropdown.classList.add('hidden');
-        }
-
-        // Close dropdowns when clicking anywhere outside
-        document.addEventListener('click', function (event) {
-            const bellDropdown = document.getElementById('bell-dropdown');
-            const avatarPopover = document.getElementById('avatar-popover');
-
-            if (bellDropdown && !bellDropdown.contains(event.target)) {
-                bellDropdown.classList.add('hidden');
-            }
-            if (avatarPopover && !avatarPopover.contains(event.target)) {
-                avatarPopover.classList.add('hidden');
-            }
-        });
-    </script>
 </body>
 
 </html>

@@ -151,23 +151,7 @@ if (!function_exists('getWorkoutImage')) {
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- TopNavBar -->
-    <header class="bg-surface/80 backdrop-blur-xl fixed top-0 right-0 w-[calc(100%-16rem)] z-40 flex justify-between items-center h-16 px-8 ml-64 border-b border-outline-variant/20">
-        <div class="flex-1">
-            <!-- Search placeholder -->
-        </div>
-        <div class="flex items-center gap-6">
-            <button class="text-on-surface-variant hover:text-primary transition-colors relative">
-                <span class="material-symbols-outlined">notifications</span>
-                <span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border border-surface"></span>
-            </button>
-            <button class="text-on-surface-variant hover:text-primary transition-colors">
-                <span class="material-symbols-outlined">settings</span>
-            </button>
-            <div class="h-10 w-10 rounded-full bg-surface-container overflow-hidden border-2 border-primary/20">
-                <img alt="Admin Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtr4qFlKr0bjqfJhrtnlq5JuqeLMv4BDrGfo7RiyRU48E7j4iKH1c0qDxvfa0vbMRL8Y-AvCzFgJbTWiPLqbQtU58U2ySLzcpEk19mkUdWOI3GPUqmOF0Fug-SsZUH71PD-32jvr1VtahfMNVbuCz1xnW24ez0JxclvhjXnuOUNGk-Gzpld98eJgLfVOs6ve0Xup9PXcqkH5zLLgtIK_dna7Nr-nxffaxLhQLxkAfK_OKxu8w_jTlVGEzmruQhdXCCMDxnBeQNvw"/>
-            </div>
-        </div>
-    </header>
+    <?php include __DIR__ . '/includes/header.php'; ?>
 
     <!-- Main Content Canvas -->
     <main class="ml-64 mt-16 p-8 w-full max-w-7xl">

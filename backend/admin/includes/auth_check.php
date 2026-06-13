@@ -55,4 +55,32 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
         exit();
     }
 }
+
+// Fetch admin details and ensure profile record exists
+$adminUser = null;
+try {
+    $adminEmail = $_SESSION['admin_email'];
+    
+    // Get user details
+    $adminQuery = $pdo->prepare("
+        SELECT u.id, u.first_name, u.last_name, u.email, up.profile_picture 
+        FROM users u 
+        LEFT JOIN user_profiles up ON u.id = up.user_id 
+        WHERE u.email = ? AND u.is_admin = 1
+        LIMIT 1
+    ");
+    $adminQuery->execute([$adminEmail]);
+    $adminUser = $adminQuery->fetch(PDO::FETCH_ASSOC);
+
+    if ($adminUser) {
+        // Check if a profile record exists, if not, create one
+        $checkProfile = $pdo->prepare("SELECT id FROM user_profiles WHERE user_id = ?");
+        $checkProfile->execute([$adminUser['id']]);
+        if (!$checkProfile->fetch()) {
+            $pdo->prepare("INSERT INTO user_profiles (user_id) VALUES (?)")->execute([$adminUser['id']]);
+        }
+    }
+} catch (PDOException $e) {
+    error_log("Failed to fetch admin details: " . $e->getMessage());
+}
 ?>

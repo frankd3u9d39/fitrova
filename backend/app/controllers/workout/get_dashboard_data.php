@@ -89,7 +89,7 @@ try {
     $weightStmt = $pdo->prepare("
         SELECT weight, recorded_date
         FROM weight_history
-        WHERE user_id = ? AND recorded_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        WHERE user_id = ? AND recorded_date >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
         ORDER BY recorded_date ASC
     ");
     $weightStmt->execute([$userId]);

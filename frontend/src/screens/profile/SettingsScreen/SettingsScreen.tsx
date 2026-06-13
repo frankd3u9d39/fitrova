@@ -14,12 +14,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { savePreferences } from '../../../services/api/settingsService';
 import { CustomAlert } from '../../../components/common/CustomAlert';
+import { localNotificationService } from '../../../services/notifications/localNotificationService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -62,20 +63,40 @@ export const SettingsScreen = () => {
     inputBorder: darkTheme ? '#334155' : '#E5E7EB',
   };
 
-  // Load saved preferences from AsyncStorage on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
-        if (saved) {
-          const prefs = JSON.parse(saved);
-          if (prefs.pushEnabled !== undefined) setPushEnabled(prefs.pushEnabled);
-          if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
-          if (prefs.units) setUnits(prefs.units);
-        }
-      } catch (e) { }
-    })();
-  }, [userId]);
+  // Load saved preferences and sync notification state when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      let isMounted = true;
+      (async () => {
+        try {
+          const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+          let savedPushEnabled = true;
+          let savedDarkTheme = false;
+          let savedUnits: 'metric' | 'imperial' = 'metric';
+
+          if (saved) {
+            const prefs = JSON.parse(saved);
+            if (prefs.pushEnabled !== undefined) savedPushEnabled = prefs.pushEnabled;
+            if (prefs.darkTheme !== undefined) savedDarkTheme = prefs.darkTheme;
+            if (prefs.units) savedUnits = prefs.units;
+          }
+
+          // Check actual OS permission status
+          const hasOSPermission = await localNotificationService.hasPermission();
+
+          if (isMounted) {
+            setPushEnabled(savedPushEnabled && hasOSPermission);
+            setDarkTheme(savedDarkTheme);
+            setUnits(savedUnits);
+          }
+        } catch (e) { }
+      })();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [userId])
+  );
 
   const persistPrefs = async (patch: object) => {
     try {
@@ -86,6 +107,26 @@ export const SettingsScreen = () => {
   };
 
   const handleTogglePush = async (val: boolean) => {
+    if (val) {
+      const granted = await localNotificationService.requestPermissions();
+      if (!granted) {
+        Alert.alert(
+          'Notifications Disabled',
+          'To receive workout reminders and check-in updates, please enable notifications in your device settings.',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => setPushEnabled(false) },
+            { text: 'Open Settings', onPress: () => {
+              setPushEnabled(false);
+              Linking.openSettings();
+            }}
+          ]
+        );
+        return;
+      }
+      await localNotificationService.resetReminders();
+    } else {
+      await localNotificationService.cancelAllNotifications();
+    }
     setPushEnabled(val);
     persistPrefs({ pushEnabled: val });
     try { await savePreferences(userId, { notification_enabled: val }); } catch (_) { }

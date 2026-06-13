@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
@@ -38,11 +40,24 @@ export const FoodScanScreen = () => {
   if (!permission.granted) {
     // Camera permissions are not granted yet
     return (
-      <View style={styles.container}>
-        <Text style={{ textAlign: 'center', color: '#fff', marginBottom: 20 }}>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <Ionicons name="camera-outline" size={64} color={theme.colors.primary || '#10B981'} style={{ marginBottom: 20 }} />
+        <Text style={{ textAlign: 'center', color: '#fff', fontSize: 16, fontWeight: '600', marginBottom: 24, lineHeight: 22 }}>
           We need your permission to show the camera
         </Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.permissionButton}>
+        <TouchableOpacity onPress={async () => {
+          const res = await requestPermission();
+          if (!res.granted) {
+            Alert.alert(
+              'Camera Access Required',
+              'Fitrova needs camera access to scan meals. Please enable it in your device settings.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => Linking.openSettings() }
+              ]
+            );
+          }
+        }} style={styles.permissionButton}>
           <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>

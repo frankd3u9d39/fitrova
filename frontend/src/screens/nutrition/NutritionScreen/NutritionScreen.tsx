@@ -24,6 +24,7 @@ import { Notification } from '../../../services/api/notificationService';
 import { AICoachModal } from '../../../components/common/AICoachModal';
 import { SubscriptionUpgradeModal } from '../../../components/common/SubscriptionUpgradeModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LottieView from 'lottie-react-native';
 
 
 
@@ -250,7 +251,12 @@ export const NutritionScreen = () => {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color="#10B981" />
+        <LottieView
+          source={require('../../../../assets/animations/watermelon.json')}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
         <Text style={{ marginTop: 10, color: colors.textSecondary }}>Loading nutrition data...</Text>
       </SafeAreaView>
     );

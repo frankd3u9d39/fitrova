@@ -161,25 +161,12 @@ try {
     <!-- Main Content Area -->
     <div class="flex-1 ml-64 flex flex-col min-h-screen relative">
         <!-- TopNavBar -->
-        <header class="bg-surface/80 backdrop-blur-xl fixed top-0 right-0 w-[calc(100%-16rem)] z-40 flex justify-between items-center h-16 px-8 border-b border-outline/20">
-            <div class="flex items-center gap-4 focus-within:ring-2 focus-within:ring-primary/50 rounded-full bg-surface-variant/50 px-4 py-2 w-96 transition-all">
-                <span class="material-symbols-outlined text-on-surface-variant text-sm">search</span>
-                <input id="searchInput" oninput="filterTable()" class="bg-transparent border-none outline-none text-sm font-body text-on-surface w-full placeholder:text-on-surface-variant/50 focus:ring-0 p-0" placeholder="Search Users..." type="text"/>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="flex gap-4">
-                    <button class="text-on-surface-variant hover:text-primary transition-colors active:scale-95 p-2 rounded-full hover:bg-surface-container">
-                        <span class="material-symbols-outlined">notifications</span>
-                    </button>
-                    <button class="text-on-surface-variant hover:text-primary transition-colors active:scale-95 p-2 rounded-full hover:bg-surface-container">
-                        <span class="material-symbols-outlined">settings</span>
-                    </button>
-                </div>
-                <div class="h-8 w-8 rounded-full overflow-hidden border border-outline/20 cursor-pointer active:scale-95 transition-transform">
-                    <img alt="Admin Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtr4qFlKr0bjqfJhrtnlq5JuqeLMv4BDrGfo7RiyRU48E7j4iKH1c0qDxvfa0vbMRL8Y-AvCzFgJbTWiPLqbQtU58U2ySLzcpEk19mkUdWOI3GPUqmOF0Fug-SsZUH71PD-32jvr1VtahfMNVbuCz1xnW24ez0JxclvhjXnuOUNGk-Gzpld98eJgLfVOs6ve0Xup9PXcqkH5zLLgtIK_dna7Nr-nxffaxLhQLxkAfK_OKxu8w_jTlVGEzmruQhdXCCMDxnBeQNvw"/>
-                </div>
-            </div>
-        </header>
+        <?php
+        $headerSearchPlaceholder = "Search Users...";
+        $headerSearchInputId = "searchInput";
+        $headerSearchOnInput = "filterTable()";
+        include __DIR__ . '/includes/header.php';
+        ?>
 
         <!-- Canvas -->
         <main class="flex-1 pt-24 px-8 pb-12 overflow-y-auto">

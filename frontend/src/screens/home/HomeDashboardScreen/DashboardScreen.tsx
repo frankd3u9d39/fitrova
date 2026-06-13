@@ -14,11 +14,6 @@ import { localNotificationService } from '../../../services/notifications/localN
 
 type DashboardRouteProp = RouteProp<MainTabParamList, 'Home'>;
 
-const workoutImages = [
-  require('../../../../assets/workout_athletes.png'),
-  require('../../../../assets/workout_athlete_girl.png'),
-  require('../../../../assets/workout_athlete_boy.png'),
-];
 
 export const DashboardScreen = () => {
   const route = useRoute<DashboardRouteProp>();
@@ -38,30 +33,7 @@ export const DashboardScreen = () => {
   const [showAIModal, setShowAIModal] = useState(false);
   const [showAIPromptModal, setShowAIPromptModal] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
-  const [currentWorkoutImageIndex, setCurrentWorkoutImageIndex] = useState(0);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // 1. Fade out smoothly
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 1000,
-        useNativeDriver: true,
-      }).start(() => {
-        // 2. Switch image source
-        setCurrentWorkoutImageIndex((prev) => (prev + 1) % 3);
-        // 3. Fade back in smoothly
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }).start();
-      });
-    }, 10000); // 10 seconds interval (calmer transition)
-
-    return () => clearInterval(interval);
-  }, [fadeAnim]);
 
   // Get userId from route params or use default (you should pass this from login)
   const userId = route.params?.userId || 1; // TODO: Get from auth context
@@ -280,12 +252,8 @@ export const DashboardScreen = () => {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
-          <LottieView
-            source={require('../../../../assets/animations/watermelon.json')}
-            autoPlay
-            loop
-            style={{ width: 120, height: 120 }}
-          />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={{ marginTop: 16, color: colors.textSecondary, fontWeight: '600', fontSize: 16 }}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
@@ -406,13 +374,14 @@ export const DashboardScreen = () => {
 
         {/* Today's Workout Hero */}
         <View style={styles.workoutCard}>
-          <Animated.Image
-            source={workoutImages[currentWorkoutImageIndex]}
+          <LottieView
+            source={require('../../../../assets/animations/burpee_exercise.json')}
+            autoPlay
+            loop
             style={[
               StyleSheet.absoluteFillObject,
-              { opacity: fadeAnim, borderRadius: theme.borderRadius.xl }
+              { opacity: 0.85, borderRadius: theme.borderRadius.xl }
             ]}
-            resizeMode="cover"
           />
           <View style={styles.workoutCardOverlay}>
             <Text style={styles.workoutSubtitle}>TODAY'S WORKOUT</Text>

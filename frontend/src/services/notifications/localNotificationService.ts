@@ -14,6 +14,19 @@ Notifications.setNotificationHandler({
 
 export const localNotificationService = {
   /**
+   * Checks if notification permission is already granted.
+   */
+  hasPermission: async (): Promise<boolean> => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      return status === 'granted';
+    } catch (error) {
+      console.error('[Local Notifications] Failed to get permission status:', error);
+      return false;
+    }
+  },
+
+  /**
    * Requests permission to show notifications to the user.
    * Sets up Android notification channels for SDK compatibility.
    */
@@ -111,6 +124,32 @@ export const localNotificationService = {
       console.log('[Local Notifications] Scheduled inactivity reminder for 24 hours from now');
     } catch (error) {
       console.error('[Local Notifications] Failed to schedule inactivity reminder:', error);
+    }
+  },
+
+  /**
+   * Schedules a test reminder that fires in 5 seconds.
+   */
+  scheduleTestReminder: async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') return;
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Test Workout Reminder! 🏋️‍♂️",
+          body: "This is a test notification from Fitrova showing that your reminders are working correctly!",
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 5,
+        } as any,
+      });
+      console.log('[Local Notifications] Scheduled test reminder in 5 seconds');
+    } catch (error) {
+      console.error('[Local Notifications] Failed to schedule test reminder:', error);
     }
   },
 

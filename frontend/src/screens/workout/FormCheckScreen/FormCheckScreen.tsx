@@ -10,7 +10,9 @@ import {
   ActivityIndicator, 
   Dimensions,
   Animated,
-  ScrollView
+  ScrollView,
+  Alert,
+  Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -108,8 +110,26 @@ export const FormCheckScreen = () => {
           <Text style={styles.permissionTitle}>Camera Access Needed</Text>
           <Text style={styles.permissionText}>We need your camera and microphone to analyze your workout form.</Text>
           <TouchableOpacity style={styles.permissionBtn} onPress={async () => {
-            if (!cameraPermission.granted) await requestCameraPermission();
-            if (!micPermission.granted) await requestMicPermission();
+            let camRes = cameraPermission;
+            let micRes = micPermission;
+            
+            if (!cameraPermission.granted) {
+              camRes = await requestCameraPermission();
+            }
+            if (!micPermission.granted) {
+              micRes = await requestMicPermission();
+            }
+            
+            if (!camRes.granted || !micRes.granted) {
+              Alert.alert(
+                'Permissions Required',
+                'Fitrova needs camera and microphone access to check your form. Please enable them in your device settings.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Open Settings', onPress: () => Linking.openSettings() }
+                ]
+              );
+            }
           }}>
             <Text style={styles.permissionBtnText}>Grant Permissions</Text>
           </TouchableOpacity>
