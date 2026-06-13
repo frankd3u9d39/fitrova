@@ -288,8 +288,15 @@ export const DashboardScreen = () => {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
-          <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error || 'Unable to load data'}</Text>
+          <LottieView
+            source={require('../../../../assets/animations/PinJump.json')}
+            autoPlay
+            loop
+            style={{ width: 140, height: 140, marginBottom: 16 }}
+          />
+          <Text style={[styles.errorText, { color: colors.textSecondary, fontWeight: '600', fontSize: 16 }]}>
+            {error || 'No dashboard data available.'}
+          </Text>
           <TouchableOpacity
             onPress={loadDashboardData}
             style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: theme.colors.primary, borderRadius: 12 }}
