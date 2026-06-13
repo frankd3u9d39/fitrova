@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { LogBox, AppState, AppStateStatus } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { CustomAlertModal } from './src/components/common/CustomAlertModal';
 import { customAlertRef } from './src/components/common/CustomAlert';
 import { config, validateEnvironment } from './src/config';
+import { localNotificationService } from './src/services/notifications/localNotificationService';
 
 LogBox.ignoreLogs([
   'SafeAreaView has been deprecated',
@@ -98,6 +99,27 @@ export default function App() {
       console.log(`🌐 API Base URL: ${config.apiBaseUrl}`);
       console.log(`🤖 AI Service URL: ${config.aiServiceUrl}`);
     }
+
+    // Initialize reminders on app start
+    localNotificationService.resetReminders();
+
+    // AppState change listener to manage local reminders lifecycle
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'background') {
+        // Schedule reminders when app is exited/backgrounded
+        localNotificationService.scheduleDailyReminder();
+        localNotificationService.scheduleInactivityReminder();
+      } else if (nextAppState === 'active') {
+        // Cancel all notifications when app is active/foregrounded
+        localNotificationService.cancelAllNotifications();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   return (
