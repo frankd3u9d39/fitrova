@@ -1,0 +1,106 @@
+<?php
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+require_once __DIR__ . '/../../../config/db_config.php';
+
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
+    
+    if ($method === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        $action = $input['action'] ?? 'send'; // 'send' or 'get'
+        
+        if ($action === 'get') {
+            $challengeKey = $input['challenge_key'] ?? null;
+            if (!$challengeKey) {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'Challenge key is required']);
+                exit();
+            }
+            
+            $stmt = $pdo->prepare("
+                SELECT cm.id, cm.challenge_key, cm.user_id, cm.message, cm.created_at,
+                       u.first_name, u.last_name, up.profile_picture
+                FROM challenge_messages cm
+                JOIN users u ON u.id = cm.user_id
+                LEFT JOIN user_profiles up ON up.user_id = u.id
+                WHERE cm.challenge_key = ?
+                ORDER BY cm.created_at ASC
+                LIMIT 100
+            ");
+            $stmt->execute([$challengeKey]);
+            $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Map formatted relative/short times and initials
+            $formattedMessages = [];
+            foreach ($messages as $m) {
+                $initials = strtoupper(substr($m['first_name'] ?? 'U', 0, 1) . substr($m['last_name'] ?? '', 0, 1));
+                
+                $senderId = intval($m['user_id']);
+                $colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+                $color = $colors[$senderId % count($colors)];
+                
+                $formattedMessages[] = [
+                    'id' => intval($m['id']),
+                    'user_id' => $senderId,
+                    'first_name' => $m['first_name'],
+                    'last_name' => $m['last_name'],
+                    'initials' => $initials,
+                    'color' => $color,
+                    'profile_picture' => $m['profile_picture'],
+                    'message' => $m['message'],
+                    'created_at' => $m['created_at']
+                ];
+            }
+            
+            echo json_encode([
+                'status' => 'success',
+                'messages' => $formattedMessages
+            ]);
+            exit();
+        } else {
+            // Send message
+            $userId = $input['user_id'] ?? null;
+            $challengeKey = $input['challenge_key'] ?? null;
+            $message = trim($input['message'] ?? '');
+            
+            if (!$userId || !$challengeKey || $message === '') {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'User ID, challenge key, and message are required']);
+                exit();
+            }
+            
+            // Optional check: Is user actually in this challenge?
+            $checkStmt = $pdo->prepare("SELECT 1 FROM user_challenges WHERE user_id = ? AND challenge_key = ?");
+            $checkStmt->execute([$userId, $challengeKey]);
+            if (!$checkStmt->fetchColumn()) {
+                // To keep the UX simple, we auto-join the user if they try to chat.
+                $joinStmt = $pdo->prepare("INSERT IGNORE INTO user_challenges (user_id, challenge_key) VALUES (?, ?)");
+                $joinStmt->execute([$userId, $challengeKey]);
+            }
+            
+            $insertStmt = $pdo->prepare("INSERT INTO challenge_messages (challenge_key, user_id, message) VALUES (?, ?, ?)");
+            $insertStmt->execute([$challengeKey, $userId, $message]);
+            
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Message sent successfully'
+            ]);
+            exit();
+        }
+    } else {
+        http_response_code(405);
+        echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+    }
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+}

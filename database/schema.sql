@@ -89,3 +89,37 @@ CREATE TABLE IF NOT EXISTS ai_insights (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_unread (user_id, is_read)
 );
+
+-- User Challenges
+CREATE TABLE IF NOT EXISTS user_challenges (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    challenge_key VARCHAR(100) NOT NULL,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY idx_user_challenge (user_id, challenge_key)
+);
+
+-- User Connections
+CREATE TABLE IF NOT EXISTS user_connections (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    requester_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY idx_user_connection (requester_id, receiver_id)
+);
+
+-- Challenge Messages
+CREATE TABLE IF NOT EXISTS challenge_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    challenge_key VARCHAR(100) NOT NULL,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
