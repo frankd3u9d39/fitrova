@@ -39,4 +39,4 @@ COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 # Expose port
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+CMD ["sh", "-c", "php app/worker.php & apache2-foreground"]
