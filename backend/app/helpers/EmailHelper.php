@@ -52,6 +52,126 @@ class EmailHelper {
     }
 
     private function sendMail($to, $subject, $message) {
+        // 1. Check if we have an HTTP-based email API configured (avoids SMTP port blocking on Render Free Tier)
+        $brevoKey = getenv('BREVO_API_KEY');
+        $sendgridKey = getenv('SENDGRID_API_KEY');
+        $resendKey = getenv('RESEND_API_KEY');
+
+        if (!empty($brevoKey)) {
+            return $this->sendViaBrevo($to, $subject, $message, $brevoKey);
+        } elseif (!empty($sendgridKey)) {
+            return $this->sendViaSendGrid($to, $subject, $message, $sendgridKey);
+        } elseif (!empty($resendKey)) {
+            return $this->sendViaResend($to, $subject, $message, $resendKey);
+        }
+
+        // 2. Fallback to direct SMTP socket (works locally but blocked on Render Free Tier)
+        return $this->sendViaSmtp($to, $subject, $message);
+    }
+
+    private function sendViaBrevo($to, $subject, $message, $apiKey) {
+        echo "    [EMAIL] Sending via Brevo API...\n";
+        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+        $payload = json_encode([
+            'sender' => ['name' => $this->fromName, 'email' => $this->username],
+            'to' => [['email' => $to]],
+            'subject' => $subject,
+            'htmlContent' => $message
+        ]);
+
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'api-key: ' . $apiKey,
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            echo "    [OK] Sent via Brevo!\n";
+            return true;
+        }
+
+        error_log("Brevo API Error (HTTP $httpCode): $response");
+        echo "    [ERROR] Brevo failed: $response\n";
+        return false;
+    }
+
+    private function sendViaSendGrid($to, $subject, $message, $apiKey) {
+        echo "    [EMAIL] Sending via SendGrid API...\n";
+        $ch = curl_init('https://api.sendgrid.com/v3/mail/send');
+        $payload = json_encode([
+            'personalizations' => [['to' => [['email' => $to]]]],
+            'from' => ['email' => $this->username, 'name' => $this->fromName],
+            'subject' => $subject,
+            'content' => [['type' => 'text/html', 'value' => $message]]
+        ]);
+
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json'
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            echo "    [OK] Sent via SendGrid!\n";
+            return true;
+        }
+
+        error_log("SendGrid API Error (HTTP $httpCode): $response");
+        echo "    [ERROR] SendGrid failed: $response\n";
+        return false;
+    }
+
+    private function sendViaResend($to, $subject, $message, $apiKey) {
+        echo "    [EMAIL] Sending via Resend API...\n";
+        $ch = curl_init('https://api.resend.com/emails');
+        
+        $fromEmail = (strpos($this->username, '@gmail.com') !== false) 
+            ? 'onboarding@resend.dev' 
+            : $this->username;
+
+        $payload = json_encode([
+            'from' => $this->fromName . ' <' . $fromEmail . '>',
+            'to' => [$to],
+            'subject' => $subject,
+            'html' => $message
+        ]);
+
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json'
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            echo "    [OK] Sent via Resend!\n";
+            return true;
+        }
+
+        error_log("Resend API Error (HTTP $httpCode): $response");
+        echo "    [ERROR] Resend failed: $response\n";
+        return false;
+    }
+
+    private function sendViaSmtp($to, $subject, $message) {
         // Since we don't have PHPMailer, we'll try to use a simple SMTP socket
         // Gmail requires SSL (port 465) or TLS (port 587)
         
@@ -64,10 +184,6 @@ class EmailHelper {
         $header .= "MIME-Version: 1.0\r\n";
         $header .= "Content-type: text/html; charset=UTF-8\r\n";
 
-        // For this MVP, we will try to use the native PHP mail() if configured
-        // BUT since the user wants it to work with their App Password, 
-        // a simple SMTP socket implementation is needed.
-        
         try {
             $socket = fsockopen("ssl://" . $this->host, $this->port, $errno, $errstr, 30);
             if (!$socket) return false;
@@ -139,3 +255,4 @@ class EmailHelper {
     }
 }
 ?>
+
