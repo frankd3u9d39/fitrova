@@ -1,4 +1,4 @@
-CREATE DATABASE IF NOT EXISTS fitrova_db;
+CREATE DATABASE IF NOT EXISTS fitrova_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE fitrova_db;
 
 CREATE TABLE IF NOT EXISTS users (

@@ -25,7 +25,7 @@ type ProfileRouteProp = RouteProp<MainTabParamList, 'Profile'>;
 export const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ProfileRouteProp>();
-  const userId = route.params?.userId || 1;
+  const [userId, setUserId] = useState<number>(route.params?.userId || 1);
   
   const [profileData, setProfileData] = useState<ProfileStats | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -46,17 +46,42 @@ export const ProfileScreen = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      (async () => {
+      let isMounted = true;
+      const getActiveSession = async () => {
         try {
-          const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
-          if (saved) {
-            const prefs = JSON.parse(saved);
-            if (prefs.darkTheme !== undefined) {
-              setDarkTheme(prefs.darkTheme);
+          const savedSession = await AsyncStorage.getItem('user_session');
+          if (savedSession) {
+            const session = JSON.parse(savedSession);
+            if (session.id && session.id !== userId) {
+              if (isMounted) {
+                setUserId(session.id);
+                return;
+              }
             }
           }
-        } catch (e) {}
-      })();
+
+          if (!isMounted) return;
+
+          // Load dark mode preference
+          try {
+            const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+            if (saved) {
+              const prefs = JSON.parse(saved);
+              if (prefs.darkTheme !== undefined) {
+                setDarkTheme(prefs.darkTheme);
+              }
+            }
+          } catch (e) {}
+        } catch (e) {
+          console.error('Failed to get active session in ProfileScreen:', e);
+        }
+      };
+
+      getActiveSession();
+
+      return () => {
+        isMounted = false;
+      };
     }, [userId])
   );
 
@@ -102,16 +127,17 @@ export const ProfileScreen = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      loadProfileData(!!profileData);
+      loadProfileData(!!profileData, userId);
     }, [userId])
   );
 
-  const loadProfileData = async (silent = false) => {
+  const loadProfileData = async (silent = false, verifiedUserId?: number) => {
+    const activeUserId = verifiedUserId || userId;
     try {
       if (!silent) setLoading(true);
       const [stats, achievementsData] = await Promise.all([
-        getProfileStats(userId),
-        getAchievements(userId)
+        getProfileStats(activeUserId),
+        getAchievements(activeUserId)
       ]);
       setProfileData(stats);
       setAchievements(achievementsData.filter(a => a.unlocked).slice(0, 3));

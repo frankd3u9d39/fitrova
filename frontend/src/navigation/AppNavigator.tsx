@@ -36,6 +36,7 @@ import { NutritionHistoryScreen } from '../screens/nutrition/NutritionHistoryScr
 import { MealLogScreen } from '../screens/nutrition/MealLogScreen/MealLogScreen';
 import VerifyEmailScreen from '../screens/onboarding/RegisterScreen/VerifyEmailScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen/NotificationsScreen';
+import { ChallengeCommunityScreen } from '../screens/home/ChallengeCommunityScreen';
 import { RootStackParamList, MainTabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -179,6 +180,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="NutritionHistory" component={NutritionHistoryScreen} />
         <Stack.Screen name="MealLog" component={MealLogScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        <Stack.Screen name="ChallengeCommunity" component={ChallengeCommunityScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

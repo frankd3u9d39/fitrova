@@ -33,7 +33,7 @@ type NutritionRouteProp = RouteProp<MainTabParamList, 'Nutrition'>;
 export const NutritionScreen = () => {
   const route = useRoute<NutritionRouteProp>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const userId = route.params?.userId || 1;
+  const [userId, setUserId] = useState<number>(route.params?.userId || 1);
   
   const [loading, setLoading] = useState(true);
   const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
@@ -68,17 +68,42 @@ export const NutritionScreen = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      (async () => {
+      let isMounted = true;
+      const getActiveSession = async () => {
         try {
-          const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
-          if (saved) {
-            const prefs = JSON.parse(saved);
-            if (prefs.darkTheme !== undefined) {
-              setDarkTheme(prefs.darkTheme);
+          const savedSession = await AsyncStorage.getItem('user_session');
+          if (savedSession) {
+            const session = JSON.parse(savedSession);
+            if (session.id && session.id !== userId) {
+              if (isMounted) {
+                setUserId(session.id);
+                return;
+              }
             }
           }
-        } catch (e) {}
-      })();
+
+          if (!isMounted) return;
+
+          // Load dark mode preference
+          try {
+            const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+            if (saved) {
+              const prefs = JSON.parse(saved);
+              if (prefs.darkTheme !== undefined) {
+                setDarkTheme(prefs.darkTheme);
+              }
+            }
+          } catch (e) {}
+        } catch (e) {
+          console.error('Failed to get active session in NutritionScreen:', e);
+        }
+      };
+
+      getActiveSession();
+
+      return () => {
+        isMounted = false;
+      };
     }, [userId])
   );
 
@@ -122,10 +147,11 @@ export const NutritionScreen = () => {
     }
   };
 
-  const fetchNutritionData = async () => {
+  const fetchNutritionData = async (verifiedUserId?: number) => {
+    const activeUserId = verifiedUserId || userId;
     try {
       setLoading(true);
-      const data = await nutritionService.getNutritionData(userId);
+      const data = await nutritionService.getNutritionData(activeUserId);
       setNutritionData(data);
     } catch (error) {
       console.error('Fetch error:', error);
@@ -146,11 +172,12 @@ export const NutritionScreen = () => {
     }
   };
 
-  const fetchAIRecommendations = async () => {
+  const fetchAIRecommendations = async (verifiedUserId?: number) => {
+    const activeUserId = verifiedUserId || userId;
     try {
       setAiLoading(true);
       setIsLocked(false);
-      const data = await nutritionService.getAIFoodRecommendations(userId);
+      const data = await nutritionService.getAIFoodRecommendations(activeUserId);
       setAiRecommendations(data);
     } catch (error: any) {
       if (error && (error.status === 'subscription_locked' || error.statusCode === 403)) {
@@ -180,8 +207,8 @@ export const NutritionScreen = () => {
       }
     };
     loadUserSession();
-    fetchNutritionData();
-    fetchAIRecommendations();
+    fetchNutritionData(userId);
+    fetchAIRecommendations(userId);
   }, [userId]);
 
   useEffect(() => {

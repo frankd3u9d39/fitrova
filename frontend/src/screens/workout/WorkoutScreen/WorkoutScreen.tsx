@@ -25,6 +25,7 @@ import LottieView from 'lottie-react-native';
 
 // Module-level cache to persist data across tab switches (unmounts/mounts)
 let sessionWorkoutCache: WorkoutRecommendation | null = null;
+let sessionCacheUserId: number | null = null;
 let sessionCacheDate: string | null = null;
 
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -41,7 +42,7 @@ export const WorkoutScreen = () => {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   
-  const userId = route.params?.userId || 1;
+  const [userId, setUserId] = useState<number>(route.params?.userId || 1);
 
   // Notification states
   const [latestNotification, setLatestNotification] = useState<Notification | null>(null);
@@ -60,17 +61,42 @@ export const WorkoutScreen = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      (async () => {
+      let isMounted = true;
+      const getActiveSession = async () => {
         try {
-          const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
-          if (saved) {
-            const prefs = JSON.parse(saved);
-            if (prefs.darkTheme !== undefined) {
-              setDarkTheme(prefs.darkTheme);
+          const savedSession = await AsyncStorage.getItem('user_session');
+          if (savedSession) {
+            const session = JSON.parse(savedSession);
+            if (session.id && session.id !== userId) {
+              if (isMounted) {
+                setUserId(session.id);
+                return;
+              }
             }
           }
-        } catch (e) {}
-      })();
+
+          if (!isMounted) return;
+
+          // Load dark mode preference
+          try {
+            const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+            if (saved) {
+              const prefs = JSON.parse(saved);
+              if (prefs.darkTheme !== undefined) {
+                setDarkTheme(prefs.darkTheme);
+              }
+            }
+          } catch (e) {}
+        } catch (e) {
+          console.error('Failed to get active session in WorkoutScreen:', e);
+        }
+      };
+
+      getActiveSession();
+
+      return () => {
+        isMounted = false;
+      };
     }, [userId])
   );
 
@@ -102,17 +128,18 @@ export const WorkoutScreen = () => {
   useEffect(() => {
     const initializeScreen = async () => {
       try {
-        await loadWorkoutData(false);
+        await loadWorkoutData(false, userId);
       } finally {
-        fetchNotifications();
+        fetchNotifications(userId);
       }
     };
     initializeScreen();
-  }, []);
+  }, [userId]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (verifiedUserId?: number) => {
+    const activeUserId = verifiedUserId || userId;
     try {
-      const data = await notificationService.getNotifications(userId);
+      const data = await notificationService.getNotifications(activeUserId);
       const unreads = data.notifications.filter(n => !n.is_read);
       if (unreads.length > 0) {
         setLatestNotification(unreads[0]);
@@ -176,13 +203,14 @@ export const WorkoutScreen = () => {
     }
   }, [loading, isInitialLoad]);
 
-  const loadWorkoutData = async (forceRefresh: boolean = false) => {
+  const loadWorkoutData = async (forceRefresh: boolean = false, verifiedUserId?: number) => {
+    const activeUserId = verifiedUserId || userId;
     try {
       setLoading(true);
       const todayStr = new Date().toDateString();
 
       // Check session cache first unless forceRefresh is true
-      if (!forceRefresh && sessionWorkoutCache && sessionCacheDate === todayStr) {
+      if (!forceRefresh && sessionWorkoutCache && sessionCacheUserId === activeUserId && sessionCacheDate === todayStr) {
         console.log('⚡ Loading workout from memory session cache');
         setWorkoutData(sessionWorkoutCache);
         setError(null);
@@ -190,11 +218,12 @@ export const WorkoutScreen = () => {
       }
 
       console.log(`📡 Fetching workout recommendations (Force: ${forceRefresh})`);
-      const data = await getWorkoutRecommendations(userId);
+      const data = await getWorkoutRecommendations(activeUserId);
       setWorkoutData(data);
       
       // Store in memory session cache
       sessionWorkoutCache = data;
+      sessionCacheUserId = activeUserId;
       sessionCacheDate = todayStr;
       
       setError(null);

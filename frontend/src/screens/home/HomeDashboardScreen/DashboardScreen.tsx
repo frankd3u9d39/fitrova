@@ -35,8 +35,8 @@ export const DashboardScreen = () => {
   const [darkTheme, setDarkTheme] = useState(false);
 
 
-  // Get userId from route params or use default (you should pass this from login)
-  const userId = route.params?.userId || 1; // TODO: Get from auth context
+  // Get userId from route params or use default, then update dynamically from AsyncStorage session
+  const [userId, setUserId] = useState<number>(route.params?.userId || 1);
 
   // Dynamic theme palette
   const colors = {
@@ -58,20 +58,50 @@ export const DashboardScreen = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      // Load dark mode preference
-      (async () => {
+      let isMounted = true;
+
+      const getActiveSessionAndLoad = async () => {
+        let activeUserId = userId;
         try {
-          const saved = await AsyncStorage.getItem(`user_prefs_${userId}`);
+          const savedSession = await AsyncStorage.getItem('user_session');
+          if (savedSession) {
+            const session = JSON.parse(savedSession);
+            if (session.id) {
+              activeUserId = session.id;
+              if (session.id !== userId) {
+                if (isMounted) {
+                  setUserId(session.id);
+                  return; // State change will trigger re-run
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error loading session in Dashboard focus effect:', e);
+        }
+
+        if (!isMounted) return;
+
+        // Load dark mode preference
+        try {
+          const saved = await AsyncStorage.getItem(`user_prefs_${activeUserId}`);
           if (saved) {
             const prefs = JSON.parse(saved);
             if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
           }
         } catch (e) { }
-      })();
-      loadDashboardData();
-      fetchNotifications();
-      // Initialize local notifications on dashboard focus
-      localNotificationService.resetReminders();
+
+        // Fetch data
+        loadDashboardData(activeUserId);
+        fetchNotifications(activeUserId);
+        localNotificationService.resetReminders();
+      };
+
+      getActiveSessionAndLoad();
+
+      return () => {
+        isMounted = false;
+      };
     }, [userId])
   );
 
@@ -118,9 +148,10 @@ export const DashboardScreen = () => {
     };
   }, [loading, dashboardData, userId]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (verifiedUserId?: number) => {
+    const activeUserId = verifiedUserId || userId;
     try {
-      const data = await notificationService.getNotifications(userId);
+      const data = await notificationService.getNotifications(activeUserId);
       setUnreadCount(data.unreadCount);
       const unreads = data.notifications.filter(n => !n.is_read);
       if (unreads.length > 0) {
@@ -152,11 +183,12 @@ export const DashboardScreen = () => {
     }
   };
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (verifiedUserId?: number) => {
+    const activeUserId = verifiedUserId || userId;
     try {
       setLoading(true);
       setError(null);
-      const data = await getDashboardData(userId);
+      const data = await getDashboardData(activeUserId);
       setDashboardData(data);
     } catch (err: any) {
       let msg = err?.message || 'Failed to load dashboard data';
@@ -273,7 +305,7 @@ export const DashboardScreen = () => {
             {error || 'No dashboard data available.'}
           </Text>
           <TouchableOpacity
-            onPress={loadDashboardData}
+            onPress={() => loadDashboardData()}
             style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: theme.colors.primary, borderRadius: 12 }}
           >
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Retry</Text>
@@ -471,8 +503,27 @@ export const DashboardScreen = () => {
 
           {dashboardData.challenges && dashboardData.challenges.length > 0 ? (
             dashboardData.challenges.map((challenge) => (
-              <View
+              <TouchableOpacity
                 key={challenge.key}
+                activeOpacity={0.9}
+                onPress={() => {
+                  if (challenge.joined) {
+                    navigation.navigate('ChallengeCommunity', {
+                      challengeKey: challenge.key,
+                      challengeTitle: challenge.title,
+                      userId: userId,
+                    });
+                  } else {
+                    Alert.alert(
+                      'Join Challenge',
+                      'Join this personalized challenge to chat and connect with other participants!',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Join now', onPress: () => handleJoinChallenge(challenge.key, false) }
+                      ]
+                    );
+                  }
+                }}
                 style={[styles.challengeCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
               >
                 <View style={styles.challengeCardHeader}>
@@ -540,7 +591,19 @@ export const DashboardScreen = () => {
                     <Text style={[styles.participantCountText, { color: colors.text }]}>{challenge.participants_count} joined</Text>
                   </View>
                 </View>
-              </View>
+
+                {challenge.joined && (
+                  <View style={styles.communityRow}>
+                    <View style={styles.communityRowLeft}>
+                      <Ionicons name="chatbubbles-outline" size={14} color={theme.colors.primary} />
+                      <Text style={[styles.communityRowText, { color: colors.textSecondary }]}>
+                        Chat & connect with participants
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
+                  </View>
+                )}
+              </TouchableOpacity>
             ))
           ) : (
             <View style={[styles.emptyStateContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
@@ -1373,5 +1436,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
+  },
+  communityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  communityRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  communityRowText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

@@ -315,7 +315,7 @@ export const SignUpScreen = () => {
 
             <Text style={styles.termsHeading}>7. Contact Us</Text>
             <Text style={styles.termsBody}>
-              If you have any questions regarding these Terms, please contact our support team at legal@fitrova.app.
+              If you have any questions regarding these Terms, please contact our support team at ibehpromise30@gmail.com.
             </Text>
             
             <View style={{ height: 40 }} />
@@ -375,7 +375,7 @@ export const SignUpScreen = () => {
 
             <Text style={styles.termsHeading}>7. Contact Us</Text>
             <Text style={styles.termsBody}>
-              If you have any questions or feedback about our privacy practices, please contact us at privacy@fitrova.app.
+              If you have any questions or feedback about our privacy practices, please contact us at ibehpromise30@gmail.com.
             </Text>
             
             <View style={{ height: 40 }} />

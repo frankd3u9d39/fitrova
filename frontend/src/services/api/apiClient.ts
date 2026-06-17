@@ -30,6 +30,9 @@ const MAPPED_ENDPOINTS: Record<string, string> = {
   'payment/initialize': 'app/controllers/payment/paystack_initialize.php',
   'payment/verify': 'app/controllers/payment/paystack_verify.php',
   'system/status': 'app/controllers/system/get_status.php',
+  'workout/challenge-details': 'app/controllers/workout/challenge_details.php',
+  'workout/challenge-chat': 'app/controllers/workout/challenge_chat.php',
+  'profile/manage-connections': 'app/controllers/profile/manage_connections.php',
 };
 
 // Build endpoint URL with versioning or legacy fallback mapping
@@ -92,6 +95,11 @@ export const endpoints = {
 
   // System status / feature flags
   getSystemStatus: buildEndpoint('system/status'),
+
+  // Challenge Community and chat
+  getChallengeDetails: buildEndpoint('workout/challenge-details'),
+  getChallengeMessages: buildEndpoint('workout/challenge-chat'),
+  manageConnections: buildEndpoint('profile/manage-connections'),
   
   // Legacy endpoints (temporary compatibility)
   legacy: {

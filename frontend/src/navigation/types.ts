@@ -52,6 +52,7 @@ export type RootStackParamList = {
   YouTubeAnalysis: undefined;
   MealLog: { userId: number };
   Notifications: { userId: number };
+  ChallengeCommunity: { challengeKey: string; challengeTitle: string; userId: number };
 };
 
 export type MainTabParamList = {

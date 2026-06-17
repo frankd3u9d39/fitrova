@@ -254,6 +254,29 @@ $queries = [
         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         UNIQUE KEY idx_user_challenge (user_id, challenge_key)
+    )",
+
+    // 19. user_connections
+    "CREATE TABLE IF NOT EXISTS user_connections (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        requester_id INT NOT NULL,
+        receiver_id INT NOT NULL,
+        status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY idx_user_connection (requester_id, receiver_id)
+    )",
+
+    // 20. challenge_messages
+    "CREATE TABLE IF NOT EXISTS challenge_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        challenge_key VARCHAR(100) NOT NULL,
+        user_id INT NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )"
 ];
 
@@ -303,6 +326,93 @@ try {
     echo "✅ Seeded default admin account (admin@fitrova.com / adminpassword123).\n";
 } catch (PDOException $e) {
     echo "ℹ️ Admin user seeding skipped or already exists.\n";
+}
+
+// Seed default test users for community features
+$testUsers = [
+    ['email' => 'sarah.j@fitrova.com', 'first_name' => 'Sarah', 'last_name' => 'Jenkins', 'profile_picture' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'motto' => 'Lover of cardio and early runs!'],
+    ['email' => 'michael.c@fitrova.com', 'first_name' => 'Michael', 'last_name' => 'Chen', 'profile_picture' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', 'motto' => 'Consistency over intensity.'],
+    ['email' => 'jessica.t@fitrova.com', 'first_name' => 'Jessica', 'last_name' => 'Taylor', 'profile_picture' => 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150', 'motto' => 'Building strong habits everyday.'],
+    ['email' => 'david.r@fitrova.com', 'first_name' => 'David', 'last_name' => 'Ross', 'profile_picture' => null, 'motto' => 'Pumping iron and hitting PRs!'],
+    ['email' => 'emily.d@fitrova.com', 'first_name' => 'Emily', 'last_name' => 'Davis', 'profile_picture' => 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150', 'motto' => 'Hydrated and happy!']
+];
+
+$dummyHash = password_hash('password123', PASSWORD_BCRYPT);
+foreach ($testUsers as $tu) {
+    try {
+        $stmt = $pdo->prepare("INSERT IGNORE INTO users (email, password_hash, first_name, last_name, is_verified) VALUES (?, ?, ?, ?, 1)");
+        $stmt->execute([$tu['email'], $dummyHash, $tu['first_name'], $tu['last_name']]);
+        
+        // Find user_id
+        $userIdStmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $userIdStmt->execute([$tu['email']]);
+        $tuId = $userIdStmt->fetchColumn();
+        
+        if ($tuId) {
+            // Seed profile
+            $profileStmt = $pdo->prepare("INSERT IGNORE INTO user_profiles (user_id, motto, profile_picture) VALUES (?, ?, ?)");
+            $profileStmt->execute([$tuId, $tu['motto'], $tu['profile_picture']]);
+        }
+    } catch (PDOException $e) {
+        // Suppress
+    }
+}
+echo "✅ Seeded default test users for community.\n";
+
+// Seed default challenge participation
+$challengeKeys = ['weight_shred_loss', 'muscle_growth_bulk', 'weight_maintenance_stabilize', 'hiit_stamina_blast', 'cardio_consistency_run', 'hydration_hero_water'];
+try {
+    // Fetch all seeded test users
+    $uStmt = $pdo->query("SELECT id FROM users WHERE email IN ('sarah.j@fitrova.com', 'michael.c@fitrova.com', 'jessica.t@fitrova.com', 'david.r@fitrova.com', 'emily.d@fitrova.com')");
+    $testUserIds = $uStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    if (!empty($testUserIds)) {
+        foreach ($challengeKeys as $ck) {
+            foreach ($testUserIds as $idx => $tuId) {
+                if (($idx + strlen($ck)) % 2 == 0) {
+                    $pdo->prepare("INSERT IGNORE INTO user_challenges (user_id, challenge_key) VALUES (?, ?)")
+                        ->execute([$tuId, $ck]);
+                }
+            }
+        }
+    }
+    echo "✅ Seeded test users participation in challenges.\n";
+} catch (PDOException $e) {
+    // Suppress
+}
+
+// Seed default chat messages
+$initialMessages = [
+    'weight_shred_loss' => [
+        ['name' => 'Sarah', 'msg' => 'Struggling to stay under my calories today, but going strong!'],
+        ['name' => 'Michael', 'msg' => 'Keep it up Sarah! Try drinking some green tea, helps curb hunger.']
+    ],
+    'muscle_growth_bulk' => [
+        ['name' => 'David', 'msg' => 'Hit a new bench PR today! 90kg for reps!'],
+        ['name' => 'Michael', 'msg' => 'Huge lift David! Bulking season is paying off.']
+    ],
+    'hydration_hero_water' => [
+        ['name' => 'Emily', 'msg' => 'Just finished my 3rd liter! Feeling so much more energetic.'],
+        ['name' => 'Jessica', 'msg' => 'Same here! It is crazy how much hydration affects focus.']
+    ]
+];
+
+try {
+    foreach ($initialMessages as $ck => $msgs) {
+        foreach ($msgs as $m) {
+            // Find user id by first name
+            $uIdStmt = $pdo->prepare("SELECT id FROM users WHERE first_name = ? LIMIT 1");
+            $uIdStmt->execute([$m['name']]);
+            $uId = $uIdStmt->fetchColumn();
+            if ($uId) {
+                $pdo->prepare("INSERT IGNORE INTO challenge_messages (challenge_key, user_id, message) VALUES (?, ?, ?)")
+                    ->execute([$ck, $uId, $m['msg']]);
+            }
+        }
+    }
+    echo "✅ Seeded initial challenge chat messages.\n";
+} catch (PDOException $e) {
+    // Suppress
 }
 
 // Seed default achievements via the main seed script
