@@ -136,6 +136,9 @@ const VerifyEmailScreen = () => {
             We've sent a 6-digit code to{"\n"}
             <Text style={styles.emailText}>{email}</Text>
           </Text>
+          <Text style={styles.spamNotice}>
+            Can't find it? Check your <Text style={styles.boldText}>Spam</Text> or <Text style={styles.boldText}>Junk</Text> folder.
+          </Text>
         </View>
 
         <View style={styles.codeContainer}>
@@ -218,6 +221,17 @@ const styles = StyleSheet.create({
   emailText: {
     color: '#111827',
     fontWeight: '600',
+  },
+  spamNotice: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  boldText: {
+    fontWeight: '700',
+    color: '#6B7280',
   },
   codeContainer: {
     flexDirection: 'row',
