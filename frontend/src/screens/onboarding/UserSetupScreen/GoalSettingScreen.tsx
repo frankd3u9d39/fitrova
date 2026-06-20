@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../../navigation/types';
 import { ProgressHeader } from '../../../components/common/ProgressHeader';
 import { Button } from '../../../components/buttons/Button';
@@ -144,6 +145,22 @@ export const GoalSettingScreen = () => {
       const data = await response.json();
 
       if (response.ok && data.status === 'success') {
+        // Sync progress state to AsyncStorage local session
+        try {
+          const savedSession = await AsyncStorage.getItem('user_session');
+          if (savedSession) {
+            const session = JSON.parse(savedSession);
+            session.surveyStep = 'Restrictions';
+            if (!session.profile) session.profile = {};
+            session.profile.selectedGoal = selectedGoal;
+            session.profile.targetWeight = targetWeight;
+            session.profile.targetDate = targetDate;
+            await AsyncStorage.setItem('user_session', JSON.stringify(session));
+          }
+        } catch (err) {
+          console.error('Failed to sync session step:', err);
+        }
+
         navigation.navigate('Restrictions', {
           ...params,
           selectedGoal,

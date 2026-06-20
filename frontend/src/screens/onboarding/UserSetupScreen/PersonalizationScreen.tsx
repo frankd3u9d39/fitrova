@@ -5,6 +5,7 @@ import { View, Text, StyleSheet,  ScrollView, TouchableOpacity, Dimensions, Text
 import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../../navigation/types';
 import { Button } from '../../../components/buttons/Button';
 import { Input } from '../../../components/inputs/Input';
@@ -66,6 +67,24 @@ export const PersonalizationScreen = () => {
       });
       const data = await response.json();
       if (response.ok && data.status === 'success') {
+        // Sync progress state to AsyncStorage local session
+        try {
+          const savedSession = await AsyncStorage.getItem('user_session');
+          if (savedSession) {
+            const session = JSON.parse(savedSession);
+            session.surveyStep = 'GoalSetting';
+            if (!session.profile) session.profile = {};
+            session.profile.age = age;
+            session.profile.gender = gender;
+            session.profile.height = height;
+            session.profile.weight = weight;
+            session.profile.activityLevel = activity;
+            await AsyncStorage.setItem('user_session', JSON.stringify(session));
+          }
+        } catch (err) {
+          console.error('Failed to sync session step:', err);
+        }
+
         navigation.navigate('GoalSetting', {
           userId, age, gender, height, weight, activityLevel: activity, firstName, hasEquipment
         });

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../../navigation/types';
 import { ProgressHeader } from '../../../components/common/ProgressHeader';
 import { CustomAlert } from '../../../components/common/CustomAlert';
@@ -142,6 +143,25 @@ export const RestrictionsScreen = () => {
       const data = await response.json();
 
       if (response.ok && data.status === 'success') {
+        // Sync progress state to AsyncStorage local session
+        try {
+          const savedSession = await AsyncStorage.getItem('user_session');
+          if (savedSession) {
+            const session = JSON.parse(savedSession);
+            session.surveyStep = nextStep;
+            if (!session.profile) session.profile = {};
+            session.profile.selectedDiet = finalDiet;
+            session.profile.selectedAllergies = finalAllergies;
+            session.profile.selectedConditions = finalConditions;
+            if (nextStep === 'Complete') {
+              session.profile.subscriptionTier = 'free';
+            }
+            await AsyncStorage.setItem('user_session', JSON.stringify(session));
+          }
+        } catch (err) {
+          console.error('Failed to sync session step:', err);
+        }
+
         if (monetizationOn) {
           navigation.navigate('SubscriptionSelection', { firstName: params.firstName, userId: params.userId });
         } else {
