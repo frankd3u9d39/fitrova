@@ -14,11 +14,12 @@ require_once __DIR__ . '/../config/db_config.php';
 
 // Self-Heal Database Schema (Ensure tables and columns exist)
 try {
-    // If users table, payment_transactions table, or user_challenges table is missing, initialize the database tables and seed defaults
+    // If users table, payment_transactions table, user_challenges table, or user_connections table is missing, initialize the database tables and seed defaults
     $usersTable = $pdo->query("SHOW TABLES LIKE 'users'")->fetch();
     $paymentTable = $pdo->query("SHOW TABLES LIKE 'payment_transactions'")->fetch();
     $challengesTable = $pdo->query("SHOW TABLES LIKE 'user_challenges'")->fetch();
-    if (!$usersTable || !$paymentTable || !$challengesTable) {
+    $connectionsTable = $pdo->query("SHOW TABLES LIKE 'user_connections'")->fetch();
+    if (!$usersTable || !$paymentTable || !$challengesTable || !$connectionsTable) {
         ob_start();
         require_once __DIR__ . '/../scripts/setup_production_db.php';
         ob_end_clean();

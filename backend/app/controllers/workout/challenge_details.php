@@ -11,6 +11,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../../config/db_config.php';
 
+// Self-Heal Database: Ensure user_connections table exists
+try {
+    $connectionsTable = $pdo->query("SHOW TABLES LIKE 'user_connections'")->fetch();
+    if (!$connectionsTable) {
+        ob_start();
+        require_once __DIR__ . '/../../../scripts/setup_production_db.php';
+        ob_end_clean();
+    }
+} catch (PDOException $e) {
+    error_log("Database self-healing failed in challenge_details.php: " . $e->getMessage());
+}
+
 try {
     $input = json_decode(file_get_contents('php://input'), true);
     if (!isset($input['user_id']) || !isset($input['challenge_key'])) {

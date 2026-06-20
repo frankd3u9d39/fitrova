@@ -11,10 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../../config/db_config.php';
 
-// Self-Heal Database: Ensure user_challenges table exists
+// Self-Heal Database: Ensure user_challenges and user_connections tables exist
 try {
     $challengesTable = $pdo->query("SHOW TABLES LIKE 'user_challenges'")->fetch();
-    if (!$challengesTable) {
+    $connectionsTable = $pdo->query("SHOW TABLES LIKE 'user_connections'")->fetch();
+    if (!$challengesTable || !$connectionsTable) {
         ob_start();
         require_once __DIR__ . '/../../../scripts/setup_production_db.php';
         ob_end_clean();
