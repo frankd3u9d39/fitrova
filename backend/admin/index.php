@@ -159,7 +159,7 @@ try {
 $trendsJson = json_encode($statsData['trends']);
 ?>
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html class="dark" lang="en">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -177,46 +177,46 @@ $trendsJson = json_encode($statsData['trends']);
                     "colors": {
                         "on-tertiary-fixed": "#ffffff",
                         "error": "#ef4444",
-                        "on-secondary-container": "#7c2d12",
-                        "tertiary-container": "#334155",
-                        "surface-container-highest": "#dae6d1",
-                        "surface": "#f8faf8",
-                        "outline-variant": "#cbd5e1",
+                        "on-secondary-container": "#ffedd5",
+                        "tertiary-container": "#1e293b",
+                        "surface-container-highest": "#1e293b",
+                        "surface": "#070a12",
+                        "outline-variant": "#334155",
                         "error-container": "#fee2e2",
                         "on-tertiary-fixed-variant": "#ffffff",
                         "on-error": "#ffffff",
-                        "surface-container-high": "#e8fbe8",
+                        "surface-container-high": "#1e293b",
                         "secondary": "#fb923c",
-                        "surface-dim": "#d2dec9",
+                        "surface-dim": "#0b0f19",
                         "on-error-container": "#7f1d1d",
-                        "surface-variant": "#f1f5f9",
-                        "on-background": "#0f172a",
-                        "tertiary-fixed-dim": "#0f172a",
-                        "surface-container": "#f1fde8",
-                        "primary-container": "#e8fbe8",
-                        "tertiary": "#000000",
-                        "surface-bright": "#ffffff",
+                        "surface-variant": "#111827",
+                        "on-background": "#ffffff",
+                        "tertiary-fixed-dim": "#f8faf8",
+                        "surface-container": "#111827",
+                        "primary-container": "rgba(19, 236, 19, 0.1)",
+                        "tertiary": "#ffffff",
+                        "surface-bright": "#0d1321",
                         "secondary-fixed-dim": "#f97316",
-                        "surface-container-lowest": "#ffffff",
+                        "surface-container-lowest": "#04060b",
                         "primary": "#13ec13",
-                        "outline": "#e2e8f0",
+                        "outline": "#1e293b",
                         "primary-fixed-dim": "#06bf06",
                         "on-secondary-fixed": "#000000",
-                        "on-tertiary-container": "#f8faf8",
-                        "surface-container-low": "#f8faf8",
-                        "on-primary-container": "#065f06",
-                        "background": "#f8faf8",
+                        "on-tertiary-container": "#ffffff",
+                        "surface-container-low": "#0b0f19",
+                        "on-primary-container": "#13ec13",
+                        "background": "#070a12",
                         "tertiary-fixed": "#1e293b",
                         "on-secondary": "#ffffff",
                         "on-primary-fixed": "#000000",
                         "primary-fixed": "#13ec13",
-                        "on-surface-variant": "#64748b",
+                        "on-surface-variant": "#94a3b8",
                         "secondary-fixed": "#fb923c",
-                        "inverse-surface": "#0c140c",
-                        "inverse-on-surface": "#f8faf8",
-                        "on-surface": "#0f172a",
-                        "on-primary": "#0c140c",
-                        "secondary-container": "#ffedd5",
+                        "inverse-surface": "#ffffff",
+                        "inverse-on-surface": "#070a12",
+                        "on-surface": "#ffffff",
+                        "on-primary": "#070a12",
+                        "secondary-container": "#431407",
                         "surface-tint": "#13ec13",
                         "on-tertiary": "#ffffff",
                         "on-secondary-fixed-variant": "#431407",
@@ -242,7 +242,7 @@ $trendsJson = json_encode($statsData['trends']);
     <style type="text/tailwindcss">
         @layer utilities {
             .card-shadow {
-                box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+                box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2);
             }
             .neon-glow {
                 filter: drop-shadow(0 0 8px rgba(19, 236, 19, 0.4));
@@ -302,10 +302,10 @@ $trendsJson = json_encode($statsData['trends']);
                 </div>
             </div>
             <!-- Card 3 -->
-            <div class="bg-on-surface rounded-3xl p-6 shadow-2xl relative overflow-hidden border border-slate-800">
-                <div class="absolute inset-0 bg-gradient-to-br from-on-surface to-tertiary-fixed opacity-80"></div>
+            <div class="bg-slate-950 rounded-3xl p-6 shadow-2xl relative overflow-hidden border border-slate-800">
+                <div class="absolute inset-0 bg-gradient-to-br from-slate-950 to-tertiary-fixed opacity-80"></div>
                 <div class="relative z-10">
-                    <p class="font-label text-[10px] font-bold uppercase tracking-widest text-surface-variant mb-2 opacity-80">AI Sessions Today</p>
+                    <p class="font-label text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 opacity-80">AI Sessions Today</p>
                     <div class="flex items-baseline gap-2">
                         <h3 id="ai-sessions" class="font-display text-[2rem] font-extrabold tracking-tight italic text-primary neon-glow"><?php echo $statsData['stats']['ai_generations']; ?></h3>
                     </div>
@@ -376,7 +376,7 @@ $trendsJson = json_encode($statsData['trends']);
                                     id="payment-toggle-btn"
                                     onclick="togglePaymentGateway()"
                                     aria-label="Toggle payment gateway"
-                                    class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary <?php echo $paymentsEnabled ? 'bg-primary' : 'bg-slate-300'; ?>"
+                                    class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary <?php echo $paymentsEnabled ? 'bg-primary' : 'bg-slate-800'; ?>"
                                 >
                                     <span id="payment-toggle-knob" class="inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 <?php echo $paymentsEnabled ? 'translate-x-6' : 'translate-x-1'; ?>"></span>
                                 </button>
@@ -481,7 +481,7 @@ $trendsJson = json_encode($statsData['trends']);
                         fill: true,
                         tension: 0.4,
                         pointBackgroundColor: '#13ec13',
-                        pointBorderColor: '#0f172a',
+                        pointBorderColor: '#0d1321',
                         pointBorderWidth: 2,
                         pointRadius: 5,
                         pointHoverRadius: 7,
@@ -495,7 +495,7 @@ $trendsJson = json_encode($statsData['trends']);
                         fill: true,
                         tension: 0.4,
                         pointBackgroundColor: '#a855f7',
-                        pointBorderColor: '#0f172a',
+                        pointBorderColor: '#0d1321',
                         pointBorderWidth: 2,
                         pointRadius: 5,
                         pointHoverRadius: 7,
@@ -509,7 +509,7 @@ $trendsJson = json_encode($statsData['trends']);
                     legend: { 
                         display: true,
                         labels: {
-                            color: '#64748b',
+                            color: '#94a3b8',
                             font: {
                                 family: 'Manrope',
                                 size: 12,
@@ -523,12 +523,12 @@ $trendsJson = json_encode($statsData['trends']);
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(15, 23, 42, 0.05)' },
-                        ticks: { color: '#64748b' }
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#64748b' }
+                        ticks: { color: '#94a3b8' }
                     }
                 }
             }
@@ -697,7 +697,7 @@ $trendsJson = json_encode($statsData['trends']);
 
                 // ── Animate the toggle switch ──
                 if (_paymentsEnabled) {
-                    btn.classList.replace('bg-slate-300', 'bg-primary');
+                    btn.classList.replace('bg-slate-800', 'bg-primary');
                     knob.classList.replace('translate-x-1', 'translate-x-6');
                     card.className  = card.className.replace('bg-error-container/30 border-error/40', 'bg-primary/5 border-primary/30');
                     label.textContent = '● Active';
@@ -706,7 +706,7 @@ $trendsJson = json_encode($statsData['trends']);
                     icon.textContent  = 'payments';
                     desc.textContent  = 'All Paystack flows are live. Users can subscribe and upgrade.';
                 } else {
-                    btn.classList.replace('bg-primary', 'bg-slate-300');
+                    btn.classList.replace('bg-primary', 'bg-slate-800');
                     knob.classList.replace('translate-x-6', 'translate-x-1');
                     card.className  = card.className.replace('bg-primary/5 border-primary/30', 'bg-error-container/30 border-error/40');
                     label.textContent = '● Paused';

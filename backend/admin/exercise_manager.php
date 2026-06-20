@@ -60,7 +60,7 @@ if (!function_exists('getWorkoutImage')) {
 }
 ?>
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html class="dark" lang="en">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -77,46 +77,46 @@ if (!function_exists('getWorkoutImage')) {
                     "colors": {
                         "on-tertiary-fixed": "#ffffff",
                         "error": "#ef4444",
-                        "on-secondary-container": "#7c2d12",
-                        "tertiary-container": "#334155",
-                        "surface-container-highest": "#dae6d1",
-                        "surface": "#f8faf8",
-                        "outline-variant": "#cbd5e1",
+                        "on-secondary-container": "#ffedd5",
+                        "tertiary-container": "#1e293b",
+                        "surface-container-highest": "#1e293b",
+                        "surface": "#070a12",
+                        "outline-variant": "#334155",
                         "error-container": "#fee2e2",
                         "on-tertiary-fixed-variant": "#ffffff",
                         "on-error": "#ffffff",
-                        "surface-container-high": "#e8fbe8",
+                        "surface-container-high": "#1e293b",
                         "secondary": "#fb923c",
-                        "surface-dim": "#d2dec9",
+                        "surface-dim": "#0b0f19",
                         "on-error-container": "#7f1d1d",
-                        "surface-variant": "#f1f5f9",
-                        "on-background": "#0f172a",
-                        "tertiary-fixed-dim": "#0f172a",
-                        "surface-container": "#f1fde8",
-                        "primary-container": "#e8fbe8",
-                        "tertiary": "#000000",
-                        "surface-bright": "#ffffff",
+                        "surface-variant": "#111827",
+                        "on-background": "#ffffff",
+                        "tertiary-fixed-dim": "#f8faf8",
+                        "surface-container": "#111827",
+                        "primary-container": "rgba(19, 236, 19, 0.1)",
+                        "tertiary": "#ffffff",
+                        "surface-bright": "#0d1321",
                         "secondary-fixed-dim": "#f97316",
-                        "surface-container-lowest": "#ffffff",
+                        "surface-container-lowest": "#04060b",
                         "primary": "#13ec13",
-                        "outline": "#e2e8f0",
+                        "outline": "#1e293b",
                         "primary-fixed-dim": "#06bf06",
                         "on-secondary-fixed": "#000000",
-                        "on-tertiary-container": "#f8faf8",
-                        "surface-container-low": "#f8faf8",
-                        "on-primary-container": "#065f06",
-                        "background": "#f8faf8",
+                        "on-tertiary-container": "#ffffff",
+                        "surface-container-low": "#0b0f19",
+                        "on-primary-container": "#13ec13",
+                        "background": "#070a12",
                         "tertiary-fixed": "#1e293b",
                         "on-secondary": "#ffffff",
                         "on-primary-fixed": "#000000",
                         "primary-fixed": "#13ec13",
-                        "on-surface-variant": "#64748b",
+                        "on-surface-variant": "#94a3b8",
                         "secondary-fixed": "#fb923c",
-                        "inverse-surface": "#0c140c",
-                        "inverse-on-surface": "#f8faf8",
-                        "on-surface": "#0f172a",
-                        "on-primary": "#0c140c",
-                        "secondary-container": "#ffedd5",
+                        "inverse-surface": "#ffffff",
+                        "inverse-on-surface": "#070a12",
+                        "on-surface": "#ffffff",
+                        "on-primary": "#070a12",
+                        "secondary-container": "#431407",
                         "surface-tint": "#13ec13",
                         "on-tertiary": "#ffffff",
                         "on-secondary-fixed-variant": "#431407",
@@ -141,7 +141,7 @@ if (!function_exists('getWorkoutImage')) {
     </script>
     <style type="text/tailwindcss">
         @layer utilities {
-            .card-shadow { box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05); }
+            .card-shadow { box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2); }
             .neon-glow { filter: drop-shadow(0 0 8px rgba(19, 236, 19, 0.4)); }
         }
     </style>

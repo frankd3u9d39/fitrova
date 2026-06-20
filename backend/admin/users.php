@@ -74,7 +74,7 @@ try {
 }
 ?>
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html class="dark" lang="en">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -91,46 +91,46 @@ try {
                     "colors": {
                         "on-tertiary-fixed": "#ffffff",
                         "error": "#ef4444",
-                        "on-secondary-container": "#7c2d12",
-                        "tertiary-container": "#334155",
-                        "surface-container-highest": "#dae6d1",
-                        "surface": "#f8faf8",
-                        "outline-variant": "#cbd5e1",
+                        "on-secondary-container": "#ffedd5",
+                        "tertiary-container": "#1e293b",
+                        "surface-container-highest": "#1e293b",
+                        "surface": "#070a12",
+                        "outline-variant": "#334155",
                         "error-container": "#fee2e2",
                         "on-tertiary-fixed-variant": "#ffffff",
                         "on-error": "#ffffff",
-                        "surface-container-high": "#e8fbe8",
+                        "surface-container-high": "#1e293b",
                         "secondary": "#fb923c",
-                        "surface-dim": "#d2dec9",
+                        "surface-dim": "#0b0f19",
                         "on-error-container": "#7f1d1d",
-                        "surface-variant": "#f1f5f9",
-                        "on-background": "#0f172a",
-                        "tertiary-fixed-dim": "#0f172a",
-                        "surface-container": "#f1fde8",
-                        "primary-container": "#e8fbe8",
-                        "tertiary": "#000000",
-                        "surface-bright": "#ffffff",
+                        "surface-variant": "#111827",
+                        "on-background": "#ffffff",
+                        "tertiary-fixed-dim": "#f8faf8",
+                        "surface-container": "#111827",
+                        "primary-container": "rgba(19, 236, 19, 0.1)",
+                        "tertiary": "#ffffff",
+                        "surface-bright": "#0d1321",
                         "secondary-fixed-dim": "#f97316",
-                        "surface-container-lowest": "#ffffff",
+                        "surface-container-lowest": "#04060b",
                         "primary": "#13ec13",
-                        "outline": "#e2e8f0",
+                        "outline": "#1e293b",
                         "primary-fixed-dim": "#06bf06",
                         "on-secondary-fixed": "#000000",
-                        "on-tertiary-container": "#f8faf8",
-                        "surface-container-low": "#f8faf8",
-                        "on-primary-container": "#065f06",
-                        "background": "#f8faf8",
+                        "on-tertiary-container": "#ffffff",
+                        "surface-container-low": "#0b0f19",
+                        "on-primary-container": "#13ec13",
+                        "background": "#070a12",
                         "tertiary-fixed": "#1e293b",
                         "on-secondary": "#ffffff",
                         "on-primary-fixed": "#000000",
                         "primary-fixed": "#13ec13",
-                        "on-surface-variant": "#64748b",
+                        "on-surface-variant": "#94a3b8",
                         "secondary-fixed": "#fb923c",
-                        "inverse-surface": "#0c140c",
-                        "inverse-on-surface": "#f8faf8",
-                        "on-surface": "#0f172a",
-                        "on-primary": "#0c140c",
-                        "secondary-container": "#ffedd5",
+                        "inverse-surface": "#ffffff",
+                        "inverse-on-surface": "#070a12",
+                        "on-surface": "#ffffff",
+                        "on-primary": "#070a12",
+                        "secondary-container": "#431407",
                         "surface-tint": "#13ec13",
                         "on-tertiary": "#ffffff",
                         "on-secondary-fixed-variant": "#431407",
@@ -271,9 +271,9 @@ try {
                                         $subTier = strtolower($user['subscription_tier'] ?? 'free');
                                         $subExpiry = $user['subscription_expiry'] ?? null;
                                         if ($subTier === 'advanced_premium'): ?>
-                                            <span class="inline-flex px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[11px] font-bold tracking-wide uppercase">Advanced Premium</span>
+                                            <span class="inline-flex px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[11px] font-bold tracking-wide uppercase">Advanced Premium</span>
                                         <?php elseif ($subTier === 'premium'): ?>
-                                            <span class="inline-flex px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold tracking-wide uppercase">Premium AI</span>
+                                            <span class="inline-flex px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] font-bold tracking-wide uppercase">Premium AI</span>
                                         <?php else: ?>
                                             <span class="inline-flex px-2.5 py-1 rounded-md bg-surface-container text-on-surface-variant text-[11px] font-bold tracking-wide uppercase">Free Trial</span>
                                         <?php endif; ?>
@@ -357,24 +357,24 @@ try {
                                                 <?php 
                                                 $pTier = strtolower($pay['subscription_tier']);
                                                 if ($pTier === 'advanced_premium'): ?>
-                                                    <span class="inline-flex px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold tracking-wide uppercase">Advanced</span>
+                                                    <span class="inline-flex px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-bold tracking-wide uppercase">Advanced</span>
                                                 <?php else: ?>
-                                                    <span class="inline-flex px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold tracking-wide uppercase">Premium</span>
+                                                    <span class="inline-flex px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold tracking-wide uppercase">Premium</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="p-4">
                                                 <?php if ($pay['status'] === 'success'): ?>
-                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase border border-emerald-200">
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/20">
                                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                                         Success / Paid
                                                     </span>
                                                 <?php elseif ($pay['status'] === 'failed'): ?>
-                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-[10px] font-bold uppercase border border-red-200">
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 text-[10px] font-bold uppercase border border-red-500/20">
                                                         <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                                                         Failed
                                                     </span>
                                                 <?php else: ?>
-                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 text-[10px] font-bold uppercase border border-yellow-200">
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-[10px] font-bold uppercase border border-yellow-500/20">
                                                         <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
                                                         Pending
                                                     </span>
