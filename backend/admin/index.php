@@ -19,10 +19,33 @@ try {
     $paymentsEnabled = true; // fail open
 }
 
+// Relative time ago helper function
+function get_time_ago($timestamp) {
+    $time_difference = time() - strtotime($timestamp);
+    if ($time_difference < 1) { return 'Just now'; }
+    $condition = array(
+        12 * 30 * 24 * 60 * 60 => 'year',
+        30 * 24 * 60 * 60       => 'month',
+        24 * 60 * 60            => 'day',
+        60 * 60                 => 'hour',
+        60                      => 'min',
+        1                       => 'sec'
+    );
+    foreach ($condition as $secs => $str) {
+        $d = $time_difference / $secs;
+        if ($d >= 1) {
+            $t = round($d);
+            return $t . ' ' . $str . ($t > 1 ? 's' : '') . ' ago';
+        }
+    }
+    return 'Just now';
+}
+
 // Fetch initial data directly via SQL for lightning-fast SSR (eliminating the HTTP loopback bottleneck)
 try {
     // 1. Total Users
     $userCount = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    $newUsersThisWeek = $pdo->query("SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)")->fetchColumn();
     
     // 2. Active Today (Users who logged food or workout today)
     $activeToday = $pdo->query("
@@ -47,28 +70,102 @@ try {
             HAVING total_in > up.daily_calorie_goal + 500
         ) as overeaters
     ")->fetchColumn();
-
-    // 5. Recent Activity Feed
-    $workouts = $pdo->query("
-        SELECT wl.workout_name, wl.completed_date, u.first_name, 'workout' as type
-        FROM workout_logs wl
-        JOIN users u ON wl.user_id = u.id
-        ORDER BY wl.created_at DESC LIMIT 5
-    ")->fetchAll(PDO::FETCH_ASSOC);
-    
-    $meals = $pdo->query("
-        SELECT nl.meal_name as workout_name, nl.logged_date as completed_date, u.first_name, 'meal' as type
+ 
+    // 5. Recent Activity Feed (Comprehensive UNION from 7 activity tables)
+    $recentActivity = $pdo->query("
+        SELECT 
+            CONVERT('meal' USING utf8mb4) as type,
+            nl.user_id,
+            CONVERT(u.first_name USING utf8mb4) as first_name,
+            CONVERT(u.last_name USING utf8mb4) as last_name,
+            CONVERT(nl.meal_name USING utf8mb4) as workout_name,
+            CONVERT(nl.calories USING utf8mb4) as extra_info,
+            nl.created_at as completed_date
         FROM nutrition_logs nl
         JOIN users u ON nl.user_id = u.id
-        ORDER BY nl.created_at DESC LIMIT 5
-    ")->fetchAll(PDO::FETCH_ASSOC);
-    
-    $recentActivity = array_merge($workouts, $meals);
-    usort($recentActivity, function($a, $b) {
-        return strtotime($b['completed_date']) - strtotime($a['completed_date']);
-    });
-    $recentActivity = array_slice($recentActivity, 0, 5);
 
+        UNION ALL
+
+        SELECT 
+            CONVERT('workout' USING utf8mb4) as type,
+            wl.user_id,
+            CONVERT(u.first_name USING utf8mb4) as first_name,
+            CONVERT(u.last_name USING utf8mb4) as last_name,
+            CONVERT(wl.workout_name USING utf8mb4) as workout_name,
+            CONVERT(wl.duration_minutes USING utf8mb4) as extra_info,
+            wl.created_at as completed_date
+        FROM workout_logs wl
+        JOIN users u ON wl.user_id = u.id
+
+        UNION ALL
+
+        SELECT 
+            CONVERT('weight' USING utf8mb4) as type,
+            wh.user_id,
+            CONVERT(u.first_name USING utf8mb4) as first_name,
+            CONVERT(u.last_name USING utf8mb4) as last_name,
+            CONVERT(wh.weight USING utf8mb4) as workout_name,
+            NULL as extra_info,
+            wh.created_at as completed_date
+        FROM weight_history wh
+        JOIN users u ON wh.user_id = u.id
+
+        UNION ALL
+
+        SELECT 
+            CONVERT('challenge_join' USING utf8mb4) as type,
+            uc.user_id,
+            CONVERT(u.first_name USING utf8mb4) as first_name,
+            CONVERT(u.last_name USING utf8mb4) as last_name,
+            CONVERT(uc.challenge_key USING utf8mb4) as workout_name,
+            NULL as extra_info,
+            uc.joined_at as completed_date
+        FROM user_challenges uc
+        JOIN users u ON uc.user_id = u.id
+
+        UNION ALL
+
+        SELECT 
+            CONVERT('chat' USING utf8mb4) as type,
+            cm.user_id,
+            CONVERT(u.first_name USING utf8mb4) as first_name,
+            CONVERT(u.last_name USING utf8mb4) as last_name,
+            CONVERT(cm.challenge_key USING utf8mb4) as workout_name,
+            CONVERT(cm.message USING utf8mb4) as extra_info,
+            cm.created_at as completed_date
+        FROM challenge_messages cm
+        JOIN users u ON cm.user_id = u.id
+
+        UNION ALL
+
+        SELECT 
+            CONVERT('form_check' USING utf8mb4) as type,
+            fcl.user_id,
+            CONVERT(u.first_name USING utf8mb4) as first_name,
+            CONVERT(u.last_name USING utf8mb4) as last_name,
+            CONVERT(fcl.exercise_name USING utf8mb4) as workout_name,
+            CONVERT(fcl.score USING utf8mb4) as extra_info,
+            fcl.created_at as completed_date
+        FROM form_check_logs fcl
+        JOIN users u ON fcl.user_id = u.id
+
+        UNION ALL
+
+        SELECT 
+            CONVERT('payment' USING utf8mb4) as type,
+            pt.user_id,
+            CONVERT(u.first_name USING utf8mb4) as first_name,
+            CONVERT(u.last_name USING utf8mb4) as last_name,
+            CONVERT(pt.subscription_tier USING utf8mb4) as workout_name,
+            CONVERT(pt.amount USING utf8mb4) as extra_info,
+            pt.created_at as completed_date
+        FROM payment_transactions pt
+        JOIN users u ON pt.user_id = u.id
+
+        ORDER BY completed_date DESC
+        LIMIT 30
+    ")->fetchAll(PDO::FETCH_ASSOC);
+ 
     // 6. Calculate 7-day Utilization Trend
     $days = [];
     $labels = [];
@@ -79,7 +176,7 @@ try {
         $completedDays[$date] = 0;
         $labels[] = date('D', strtotime("-$i days"));
     }
-
+ 
     try {
         $plansTrendStmt = $pdo->query("
             SELECT DATE(created_at) as plan_date, COUNT(*) as count 
@@ -111,7 +208,7 @@ try {
             // Silently absorb
         }
     }
-
+ 
     try {
         $logsTrendStmt = $pdo->query("
             SELECT completed_date, COUNT(*) as count 
@@ -128,10 +225,11 @@ try {
     } catch (PDOException $e) {
         // Silently absorb
     }
-
+ 
     $statsData = [
         'stats' => [
             'total_users' => (int)$userCount,
+            'new_users_week' => (int)$newUsersThisWeek,
             'active_today' => (int)$activeToday,
             'ai_generations' => (int)$aiCount,
             'surplus_alerts' => (int)$surplusAlerts
@@ -146,7 +244,7 @@ try {
 } catch (Exception $e) {
     // Graceful fallback to prevent server-side crash in case of DB migrations
     $statsData = [
-        'stats' => ['total_users' => 0, 'active_today' => 0, 'ai_generations' => 0, 'surplus_alerts' => 0],
+        'stats' => ['total_users' => 0, 'new_users_week' => 0, 'active_today' => 0, 'ai_generations' => 0, 'surplus_alerts' => 0],
         'recent_activity' => [],
         'trends' => [
             'labels' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
@@ -155,7 +253,7 @@ try {
         ]
     ];
 }
-
+ 
 $trendsJson = json_encode($statsData['trends']);
 ?>
 <!DOCTYPE html>
@@ -280,10 +378,14 @@ $trendsJson = json_encode($statsData['trends']);
                     <p class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Total Athletes</p>
                     <div class="flex items-baseline gap-2">
                         <h3 id="total-athletes" class="font-display text-[2rem] font-extrabold tracking-tight italic"><?php echo $statsData['stats']['total_users']; ?></h3>
-                        <span class="text-primary font-bold text-sm flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_upward</span>12%</span>
+                        <span class="text-primary font-bold text-[11px] flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+                            +<?php echo $statsData['stats']['new_users_week']; ?> this week
+                        </span>
                     </div>
                 </div>
             </div>
+
             <!-- Card 2 -->
             <div class="bg-surface-bright rounded-3xl p-6 shadow-2xl relative overflow-hidden group border border-outline/10 hover:border-primary/20 transition-all duration-300">
                 <div class="absolute -right-6 -top-6 w-24 h-24 bg-surface-container rounded-full group-hover:scale-110 transition-transform duration-500 ease-out"></div>
@@ -337,7 +439,7 @@ $trendsJson = json_encode($statsData['trends']);
             <div class="lg:col-span-2 bg-surface-bright rounded-[2rem] p-8 shadow-2xl flex flex-col h-[400px] border border-outline/10">
                 <div class="flex justify-between items-start mb-6">
                     <div>
-                        <h3 class="font-headline text-lg font-bold text-on-surface">User Growth &amp; Retention</h3>
+                        <h3 class="font-headline text-lg font-bold text-on-surface">System Activity &amp; AI Plans</h3>
                         <p class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mt-1">7 Day Trend Analysis</p>
                     </div>
                     <select class="bg-surface-container border border-outline rounded-lg text-xs font-bold px-3 py-2 outline-none text-on-surface">
@@ -428,23 +530,80 @@ $trendsJson = json_encode($statsData['trends']);
                 <div id="pulse-feed-container" class="space-y-0">
                     <?php foreach ($statsData['recent_activity'] as $activity): 
                         $sig = htmlspecialchars($activity['first_name'] . '-' . $activity['workout_name'] . '-' . $activity['completed_date'] . '-' . $activity['type']);
-                        $isWorkout = ($activity['type'] == 'workout');
+                        
+                        $type = $activity['type'];
+                        $userName = htmlspecialchars($activity['first_name'] . ' ' . $activity['last_name']);
+                        $timeAgo = get_time_ago($activity['completed_date']);
+                        
+                        // Default fallback mapping
+                        $icon = 'info';
+                        $iconColor = 'bg-blue-500/10 text-blue-500';
+                        $badgeColor = 'bg-blue-500/10 text-blue-500';
+                        $message = '';
+                        $ping = false;
+                        
+                        switch ($type) {
+                            case 'workout':
+                                $icon = 'rocket_launch';
+                                $iconColor = 'bg-primary-container text-on-primary-container';
+                                $badgeColor = 'bg-primary/10 text-primary';
+                                $message = $userName . ' completed workout: <span class="text-on-surface font-semibold">' . htmlspecialchars($activity['workout_name']) . '</span> (' . htmlspecialchars($activity['extra_info']) . ' mins)';
+                                $ping = true;
+                                break;
+                            case 'meal':
+                                $icon = 'restaurant';
+                                $iconColor = 'bg-amber-500/10 text-amber-500';
+                                $badgeColor = 'bg-amber-500/10 text-amber-500';
+                                $message = $userName . ' logged meal: <span class="text-on-surface font-semibold">' . htmlspecialchars($activity['workout_name']) . '</span> (' . htmlspecialchars($activity['extra_info']) . ' kcal)';
+                                break;
+                            case 'weight':
+                                $icon = 'monitor_weight';
+                                $iconColor = 'bg-cyan-500/10 text-cyan-500';
+                                $badgeColor = 'bg-cyan-500/10 text-cyan-500';
+                                $message = $userName . ' updated weight to <span class="text-on-surface font-semibold">' . htmlspecialchars($activity['workout_name']) . ' kg</span>';
+                                break;
+                            case 'challenge_join':
+                                $icon = 'group_add';
+                                $iconColor = 'bg-purple-500/10 text-purple-500';
+                                $badgeColor = 'bg-purple-500/10 text-purple-500';
+                                $challengeFormatted = ucwords(str_replace('_', ' ', $activity['workout_name']));
+                                $message = $userName . ' joined challenge: <span class="text-on-surface font-semibold">' . htmlspecialchars($challengeFormatted) . '</span>';
+                                break;
+                            case 'chat':
+                                $icon = 'forum';
+                                $iconColor = 'bg-pink-500/10 text-pink-500';
+                                $badgeColor = 'bg-pink-500/10 text-pink-500';
+                                $challengeFormatted = ucwords(str_replace('_', ' ', $activity['workout_name']));
+                                $message = $userName . ' messaged in <span class="text-on-surface font-semibold">' . htmlspecialchars($challengeFormatted) . '</span>: "' . htmlspecialchars($activity['extra_info']) . '"';
+                                break;
+                            case 'form_check':
+                                $icon = 'fact_check';
+                                $iconColor = 'bg-yellow-500/10 text-yellow-500';
+                                $badgeColor = 'bg-yellow-500/10 text-yellow-500';
+                                $message = $userName . ' checked form for <span class="text-on-surface font-semibold">' . htmlspecialchars($activity['workout_name']) . '</span> (Score: <span class="text-on-surface font-semibold">' . htmlspecialchars($activity['extra_info']) . '</span>)';
+                                break;
+                            case 'payment':
+                                $icon = 'credit_card';
+                                $iconColor = 'bg-emerald-500/10 text-emerald-500';
+                                $badgeColor = 'bg-emerald-500/10 text-emerald-500';
+                                $tier = ucwords(str_replace('_', ' ', $activity['workout_name']));
+                                $message = $userName . ' subscribed to <span class="text-on-surface font-semibold">' . htmlspecialchars($tier) . '</span> (₦' . number_format($activity['extra_info'], 2) . ')';
+                                break;
+                        }
                     ?>
                     <div class="flex items-start gap-4 py-4 border-b border-surface-container activity-item transition-all duration-500" data-sig="<?php echo $sig; ?>">
-                        <div class="w-10 h-10 rounded-full <?php echo $isWorkout ? 'bg-primary-container text-on-primary-container' : 'bg-secondary-container text-on-secondary-container'; ?> flex items-center justify-center flex-shrink-0 relative">
-                            <?php if ($isWorkout): ?>
+                        <div class="w-10 h-10 rounded-full <?php echo $iconColor; ?> flex items-center justify-center flex-shrink-0 relative">
+                            <?php if ($ping): ?>
                                 <span class="absolute inset-0 rounded-full border border-primary/30 animate-[ping_2s_ease-out_infinite]"></span>
-                                <span class="material-symbols-outlined text-[20px] relative z-10">rocket_launch</span>
-                            <?php else: ?>
-                                <span class="material-symbols-outlined text-[20px]">restaurant</span>
                             <?php endif; ?>
+                            <span class="material-symbols-outlined text-[20px] relative z-10"><?php echo $icon; ?></span>
                         </div>
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Just Now</span>
-                                <span class="px-2 py-0.5 rounded-full <?php echo $isWorkout ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'; ?> text-[9px] font-bold uppercase"><?php echo $activity['type']; ?></span>
+                                <span class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant"><?php echo $timeAgo; ?></span>
+                                <span class="px-2 py-0.5 rounded-full <?php echo $badgeColor; ?> text-[9px] font-bold uppercase"><?php echo htmlspecialchars($type); ?></span>
                             </div>
-                            <p class="font-body text-sm font-bold text-on-surface"><?php echo htmlspecialchars($activity['first_name']); ?> <?php echo $isWorkout ? 'completed' : 'logged'; ?> <?php echo htmlspecialchars($activity['workout_name']); ?>.</p>
+                            <p class="font-body text-sm text-on-surface-variant font-medium"><?php echo $message; ?></p>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -581,6 +740,29 @@ $trendsJson = json_encode($statsData['trends']);
             }
         }
 
+        function jsTimeAgo(dateStr) {
+            const timestamp = Date.parse(dateStr.replace(/-/g, '/')); // cross-browser safety
+            if (isNaN(timestamp)) return 'Just now';
+            const seconds = Math.floor((new Date() - timestamp) / 1000);
+            if (seconds < 1) return 'Just now';
+            const intervals = {
+                year: 31536000,
+                month: 2592000,
+                day: 86400,
+                hour: 3600,
+                minute: 60,
+                second: 1
+            };
+            for (const [unit, secs] of Object.entries(intervals)) {
+                const interval = Math.floor(seconds / secs);
+                if (interval >= 1) {
+                    const label = unit === 'minute' ? 'min' : (unit === 'second' ? 'sec' : unit);
+                    return `${interval} ${label}${interval > 1 ? 's' : ''} ago`;
+                }
+            }
+            return 'Just now';
+        }
+
         function updatePulseFeed(activities) {
             const container = document.getElementById('pulse-feed-container');
             if (!container) return;
@@ -600,27 +782,86 @@ $trendsJson = json_encode($statsData['trends']);
                     itemDiv.className = 'flex items-start gap-4 py-4 border-b border-surface-container activity-item opacity-0 -translate-y-4 transition-all duration-700 ease-out border p-2 rounded-2xl';
                     itemDiv.setAttribute('data-sig', sig);
 
-                    const isWorkout = activity.type === 'workout';
-                    const iconBgClass = isWorkout ? 'bg-primary-container text-on-primary-container' : 'bg-secondary-container text-on-secondary-container';
-                    const actionWord = isWorkout ? 'completed' : 'logged';
-                    const typeClass = isWorkout ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary';
-                    const iconName = isWorkout ? 'rocket_launch' : 'restaurant';
+                    const type = activity.type;
+                    const fullName = `${activity.first_name} ${activity.last_name}`;
+                    const timeLabel = jsTimeAgo(activity.completed_date);
+                    
+                    let icon = 'info';
+                    let iconColor = 'bg-blue-500/10 text-blue-500';
+                    let badgeColor = 'bg-blue-500/10 text-blue-500';
+                    let message = '';
+                    let ping = false;
 
-                    const iconPing = isWorkout 
+                    const escapeHtml = (str) => {
+                        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                    };
+
+                    const ucWords = (str) => {
+                        return String(str || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    };
+
+                    switch (type) {
+                        case 'workout':
+                            icon = 'rocket_launch';
+                            iconColor = 'bg-primary-container text-on-primary-container';
+                            badgeColor = 'bg-primary/10 text-primary';
+                            message = `${escapeHtml(fullName)} completed workout: <span class="text-on-surface font-semibold">${escapeHtml(activity.workout_name)}</span> (${escapeHtml(activity.extra_info)} mins)`;
+                            ping = true;
+                            break;
+                        case 'meal':
+                            icon = 'restaurant';
+                            iconColor = 'bg-amber-500/10 text-amber-500';
+                            badgeColor = 'bg-amber-500/10 text-amber-500';
+                            message = `${escapeHtml(fullName)} logged meal: <span class="text-on-surface font-semibold">${escapeHtml(activity.workout_name)}</span> (${escapeHtml(activity.extra_info)} kcal)`;
+                            break;
+                        case 'weight':
+                            icon = 'monitor_weight';
+                            iconColor = 'bg-cyan-500/10 text-cyan-500';
+                            badgeColor = 'bg-cyan-500/10 text-cyan-500';
+                            message = `${escapeHtml(fullName)} updated weight to <span class="text-on-surface font-semibold">${escapeHtml(activity.workout_name)} kg</span>`;
+                            break;
+                        case 'challenge_join':
+                            icon = 'group_add';
+                            iconColor = 'bg-purple-500/10 text-purple-500';
+                            badgeColor = 'bg-purple-500/10 text-purple-500';
+                            message = `${escapeHtml(fullName)} joined challenge: <span class="text-on-surface font-semibold">${escapeHtml(ucWords(activity.workout_name))}</span>`;
+                            break;
+                        case 'chat':
+                            icon = 'forum';
+                            iconColor = 'bg-pink-500/10 text-pink-500';
+                            badgeColor = 'bg-pink-500/10 text-pink-500';
+                            message = `${escapeHtml(fullName)} messaged in <span class="text-on-surface font-semibold">${escapeHtml(ucWords(activity.workout_name))}</span>: "${escapeHtml(activity.extra_info)}"`;
+                            break;
+                        case 'form_check':
+                            icon = 'fact_check';
+                            iconColor = 'bg-yellow-500/10 text-yellow-500';
+                            badgeColor = 'bg-yellow-500/10 text-yellow-500';
+                            message = `${escapeHtml(fullName)} checked form for <span class="text-on-surface font-semibold">${escapeHtml(activity.workout_name)}</span> (Score: <span class="text-on-surface font-semibold">${escapeHtml(activity.extra_info)}</span>)`;
+                            break;
+                        case 'payment':
+                            icon = 'credit_card';
+                            iconColor = 'bg-emerald-500/10 text-emerald-500';
+                            badgeColor = 'bg-emerald-500/10 text-emerald-500';
+                            const formattedAmount = parseFloat(activity.extra_info).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            message = `${escapeHtml(fullName)} subscribed to <span class="text-on-surface font-semibold">${escapeHtml(ucWords(activity.workout_name))}</span> (₦${formattedAmount})`;
+                            break;
+                    }
+
+                    const pingHtml = ping 
                         ? `<span class="absolute inset-0 rounded-full border border-primary/30 animate-[ping_2s_ease-out_infinite]"></span>`
                         : '';
 
                     itemDiv.innerHTML = `
-                        <div class="w-10 h-10 rounded-full ${iconBgClass} flex items-center justify-center flex-shrink-0 relative">
-                            ${iconPing}
-                            <span class="material-symbols-outlined text-[20px] relative z-10">${iconName}</span>
+                        <div class="w-10 h-10 rounded-full ${iconColor} flex items-center justify-center flex-shrink-0 relative">
+                            ${pingHtml}
+                            <span class="material-symbols-outlined text-[20px] relative z-10">${icon}</span>
                         </div>
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Just Now</span>
-                                <span class="px-2 py-0.5 rounded-full ${typeClass} text-[9px] font-bold uppercase">${activity.type}</span>
+                                <span class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">${timeLabel}</span>
+                                <span class="px-2 py-0.5 rounded-full ${badgeColor} text-[9px] font-bold uppercase">${escapeHtml(type)}</span>
                             </div>
-                            <p class="font-body text-sm font-bold text-on-surface">${activity.first_name} ${actionWord} ${activity.workout_name}.</p>
+                            <p class="font-body text-sm text-on-surface-variant font-medium">${message}</p>
                         </div>
                     `;
 
@@ -628,8 +869,8 @@ $trendsJson = json_encode($statsData['trends']);
                     container.insertBefore(itemDiv, container.firstChild);
 
                     // Add transient glowing effect
-                    const glowBorderClass = isWorkout ? 'border-primary/30' : 'border-secondary/30';
-                    const glowBgClass = isWorkout ? 'bg-primary/5' : 'bg-secondary/5';
+                    const glowBorderClass = type === 'workout' ? 'border-primary/30' : (type === 'payment' ? 'border-emerald-500/30' : 'border-outline/30');
+                    const glowBgClass = type === 'workout' ? 'bg-primary/5' : (type === 'payment' ? 'bg-emerald-500/5' : 'bg-surface-container/10');
 
                     // Force browser reflow to register initial transition state
                     itemDiv.offsetHeight;
@@ -645,10 +886,10 @@ $trendsJson = json_encode($statsData['trends']);
                 }
             }
 
-            // Enforce limit of 5 elements, animating extra elements away smoothly
+            // Enforce limit of 30 elements, animating extra elements away smoothly
             const updatedItems = Array.from(container.querySelectorAll('.activity-item'));
-            if (updatedItems.length > 5) {
-                for (let j = 5; j < updatedItems.length; j++) {
+            if (updatedItems.length > 30) {
+                for (let j = 30; j < updatedItems.length; j++) {
                     const extraItem = updatedItems[j];
                     extraItem.classList.add('opacity-0', 'translate-y-4');
                     setTimeout(() => {
@@ -803,20 +1044,7 @@ $trendsJson = json_encode($statsData['trends']);
         }
 
         function exportFinancials() {
-            let csv = "Transaction ID,Athlete Name,Plan Tier,Amount,Date,Status\n";
-            csv += "TX-9901,Sarah Jenkins,Pro,₦15000,2026-05-24,Success\n";
-            csv += "TX-9902,Marcus Chen,Free,₦0,2026-05-23,Active\n";
-            csv += "TX-9903,Elena Rodriguez,Pro,₦15000,2026-05-23,Success\n";
-            csv += "TX-9904,David Vane,Pro,₦15000,2026-05-22,Success\n";
-            csv += "TX-9905,Jessica Alva,Pro,₦15000,2026-05-22,Success\n";
-            
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "fitrova_financials_2026.csv";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            window.location.href = 'api/export_financials.php';
         }
     </script>
 
