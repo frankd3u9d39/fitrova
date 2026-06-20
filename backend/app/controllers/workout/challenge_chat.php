@@ -11,6 +11,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../../config/db_config.php';
 
+// Self-Heal Database: Ensure parent_id column exists in challenge_messages
+try {
+    $columnExists = $pdo->query("SHOW COLUMNS FROM challenge_messages LIKE 'parent_id'")->fetch();
+    if (!$columnExists) {
+        ob_start();
+        require_once __DIR__ . '/../../../scripts/setup_production_db.php';
+        ob_end_clean();
+    }
+} catch (PDOException $e) {
+    error_log("Database self-healing failed in challenge_chat.php: " . $e->getMessage());
+}
+
 try {
     $method = $_SERVER['REQUEST_METHOD'];
     
