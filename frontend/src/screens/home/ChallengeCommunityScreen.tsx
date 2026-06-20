@@ -11,8 +11,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Keyboard
+  Keyboard,
+  Animated,
+  PanResponder
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme';
@@ -30,6 +33,98 @@ import {
 
 type ChallengeCommunityRouteProp = RouteProp<RootStackParamList, 'ChallengeCommunity'>;
 
+interface SwipeableMessageRowProps {
+  item: ChatMessage;
+  isMe: boolean;
+  onReply: (message: ChatMessage) => void;
+  children: React.ReactNode;
+}
+
+const SwipeableMessageRow: React.FC<SwipeableMessageRowProps> = ({ item, isMe, onReply, children }) => {
+  const dragX = useRef(new Animated.Value(0)).current;
+  const hasTriggeredHaptic = useRef(false);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Activate responder for horizontal swipe to the right
+        return Math.abs(gestureState.dx) > 10 && gestureState.dx > 0 && Math.abs(gestureState.dy) < 15;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const val = Math.min(gestureState.dx, 80);
+        dragX.setValue(val);
+        
+        if (val > 50 && !hasTriggeredHaptic.current) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          hasTriggeredHaptic.current = true;
+        } else if (val <= 50 && hasTriggeredHaptic.current) {
+          hasTriggeredHaptic.current = false;
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dx > 50) {
+          onReply(item);
+        }
+        hasTriggeredHaptic.current = false;
+        Animated.spring(dragX, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 40,
+          friction: 7
+        }).start();
+      },
+      onPanResponderTerminate: () => {
+        hasTriggeredHaptic.current = false;
+        Animated.spring(dragX, {
+          toValue: 0,
+          useNativeDriver: true
+        }).start();
+      }
+    })
+  ).current;
+
+  return (
+    <View style={styles.swipeContainer}>
+      {/* Reply Icon Background Layer */}
+      <Animated.View
+        style={[
+          styles.replyIconContainer,
+          {
+            opacity: dragX.interpolate({
+              inputRange: [0, 50],
+              outputRange: [0, 1],
+              extrapolate: 'clamp'
+            }),
+            transform: [
+              {
+                translateX: dragX.interpolate({
+                  inputRange: [0, 50],
+                  outputRange: [-20, 0],
+                  extrapolate: 'clamp'
+                })
+              }
+            ]
+          }
+        ]}
+      >
+        <Ionicons name="arrow-undo" size={20} color="#10B981" />
+      </Animated.View>
+
+      {/* Animatable Row Content */}
+      <Animated.View
+        style={{
+          flex: 1,
+          transform: [{ translateX: dragX }]
+        }}
+        {...panResponder.panHandlers}
+      >
+        {children}
+      </Animated.View>
+    </View>
+  );
+};
+
 export const ChallengeCommunityScreen = () => {
   const route = useRoute<ChallengeCommunityRouteProp>();
   const navigation = useNavigation();
@@ -41,6 +136,7 @@ export const ChallengeCommunityScreen = () => {
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
 
   const chatListRef = useRef<FlatList>(null);
 
@@ -101,6 +197,7 @@ export const ChallengeCommunityScreen = () => {
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to load community data');
     } finally {
+      loadInitialData;
       setLoading(false);
     }
   };
@@ -119,18 +216,24 @@ export const ChallengeCommunityScreen = () => {
   const handleSendMessage = async () => {
     if (newMessage.trim() === '') return;
     const msgText = newMessage.trim();
+    const replyId = replyToMessage?.id;
     setNewMessage('');
+    setReplyToMessage(null);
     setSendingMessage(true);
     Keyboard.dismiss();
 
     try {
-      await sendChallengeMessage(userId, challengeKey, msgText);
+      await sendChallengeMessage(userId, challengeKey, msgText, replyId);
       const chatMessages = await getChallengeMessages(challengeKey);
       setMessages(chatMessages);
       setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to send message');
       setNewMessage(msgText); // Restore text on failure
+      if (replyId) {
+        const originalReply = messages.find(m => m.id === replyId);
+        if (originalReply) setReplyToMessage(originalReply);
+      }
     } finally {
       setSendingMessage(false);
     }
@@ -170,37 +273,52 @@ export const ChallengeCommunityScreen = () => {
   const renderChatItem = ({ item }: { item: ChatMessage }) => {
     const isMe = item.user_id === userId;
     return (
-      <View style={[styles.chatRow, isMe ? styles.chatRowMe : styles.chatRowOther]}>
-        {!isMe && (
-          <View style={[styles.avatarCircle, { backgroundColor: item.color }]}>
-            {item.profile_picture ? (
-              <Image source={{ uri: item.profile_picture }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarText}>{item.initials}</Text>
-            )}
-          </View>
-        )}
-        <View style={styles.messageContentBlock}>
+      <SwipeableMessageRow item={item} isMe={isMe} onReply={setReplyToMessage}>
+        <View style={[styles.chatRow, isMe ? styles.chatRowMe : styles.chatRowOther]}>
           {!isMe && (
-            <Text style={[styles.chatSenderName, { color: colors.textSecondary }]}>
-              {item.first_name} {item.last_name}
-            </Text>
+            <View style={[styles.avatarCircle, { backgroundColor: item.color }]}>
+              {item.profile_picture ? (
+                <Image source={{ uri: item.profile_picture }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{item.initials}</Text>
+              )}
+            </View>
           )}
-          <View
-            style={[
-              styles.chatBubble,
-              isMe ? { backgroundColor: colors.chatBubbleMe } : { backgroundColor: colors.chatBubbleOther }
-            ]}
-          >
-            <Text style={[styles.chatText, isMe ? styles.chatTextMe : { color: colors.chatTextOther }]}>
-              {item.message}
+          <View style={styles.messageContentBlock}>
+            {!isMe && (
+              <Text style={[styles.chatSenderName, { color: colors.textSecondary }]}>
+                {item.first_name} {item.last_name}
+              </Text>
+            )}
+            <View
+              style={[
+                styles.chatBubble,
+                isMe ? { backgroundColor: colors.chatBubbleMe } : { backgroundColor: colors.chatBubbleOther }
+              ]}
+            >
+              {item.parent_id && (
+                <View style={[styles.replyQuoteInBubble, { 
+                  backgroundColor: isMe ? 'rgba(255,255,255,0.15)' : (darkTheme ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                  borderLeftColor: isMe ? '#FFFFFF' : '#10B981' 
+                }]}>
+                  <Text style={[styles.replyQuoteName, { color: isMe ? '#FFFFFF' : '#10B981' }]} numberOfLines={1}>
+                    {item.parent_first_name} {item.parent_last_name}
+                  </Text>
+                  <Text style={[styles.replyQuoteText, { color: isMe ? '#E2E8F0' : colors.textSecondary }]} numberOfLines={2}>
+                    {item.parent_message}
+                  </Text>
+                </View>
+              )}
+              <Text style={[styles.chatText, isMe ? styles.chatTextMe : { color: colors.chatTextOther }]}>
+                {item.message}
+              </Text>
+            </View>
+            <Text style={[styles.chatTimeText, { color: colors.chatTime, alignSelf: isMe ? 'flex-end' : 'flex-start' }]}>
+              {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </View>
-          <Text style={[styles.chatTimeText, { color: colors.chatTime, alignSelf: isMe ? 'flex-end' : 'flex-start' }]}>
-            {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Text>
         </View>
-      </View>
+      </SwipeableMessageRow>
     );
   };
 
@@ -289,6 +407,24 @@ export const ChallengeCommunityScreen = () => {
             </View>
           }
         />
+        {/* Reply Preview Bar */}
+        {replyToMessage && (
+          <View style={[styles.replyPreviewBar, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+            <View style={[styles.replyPreviewBarInner, { borderLeftColor: '#10B981' }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.replyPreviewName, { color: '#10B981' }]} numberOfLines={1}>
+                  Replying to {replyToMessage.first_name} {replyToMessage.last_name}
+                </Text>
+                <Text style={[styles.replyPreviewText, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {replyToMessage.message}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setReplyToMessage(null)} style={styles.replyPreviewCloseBtn}>
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         {/* Chat input bar */}
         <View style={[styles.inputContainer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
           <TextInput
@@ -611,5 +747,57 @@ const styles = StyleSheet.create({
     color: '#10B981',
     fontSize: 12,
     fontWeight: '700',
+  },
+  swipeContainer: {
+    width: '100%',
+    position: 'relative',
+  },
+  replyIconContainer: {
+    position: 'absolute',
+    left: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 32,
+    height: '100%',
+    zIndex: 1,
+  },
+  replyQuoteInBubble: {
+    borderLeftWidth: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginBottom: 6,
+    minWidth: 140,
+  },
+  replyQuoteName: {
+    fontWeight: '700',
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  replyQuoteText: {
+    fontSize: 11,
+  },
+  replyPreviewBar: {
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  replyPreviewBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderLeftWidth: 3,
+    paddingLeft: 8,
+  },
+  replyPreviewName: {
+    fontWeight: '700',
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  replyPreviewText: {
+    fontSize: 12,
+  },
+  replyPreviewCloseBtn: {
+    padding: 4,
+    marginLeft: 8,
   },
 });

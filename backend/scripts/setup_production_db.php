@@ -275,8 +275,10 @@ $queries = [
         challenge_key VARCHAR(100) NOT NULL,
         user_id INT NOT NULL,
         message TEXT NOT NULL,
+        parent_id INT DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (parent_id) REFERENCES challenge_messages(id) ON DELETE SET NULL
     )"
 ];
 
@@ -305,7 +307,9 @@ $alterations = [
     "ALTER TABLE user_profiles MODIFY COLUMN profile_picture LONGTEXT DEFAULT NULL",
     "ALTER TABLE workout_plans ADD COLUMN plan_date DATE DEFAULT NULL",
     "ALTER TABLE workout_plans ADD COLUMN plan_data TEXT DEFAULT NULL",
-    "ALTER TABLE workout_plans MODIFY COLUMN workout_type VARCHAR(50) DEFAULT 'mixed'"
+    "ALTER TABLE workout_plans MODIFY COLUMN workout_type VARCHAR(50) DEFAULT 'mixed'",
+    "ALTER TABLE challenge_messages ADD COLUMN parent_id INT DEFAULT NULL",
+    "ALTER TABLE challenge_messages ADD FOREIGN KEY (parent_id) REFERENCES challenge_messages(id) ON DELETE SET NULL"
 ];
 
 foreach ($alterations as $alteration) {

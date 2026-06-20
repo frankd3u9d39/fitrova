@@ -119,7 +119,9 @@ CREATE TABLE IF NOT EXISTS challenge_messages (
     challenge_key VARCHAR(100) NOT NULL,
     user_id INT NOT NULL,
     message TEXT NOT NULL,
+    parent_id INT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES challenge_messages(id) ON DELETE SET NULL
 );
 

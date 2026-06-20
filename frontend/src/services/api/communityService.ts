@@ -11,6 +11,10 @@ export interface ChatMessage {
   profile_picture: string | null;
   message: string;
   created_at: string;
+  parent_id?: number | null;
+  parent_message?: string | null;
+  parent_first_name?: string | null;
+  parent_last_name?: string | null;
 }
 
 export interface ChallengeCommunityDetails {
@@ -60,11 +64,11 @@ export const getChallengeMessages = async (challengeKey: string): Promise<ChatMe
   return result.messages;
 };
 
-export const sendChallengeMessage = async (userId: number, challengeKey: string, message: string): Promise<void> => {
+export const sendChallengeMessage = async (userId: number, challengeKey: string, message: string, parentId?: number | null): Promise<void> => {
   const response = await fetch(endpoints.getChallengeMessages, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'send', user_id: userId, challenge_key: challengeKey, message }),
+    body: JSON.stringify({ action: 'send', user_id: userId, challenge_key: challengeKey, message, parent_id: parentId }),
   });
   
   const result = await parseResponseJson(response, 'sendChallengeMessage');

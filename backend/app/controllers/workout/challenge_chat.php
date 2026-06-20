@@ -27,11 +27,16 @@ try {
             }
             
             $stmt = $pdo->prepare("
-                SELECT cm.id, cm.challenge_key, cm.user_id, cm.message, cm.created_at,
-                       u.first_name, u.last_name, up.profile_picture
+                SELECT cm.id, cm.challenge_key, cm.user_id, cm.message, cm.created_at, cm.parent_id,
+                       u.first_name, u.last_name, up.profile_picture,
+                       parent.message AS parent_message,
+                       pu.first_name AS parent_first_name,
+                       pu.last_name AS parent_last_name
                 FROM challenge_messages cm
                 JOIN users u ON u.id = cm.user_id
                 LEFT JOIN user_profiles up ON up.user_id = u.id
+                LEFT JOIN challenge_messages parent ON parent.id = cm.parent_id
+                LEFT JOIN users pu ON pu.id = parent.user_id
                 WHERE cm.challenge_key = ?
                 ORDER BY cm.created_at ASC
                 LIMIT 100
@@ -57,7 +62,11 @@ try {
                     'color' => $color,
                     'profile_picture' => $m['profile_picture'],
                     'message' => $m['message'],
-                    'created_at' => $m['created_at']
+                    'created_at' => $m['created_at'],
+                    'parent_id' => $m['parent_id'] !== null ? intval($m['parent_id']) : null,
+                    'parent_message' => $m['parent_message'],
+                    'parent_first_name' => $m['parent_first_name'],
+                    'parent_last_name' => $m['parent_last_name']
                 ];
             }
             
@@ -71,6 +80,7 @@ try {
             $userId = $input['user_id'] ?? null;
             $challengeKey = $input['challenge_key'] ?? null;
             $message = trim($input['message'] ?? '');
+            $parentId = isset($input['parent_id']) && $input['parent_id'] !== '' ? intval($input['parent_id']) : null;
             
             if (!$userId || !$challengeKey || $message === '') {
                 http_response_code(400);
@@ -87,8 +97,8 @@ try {
                 $joinStmt->execute([$userId, $challengeKey]);
             }
             
-            $insertStmt = $pdo->prepare("INSERT INTO challenge_messages (challenge_key, user_id, message) VALUES (?, ?, ?)");
-            $insertStmt->execute([$challengeKey, $userId, $message]);
+            $insertStmt = $pdo->prepare("INSERT INTO challenge_messages (challenge_key, user_id, message, parent_id) VALUES (?, ?, ?, ?)");
+            $insertStmt->execute([$challengeKey, $userId, $message, $parentId]);
             
             echo json_encode([
                 'status' => 'success',
