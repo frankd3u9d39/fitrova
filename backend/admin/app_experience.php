@@ -195,7 +195,7 @@ $slides = $slidesStmt ? $slidesStmt->fetchAll(PDO::FETCH_ASSOC) : [];
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- Main Content Area -->
-    <main class="ml-64 flex-1 flex flex-col relative min-h-screen">
+    <main class="ml-0 md:ml-64 flex-1 flex flex-col relative min-h-screen">
         <!-- Header -->
         <?php
         $headerSearchPlaceholder = "Search page controls...";
@@ -204,7 +204,7 @@ $slides = $slidesStmt ? $slidesStmt->fetchAll(PDO::FETCH_ASSOC) : [];
         ?>
 
         <!-- Canvas -->
-        <div class="p-8 pt-20 pb-24 flex-1 mt-4">
+        <div class="p-4 md:p-8 pt-20 pb-24 flex-1 mt-4">
             <!-- Title -->
             <div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
                 <div>

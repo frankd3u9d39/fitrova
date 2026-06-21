@@ -154,7 +154,7 @@ if (!function_exists('getWorkoutImage')) {
     <?php include __DIR__ . '/includes/header.php'; ?>
 
     <!-- Main Content Canvas -->
-    <main class="ml-64 mt-16 p-8 w-full max-w-7xl">
+    <main class="ml-0 md:ml-64 mt-16 p-4 md:p-8 w-full max-w-7xl">
         <!-- Page Header -->
         <div class="flex justify-between items-end mb-10 mt-4">
             <div>

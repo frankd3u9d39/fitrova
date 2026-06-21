@@ -159,7 +159,7 @@ try {
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- Main Content Area -->
-    <div class="flex-1 ml-64 flex flex-col min-h-screen relative">
+    <div class="flex-1 ml-0 md:ml-64 flex flex-col min-h-screen relative">
         <!-- TopNavBar -->
         <?php
         $headerSearchPlaceholder = "Search Users...";
@@ -169,7 +169,7 @@ try {
         ?>
 
         <!-- Canvas -->
-        <main class="flex-1 pt-24 px-8 pb-12 overflow-y-auto">
+        <main class="flex-1 pt-24 px-4 md:px-8 pb-12 overflow-y-auto">
             <div class="flex flex-col gap-8 max-w-7xl mx-auto">
                 <!-- Page Header & Summary Bento -->
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">

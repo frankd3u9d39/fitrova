@@ -51,7 +51,12 @@ $adminFullName = ($adminUser)
 ?>
 
 <!-- TopNavBar Component -->
-<header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface/80 backdrop-blur-xl flex justify-between items-center h-16 px-8 border-b border-outline/20">
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] z-40 bg-surface/80 backdrop-blur-xl flex justify-between items-center h-16 px-4 md:px-8 border-b border-outline/20">
+    <!-- Hamburger button for mobile sidebar -->
+    <button onclick="toggleMobileSidebar(event)" class="md:hidden text-on-surface-variant hover:text-primary transition-colors flex items-center p-2 rounded-full hover:bg-surface-container/50 mr-2">
+        <span class="material-symbols-outlined">menu</span>
+    </button>
+
     <!-- Search Bar Section -->
     <div class="flex-1">
         <?php if (isset($headerSearchPlaceholder)): ?>

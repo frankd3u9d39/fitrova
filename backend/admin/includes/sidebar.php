@@ -28,7 +28,7 @@ try {
 $stats = ['ai_generations' => $aiGenerationsToday];
 ?>
 <!-- SideNavBar Component -->
-<nav class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface shadow-2xl p-4 z-50 border-r border-outline/20">
+<nav id="adminSidebar" class="flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface shadow-2xl p-4 z-50 border-r border-outline/20 transition-transform duration-300 -translate-x-full md:translate-x-0">
     <div class="mb-10 mt-4 px-4">
         <h1 class="font-display text-2xl font-extrabold tracking-tighter text-on-surface">Fitrova<span class="text-primary">.</span></h1>
         <p class="font-body text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-1">Admin Nexus</p>
@@ -153,6 +153,27 @@ function globalExportData() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+}
+</script>
+
+<!-- Mobile Sidebar Backdrop Overlay -->
+<div id="sidebarBackdrop" onclick="toggleMobileSidebar(event)" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden"></div>
+
+<script>
+function toggleMobileSidebar(event) {
+    if (event) event.stopPropagation();
+    const sidebar = document.getElementById('adminSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    
+    if (sidebar.classList.contains('-translate-x-full')) {
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        backdrop.classList.remove('hidden');
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        sidebar.classList.remove('translate-x-0');
+        backdrop.classList.add('hidden');
     }
 }
 </script>
