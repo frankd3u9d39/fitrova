@@ -29,15 +29,15 @@ global.fetch = async (...args: Parameters<typeof fetch>) => {
     console.log(`🌐 [FETCH START]: ${url}`);
   }
 
-  // Detect file/multipart uploads — these need a long timeout and NO retries
-  const isUpload =
+  // Detect file/multipart uploads or AI analysis requests — these need a long timeout and NO retries
+  const isLongRunning =
     options?.body instanceof FormData ||
     (typeof options?.body === 'string' &&
-      (url as string).includes('ai_form_analyzer'));
+      ((url as string).includes('ai_form_analyzer') || (url as string).includes('youtube_workout_controller')));
 
-  // 120 s for uploads (Gemini can be slow), 30 s for everything else
-  const TIMEOUT_MS = isUpload ? 120_000 : 30_000;
-  const maxRetries = isUpload ? 1 : 3;  // no retry storm for large uploads
+  // 120 s for uploads and heavy AI analysis (Gemini/HF can be slow), 30 s for everything else
+  const TIMEOUT_MS = isLongRunning ? 120_000 : 30_000;
+  const maxRetries = isLongRunning ? 1 : 3;  // no retry storm for large/heavy requests
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
