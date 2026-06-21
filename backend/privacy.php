@@ -175,7 +175,7 @@
             <li>Request deletion of your account and data.</li>
             <li>Opt out of marketing communications at any time.</li>
         </ul>
-        <p>To exercise any of these rights, contact us at <a href="mailto:support@fitrova.com">support@fitrova.com</a>.</p>
+        <p>To exercise any of these rights, contact us at <a href="mailto:ibehpromise30@gmail.com">ibehpromise30@gmail.com</a>.</p>
     </section>
 
     <section>
@@ -187,7 +187,7 @@
         <h2>Contact Us</h2>
         <p>If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
         <ul>
-            <li>Email: <a href="mailto:support@fitrova.com">support@fitrova.com</a></li>
+            <li>Email: <a href="mailto:ibehpromise30@gmail.com">ibehpromise30@gmail.com</a></li>
             <li>Website: <a href="https://fitrova-backend.onrender.com">https://fitrova-backend.onrender.com</a></li>
         </ul>
     </section>
