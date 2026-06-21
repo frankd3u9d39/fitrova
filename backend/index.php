@@ -10,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fitrova — Your AI Fitness Coach</title>
     <meta name="description" content="Transform your fitness journey with Fitrova, your AI-powered coach. Personalized workouts, intelligent nutrition, and real-time form analysis.">
+    <link rel="icon" type="image/png" href="/favicon.png">
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
