@@ -10,9 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../../config/db_config.php';
+require_once __DIR__ . '/../../../config/env_loader.php';
+loadEnv(__DIR__ . '/../../../.env');
+require_once __DIR__ . '/../../../config/gemma_helper.php';
 
 // Fetch dynamic configuration
-$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary')");
+$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
 $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
 $primaryModel = $settings['ai_model_primary'] ?? '';
@@ -188,6 +191,60 @@ foreach ($models as $modelName) {
     } else {
         $last_error = "Model {$modelName} failed: HTTP {$httpCode} | {$curlError} | {$response}";
         file_put_contents(__DIR__ . '/../../../storage/logs/gemini_error.log', date('Y-m-d H:i:s') . " - " . $last_error . "\n", FILE_APPEND);
+    }
+}
+
+if (!$ai_text) {
+    // Fallback to Gemma 3 Vision via router
+    try {
+        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+        if (!empty($hfToken)) {
+            $payload = json_encode([
+                'model' => 'google/gemma-3-4b-it',
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => [
+                            ['type' => 'text', 'text' => $prompt],
+                            ['type' => 'image_url', 'image_url' => ['url' => "data:image/jpeg;base64,{$image_data}"]]
+                        ]
+                    ]
+                ],
+                'max_tokens' => 1000,
+                'temperature' => 0.7
+            ]);
+
+            $ch = curl_init('https://router.huggingface.co/v1/chat/completions');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST,           true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS,     $payload);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                "Authorization: Bearer {$hfToken}",
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT,        15);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+
+            $raw     = curl_exec($ch);
+            $code    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr = curl_error($ch);
+            curl_close($ch);
+
+            if ($code === 200) {
+                $resp = json_decode($raw, true);
+                $gemmaText = $resp['choices'][0]['message']['content'] ?? '';
+                if (!empty($gemmaText)) {
+                    $gemmaText = preg_replace('/^```json\s*/i', '', trim($gemmaText));
+                    $gemmaText = preg_replace('/```\s*$/i',     '', trim($gemmaText));
+                    $ai_text = trim($gemmaText);
+                }
+            } else {
+                $last_error .= "\nGemma 3 vision fallback failed (HTTP {$code}): {$curlErr} | {$raw}";
+            }
+        }
+    } catch (Exception $gemmaEx) {
+        $last_error .= "\nGemma 3 vision fallback exception: " . $gemmaEx->getMessage();
     }
 }
 

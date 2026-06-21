@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../../config/db_config.php';
+require_once __DIR__ . '/../../../config/env_loader.php';
+loadEnv(__DIR__ . '/../../../.env');
+require_once __DIR__ . '/../../../config/gemma_helper.php';
 
 // Prevent warnings from breaking JSON
 error_reporting(0);
@@ -26,7 +29,7 @@ try {
 
     // AI Configuration (Re-using Gemini logic from main script)
     // Fetch dynamic configuration
-    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key = 'ai_gemini_api_key'");
+    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'hf_token')");
     $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
     $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
     
@@ -67,11 +70,22 @@ try {
         throw new Exception('Gemini API error (HTTP ' . $httpCode . '): ' . $response);
     }
 
-    $result = json_decode($response, true);
-    if (!isset($result['candidates'][0]['content']['parts'][0]['text'])) {
-        throw new Exception('Invalid response structure from Gemini API: ' . $response);
+    $result = @json_decode($response, true);
+    $aiJson = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+    
+    if (!$aiJson) {
+        // Gemini failed or response is empty, attempt Gemma 3 fallback
+        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+        if (!empty($hfToken)) {
+            try {
+                $aiJson = callGemma3($prompt, $hfToken, 1000);
+            } catch (Exception $gemmaEx) {
+                throw new Exception('Gemini failed and Gemma 3 fallback failed: ' . $gemmaEx->getMessage());
+            }
+        } else {
+            throw new Exception('Gemini failed and Hugging Face token is not configured.');
+        }
     }
-    $aiJson = $result['candidates'][0]['content']['parts'][0]['text'];
     
     // Clean JSON
     $aiJson = preg_replace('/```json\s*/', '', $aiJson);

@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../../config/db_config.php';
+require_once __DIR__ . '/../../../config/env_loader.php';
+loadEnv(__DIR__ . '/../../../.env');
+require_once __DIR__ . '/../../../config/gemma_helper.php';
 
 try {
     $input = json_decode(file_get_contents('php://input'), true);
@@ -42,7 +45,7 @@ try {
     }
 
     // Fetch dynamic configuration for AI
-    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary')");
+    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
     $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
     $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
     $primaryModel = $settings['ai_model_primary'] ?? '';
@@ -140,6 +143,26 @@ Return ONLY the JSON array, nothing else.";
             $error_details[] = "Model {$modelName} succeeded with 200 but failed to parse JSON text. Response: " . substr($response, 0, 300);
         } else {
             $error_details[] = "Model {$modelName} failed with code {$httpCode}. Response: " . substr($response, 0, 300);
+        }
+    }
+
+    if (!$ai_data) {
+        // Fallback to Gemma 3
+        try {
+            $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+            if (!empty($hfToken)) {
+                $gemmaText = callGemma3($prompt, $hfToken, 1000);
+                $parsed = json_decode($gemmaText, true);
+                if ($parsed && is_array($parsed) && isset($parsed[0]['name'])) {
+                    $ai_data = $parsed;
+                } else {
+                    $error_details[] = "Gemma 3 fallback returned invalid JSON or wrong format: " . substr($gemmaText, 0, 200);
+                }
+            } else {
+                $error_details[] = "Gemma 3 fallback skipped: HF_TOKEN is empty";
+            }
+        } catch (Exception $gemmaEx) {
+            $error_details[] = "Gemma 3 fallback failed: " . $gemmaEx->getMessage();
         }
     }
 

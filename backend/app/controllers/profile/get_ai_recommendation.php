@@ -11,9 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Gemini API Configuration
 require_once __DIR__ . '/../../../config/db_config.php';
+require_once __DIR__ . '/../../../config/env_loader.php';
+loadEnv(__DIR__ . '/../../../.env');
+require_once __DIR__ . '/../../../config/gemma_helper.php';
 
 // Fetch dynamic configuration
-$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary')");
+$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
 $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
 $primaryModel = $settings['ai_model_primary'] ?? '';
@@ -95,6 +98,26 @@ foreach ($models as $modelName) {
         }
     } else {
         $error_details[] = "Model {$modelName} failed with code {$httpCode}";
+    }
+}
+
+if (!$ai_data) {
+    // Fallback to Gemma 3
+    try {
+        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+        if (!empty($hfToken)) {
+            $gemmaText = callGemma3($prompt, $hfToken, 400);
+            $parsed = json_decode($gemmaText, true);
+            if ($parsed && isset($parsed['recommendation'])) {
+                $ai_data = $parsed;
+            } else {
+                $error_details[] = "Gemma 3 fallback returned invalid JSON: " . substr($gemmaText, 0, 200);
+            }
+        } else {
+            $error_details[] = "Gemma 3 fallback skipped: HF_TOKEN is empty";
+        }
+    } catch (Exception $gemmaEx) {
+        $error_details[] = "Gemma 3 fallback failed: " . $gemmaEx->getMessage();
     }
 }
 

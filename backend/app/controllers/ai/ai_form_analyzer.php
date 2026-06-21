@@ -34,6 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // ── DB & settings ─────────────────────────────────────────────────────────
 require_once __DIR__ . '/../../../config/db_config.php';
+require_once __DIR__ . '/../../../config/env_loader.php';
+loadEnv(__DIR__ . '/../../../.env');
+require_once __DIR__ . '/../../../config/gemma_helper.php';
 
 $settingsStmt = $pdo->query(
     "SELECT setting_key, setting_value FROM system_settings
@@ -293,8 +296,29 @@ Return ONLY valid JSON — no markdown code fences, no leading/trailing comments
         }
     }
 
+    // ── TIER 2.5: Gemma 3 via HF Inference Providers (GPU-backed) ──────────
+    // Fallback for when HF space is down AND Gemini is unavailable.
+    if ($analysisData === null) {
+        try {
+            $hfToken = getenv('HF_TOKEN');
+            $gemmaPrompt = "You are an expert biomechanics coach. Analyze a user's {$exerciseName} exercise form.\n\nReturn ONLY valid JSON (no markdown):\n{\n  \"status\": \"GOOD\",\n  \"detected_exercise\": \"{$exerciseName}\",\n  \"score\": 82,\n  \"tips\": [\"Coaching tip 1\", \"Coaching tip 2\", \"Coaching tip 3\"],\n  \"summary\": \"Coaching summary for {$exerciseName}\"\n}";
+            $gemmaText = callGemma3($gemmaPrompt, $hfToken, 400);
+            $parsed = json_decode($gemmaText, true);
+            if ($parsed && isset($parsed['status'])) {
+                $analysisData = $parsed;
+                if (!isset($analysisData['detected_exercise'])) {
+                    $analysisData['detected_exercise'] = $exerciseName;
+                }
+                $analysisText = json_encode($analysisData);
+                $source = 'gemma3';
+            }
+        } catch (Exception $gemmaEx) {
+            error_log("⚠️ Gemma 3 form fallback failed: " . $gemmaEx->getMessage());
+        }
+    }
+
     // --- Local Fallback Coach ---
-    // If Gemini fails or returns invalid data, fall back to our local expert biomechanics coach library
+    // If all AI tiers fail, fall back to local expert biomechanics coach library
     if ($analysisData === null) {
         error_log("⚠️ Gemini API call failed or returned invalid data. Falling back to local Biomechanics Coach Engine. Error: " . $lastError);
         

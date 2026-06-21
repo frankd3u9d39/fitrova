@@ -171,41 +171,63 @@ status must be one of: GOOD, CAUTION, IMPROVEMENT_NEEDED";
         }
     }
 
-    // ── TIER 2: Gemma 2 on Hugging Face Space ────────────────────────────
-    // Text-only coaching — no thumbnail needed, fast inference, good quality tips.
+    // ── TIER 2: Gemma 3 via HF Inference Providers API (GPU-backed, fast) ─────
     if ($analysisData === null) {
-        $gemmaUrl = 'https://ibeh12-fitrova-ai.hf.space/api/gemma-coach';
+        $hfToken = getenv('HF_TOKEN');
+        if ($hfToken) {
+            $prompt = "You are an expert fitness coach. Give detailed coaching advice for: {$exercise_name}.\n\nReturn ONLY valid JSON with no markdown:\n{\n  \"analysis\": {\n    \"exercise\": \"{$exercise_name}\",\n    \"accuracy_score\": 85,\n    \"status\": \"GOOD\",\n    \"summary\": \"...\",\n    \"pro_tips\": [\"tip1\", \"tip2\", \"tip3\"],\n    \"common_mistakes\": [\"mistake1\", \"mistake2\"],\n    \"key_cues\": [\"cue1\", \"cue2\"]\n  }\n}";
 
-        $ch = curl_init($gemmaUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST,           true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS,     json_encode([
-            'exercise_name' => $exercise_name,
-            'video_title'   => $video_title,
-        ]));
-        curl_setopt($ch, CURLOPT_HTTPHEADER,     ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT,        8);    // 18s Gemini + 8s Gemma = 26s total, under Render's 30s limit
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            $ch = curl_init('https://router.huggingface.co/v1/chat/completions');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST,           true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS,     json_encode([
+                'model' => 'google/gemma-3-4b-it',
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'max_tokens' => 400,
+                'temperature' => 0.7
+            ]));
+            curl_setopt($ch, CURLOPT_HTTPHEADER,     [
+                "Authorization: Bearer {$hfToken}",
+                'Content-Type: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT,        8);    // 18s Gemini + 8s Gemma = 26s total, under Render's 30s limit
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 
-        $gemmaRaw  = curl_exec($ch);
-        $gemmaCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $gemmaErr  = curl_error($ch);
-        curl_close($ch);
+            $gemmaRaw  = curl_exec($ch);
+            $gemmaCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $gemmaErr  = curl_error($ch);
+            curl_close($ch);
 
-        if ($gemmaRaw !== false && $gemmaCode === 200) {
-            $gemmaData = json_decode($gemmaRaw, true);
-            if (isset($gemmaData['analysis']) && is_array($gemmaData['analysis'])) {
-                $analysisData = $gemmaData;
-                $source       = 'gemma2';
-            } elseif (isset($gemmaData['exercise'])) {
-                $analysisData = ['analysis' => $gemmaData];
-                $source       = 'gemma2';
+            if ($gemmaRaw !== false && $gemmaCode === 200) {
+                $resp = json_decode($gemmaRaw, true);
+                $text = $resp['choices'][0]['message']['content'] ?? '';
+
+                if ($text) {
+                    $text = preg_replace('/^```json\s*/i', '', trim($text));
+                    $text = preg_replace('/```\s*$/i',     '', trim($text));
+                    $text = trim($text);
+
+                    if (preg_match('/\{.*\}/s', $text, $m)) {
+                        $parsed = json_decode($m[0], true);
+                        if ($parsed && isset($parsed['analysis'])) {
+                            $analysisData = $parsed;
+                            $source       = 'gemma3';
+                        } elseif ($parsed && isset($parsed['exercise'])) {
+                            $analysisData = ['analysis' => $parsed];
+                            $source       = 'gemma3';
+                        }
+                    }
+                }
             }
-        }
 
-        if ($analysisData === null) {
-            error_log("⚠️ Gemma 2 failed (HTTP {$gemmaCode}, err: {$gemmaErr}). Using local coaching library.");
+            if ($analysisData === null) {
+                error_log("⚠️ Gemma 3 HF Inference API failed (HTTP {$gemmaCode}, err: {$gemmaErr}). Using local coaching library.");
+            }
+        } else {
+            error_log("⚠️ HF_TOKEN not set in environment. Skipping Gemma 3 tier.");
         }
     }
 

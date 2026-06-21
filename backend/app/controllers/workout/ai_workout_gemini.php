@@ -15,6 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../../config/db_config.php';
+require_once __DIR__ . '/../../../config/env_loader.php';
+loadEnv(__DIR__ . '/../../../.env');
+require_once __DIR__ . '/../../../config/gemma_helper.php';
 require_once __DIR__ . '/../../middleware/AISubscriptionGate.php';
 use App\Middleware\AISubscriptionGate;
 
@@ -826,28 +829,22 @@ function callGemini($prompt, $apiKey, $primaryModel = 'gemini-1.5-pro-latest', $
     throw new Exception('All Gemini models failed or were throttled.');
 }
 
-function callHuggingFace($prompt, $hfToken, $model = 'google/gemma-2-9b-it') {
+function callHuggingFace(string $prompt, string $hfToken, string $model = 'google/gemma-3-4b-it'): string {
     if (empty($hfToken)) {
         throw new Exception("Hugging Face API token is not configured.");
     }
 
-    $url = "https://api-inference.huggingface.co/models/" . $model;
-    
-    $payload = [
-        'inputs' => $prompt,
-        'parameters' => [
-            'max_new_tokens' => 1500,
-            'temperature' => 0.7
-        ],
-        'options' => [
-            'wait_for_model' => true
-        ]
-    ];
+    $payload = json_encode([
+        'model'       => $model,
+        'messages'    => [['role' => 'user', 'content' => $prompt]],
+        'max_tokens'  => 1500,
+        'temperature' => 0.7,
+    ]);
 
-    $ch = curl_init($url);
+    $ch = curl_init('https://router.huggingface.co/v1/chat/completions');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST,           true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS,     json_encode($payload));
+    curl_setopt($ch, CURLOPT_POSTFIELDS,     $payload);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_TIMEOUT,        60);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
@@ -856,8 +853,8 @@ function callHuggingFace($prompt, $hfToken, $model = 'google/gemma-2-9b-it') {
         'Authorization: Bearer ' . $hfToken
     ]);
 
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $response  = curl_exec($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlError = curl_error($ch);
     curl_close($ch);
 
@@ -866,14 +863,16 @@ function callHuggingFace($prompt, $hfToken, $model = 'google/gemma-2-9b-it') {
     }
 
     $result = json_decode($response, true);
-    
-    if (is_array($result) && isset($result[0]['generated_text'])) {
-        return $result[0]['generated_text'];
-    } elseif (is_array($result) && isset($result['generated_text'])) {
-        return $result['generated_text'];
+    $text   = $result['choices'][0]['message']['content'] ?? '';
+
+    if (empty($text)) {
+        throw new Exception("Unexpected response format from Hugging Face: " . $response);
     }
-    
-    throw new Exception("Unexpected response format from Hugging Face: " . $response);
+
+    // Strip markdown code fences
+    $text = preg_replace('/^```json\s*/i', '', trim($text));
+    $text = preg_replace('/```\s*$/i',     '', trim($text));
+    return trim($text);
 }
 
 try {
@@ -1117,14 +1116,14 @@ try {
         $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
         if (!empty($hfToken)) {
             try {
-                // Try Gemma 2 9B model on Hugging Face Serverless Inference API
-                $hfResponse = callHuggingFace($prompt, $hfToken, 'google/gemma-2-9b-it');
+                // Try Gemma 3 model on Hugging Face Serverless Inference API
+                $hfResponse = callGemma3($prompt, $hfToken, 1500);
                 $hfResponse = preg_replace('/```json\s*/i', '', $hfResponse);
                 $hfResponse = preg_replace('/```\s*$/', '', $hfResponse);
                 $hfResponse = trim($hfResponse);
                 $workoutData = json_decode($hfResponse, true);
                 if ($workoutData && isset($workoutData['todays_workout'])) {
-                    $ai_provider = 'Hugging Face (Gemma 2 9B)';
+                    $ai_provider = 'Hugging Face (Gemma 3 4B)';
                 } else {
                     $workoutData = ['error' => true, 'message' => 'Hugging Face returned invalid JSON data.'];
                 }

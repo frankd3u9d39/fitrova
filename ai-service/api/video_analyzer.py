@@ -17,11 +17,15 @@ def get_gemma_pipeline():
     if _gemma_pipe is None:
         try:
             from transformers import pipeline
+            # HF_TOKEN is required to download the gated google/gemma-2-2b-it model.
+            # Set this as a Space Secret in HuggingFace Settings.
+            hf_token = os.getenv("HF_TOKEN")
             _gemma_pipe = pipeline(
                 "text-generation",
                 model="google/gemma-2-2b-it",
                 max_new_tokens=512,
                 do_sample=False,
+                token=hf_token,
             )
         except Exception as e:
             print(f"[Gemma load error]: {e}")

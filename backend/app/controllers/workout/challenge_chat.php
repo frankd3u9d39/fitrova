@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../../config/db_config.php';
+require_once __DIR__ . '/../../../config/env_loader.php';
+loadEnv(__DIR__ . '/../../../.env');
+require_once __DIR__ . '/../../../config/gemma_helper.php';
 
 // Self-Heal Database: Ensure parent_id column exists in challenge_messages
 try {
@@ -131,10 +134,12 @@ try {
 
             // Only trigger AI response if the message is NOT from the AI coach itself
             if (intval($userId) !== intval($gemmaId)) {
-                // Fetch Hugging Face token from settings
                 $tokenStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'hf_token'");
                 $tokenStmt->execute();
                 $hfToken = $tokenStmt->fetchColumn() ?: '';
+                if (empty($hfToken)) {
+                    $hfToken = getenv('HF_TOKEN') ?: '';
+                }
 
                 if (!empty($hfToken)) {
                     try {
@@ -215,49 +220,11 @@ try {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
 
-function callHuggingFaceAPI($prompt, $hfToken, $model = 'google/gemma-2-9b-it') {
-    $url = "https://api-inference.huggingface.co/models/" . $model;
-    
-    $payload = [
-        'inputs' => $prompt,
-        'parameters' => [
-            'max_new_tokens' => 150,
-            'temperature' => 0.7
-        ],
-        'options' => [
-            'wait_for_model' => true
-        ]
-    ];
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST,           true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS,     json_encode($payload));
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT,        15);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $hfToken
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode !== 200) {
-        throw new Exception("Hugging Face API Error (HTTP $httpCode): " . $response);
+function callHuggingFaceAPI($prompt, $hfToken, $model = 'google/gemma-3-4b-it') {
+    try {
+        return callGemma3($prompt, $hfToken, 250);
+    } catch (Exception $e) {
+        error_log("Gemma Helper fallback error in callHuggingFaceAPI: " . $e->getMessage());
+        throw $e;
     }
-
-    $result = json_decode($response, true);
-    
-    if (is_array($result) && isset($result[0]['generated_text'])) {
-        $genText = $result[0]['generated_text'];
-        if (strpos($genText, $prompt) === 0) {
-            $genText = substr($genText, strlen($prompt));
-        }
-        return trim($genText);
-    }
-    
-    throw new Exception("Unexpected response format from Hugging Face: " . $response);
 }
