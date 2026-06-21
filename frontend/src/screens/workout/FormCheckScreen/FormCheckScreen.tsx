@@ -18,7 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { theme } from '../../../theme';
@@ -33,15 +34,18 @@ export const FormCheckScreen = () => {
   const route = useRoute<any>();
   const routeExercise = route.params?.exercise || 'Detect automatically';
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const cameraRef = useRef<CameraView>(null);
 
   const [facing, setFacing] = useState<'front' | 'back'>('back');
   const [userId, setUserId] = useState<number>(1);
   const [firstName, setFirstName] = useState<string>('User');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isExtractingFrames, setIsExtractingFrames] = useState(false);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(3);
+  const [recordProgress, setRecordProgress] = useState(0); // 0-5 seconds
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -95,23 +99,24 @@ export const FormCheckScreen = () => {
     }
   }, [isAnalyzing]);
 
-  if (!cameraPermission) {
+  if (!cameraPermission || !micPermission) {
     return <View style={styles.centered}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
   }
 
-  if (!cameraPermission.granted) {
+  if (!cameraPermission.granted || !micPermission.granted) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
           <Ionicons name="camera-outline" size={64} color={theme.colors.primary} />
           <Text style={styles.permissionTitle}>Camera Access Needed</Text>
-          <Text style={styles.permissionText}>We need your camera to analyze your workout form.</Text>
+          <Text style={styles.permissionText}>We need your camera and microphone to record your workout form.</Text>
           <TouchableOpacity style={styles.permissionBtn} onPress={async () => {
-            const camRes = await requestCameraPermission();
-            if (!camRes.granted) {
+            const camRes = !cameraPermission.granted ? await requestCameraPermission() : cameraPermission;
+            const micRes = !micPermission.granted ? await requestMicPermission() : micPermission;
+            if (!camRes.granted || !micRes.granted) {
               Alert.alert(
-                'Permission Required',
-                'Fitrova needs camera access to check your form. Please enable it in your device settings.',
+                'Permissions Required',
+                'Fitrova needs camera and microphone access. Please enable them in your device settings.',
                 [
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Open Settings', onPress: () => Linking.openSettings() }
@@ -119,7 +124,7 @@ export const FormCheckScreen = () => {
               );
             }
           }}>
-            <Text style={styles.permissionBtnText}>Grant Camera Access</Text>
+            <Text style={styles.permissionBtnText}>Grant Permissions</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -140,6 +145,7 @@ export const FormCheckScreen = () => {
     setCapturedImage(null);
     setIsCountingDown(true);
     setCountdown(3);
+    setRecordProgress(0);
 
     let count = 3;
     const interval = setInterval(() => {
@@ -149,7 +155,7 @@ export const FormCheckScreen = () => {
       if (count === 0) {
         clearInterval(interval);
         setIsCountingDown(false);
-        captureAndAnalyze();
+        recordAndAnalyze();
       }
     }, 1000);
   };
@@ -158,32 +164,67 @@ export const FormCheckScreen = () => {
     Speech.speak(text, { pitch: 1.0, rate: 0.9 });
   };
 
-  // Capture a photo and send as JPEG to Gemini — fast, small, accurate
-  const captureAndAnalyze = async () => {
+  // Record 5s video → extract 3 key frames → send lightweight JPEGs to Gemini
+  // This gives Gemini motion context (start/mid/end of rep) without sending a
+  // huge video file that would time out on Render's free tier.
+  const recordAndAnalyze = async () => {
     if (!cameraRef.current) return;
 
     try {
-      setIsCapturing(true);
+      setIsRecording(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.7,       // good balance: sharp enough for form, small payload
-        base64: true,
-        skipProcessing: false,
-      });
+      // ── Step 1: Record 5-second clip ─────────────────────────────────
+      // Progress ticker (visual feedback every second)
+      let elapsed = 0;
+      const progressTimer = setInterval(() => {
+        elapsed += 1;
+        setRecordProgress(elapsed);
+        if (elapsed >= 5) clearInterval(progressTimer);
+      }, 1000);
 
-      setIsCapturing(false);
+      const videoResult = await cameraRef.current.recordAsync({ maxDuration: 5 });
+      clearInterval(progressTimer);
+      setIsRecording(false);
 
-      if (!photo?.uri) throw new Error('Failed to capture photo');
-      setCapturedImage(photo.uri);
+      if (!videoResult?.uri) throw new Error('Video recording failed');
+      const videoUri = videoResult.uri;
+
+      // Show the first frame as preview while we process
+      setIsExtractingFrames(true);
+
+      // ── Step 2: Extract 3 key frames at 0.5s, 2.5s, 4.5s ────────────
+      const timestamps = [500, 2500, 4500]; // milliseconds
+      const frameUris: string[] = [];
+
+      for (const ts of timestamps) {
+        try {
+          const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+            time: ts,
+            quality: 0.8,
+          });
+          frameUris.push(uri);
+        } catch (thumbErr) {
+          console.warn(`Frame at ${ts}ms failed, skipping:`, thumbErr);
+        }
+      }
+
+      if (frameUris.length === 0) throw new Error('Could not extract any frames from video');
+
+      // Use first frame as the preview image
+      setCapturedImage(frameUris[0]);
+      setIsExtractingFrames(false);
       setIsAnalyzing(true);
 
+      // ── Step 3: Build multipart payload with all frames ───────────────
       const formData = new FormData();
-      formData.append('image', {
-        uri: photo.uri,
-        name: 'form_check.jpg',
-        type: 'image/jpeg',
-      } as any);
+      frameUris.forEach((uri, idx) => {
+        formData.append(`frame_${idx}`, {
+          uri,
+          name: `frame_${idx}.jpg`,
+          type: 'image/jpeg',
+        } as any);
+      });
       formData.append('user_id', userId.toString());
       formData.append('exercise', routeExercise);
 
@@ -203,20 +244,19 @@ export const FormCheckScreen = () => {
       }
 
       setAnalysisResult(result);
-
-      if (result.summary) {
-        speakResult(result.summary);
-      }
+      if (result.summary) speakResult(result.summary);
 
     } catch (error: any) {
       console.error('Form analysis error:', error);
       const msg = error?.name === 'AbortError'
-        ? 'Analysis timed out. Please try again with better lighting.'
-        : 'Could not connect to the AI trainer. Check your connection.';
+        ? 'Analysis timed out. Please try again.'
+        : 'Could not complete the analysis. Check your connection.';
       CustomAlert.alert('Analysis Failed', msg);
     } finally {
-      setIsCapturing(false);
+      setIsRecording(false);
+      setIsExtractingFrames(false);
       setIsAnalyzing(false);
+      setRecordProgress(0);
     }
   };
 
@@ -225,7 +265,7 @@ export const FormCheckScreen = () => {
     outputRange: [0, height * 0.85],
   });
 
-  const isBusy = isAnalyzing || isCountingDown || isCapturing;
+  const isBusy = isAnalyzing || isCountingDown || isRecording || isExtractingFrames;
 
   // ── RESULTS VIEW ──────────────────────────────────────
   if (analysisResult) {
@@ -262,7 +302,7 @@ export const FormCheckScreen = () => {
             )}
           </View>
 
-          <TouchableOpacity style={styles.retryBtn} onPress={() => { setAnalysisResult(null); setCapturedImage(null); setCapturedVideo(null); }}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => { setAnalysisResult(null); setCapturedImage(null); setRecordProgress(0); }}>
             <Ionicons name="refresh" size={18} color={theme.colors.primary} />
             <Text style={styles.retryBtnText}>CHECK AGAIN</Text>
           </TouchableOpacity>
@@ -280,6 +320,7 @@ export const FormCheckScreen = () => {
             ref={cameraRef}
             style={StyleSheet.absoluteFill}
             facing={facing}
+            mode="video"
           />
         </Animated.View>
       ) : (
@@ -310,7 +351,7 @@ export const FormCheckScreen = () => {
       {isRecording && (
         <View style={styles.recordingBadge}>
           <View style={styles.recordingDot} />
-          <Text style={styles.recordingText}>RECORDING</Text>
+          <Text style={styles.recordingText}>● REC {recordProgress}/5s</Text>
         </View>
       )}
 
@@ -337,16 +378,22 @@ export const FormCheckScreen = () => {
             </Text>
             <TouchableOpacity style={styles.scanButton} onPress={startAnalysis}>
               <View style={styles.scanButtonInner}>
-                <Ionicons name="camera" size={28} color="#fff" />
+                <Ionicons name="videocam" size={28} color="#fff" />
               </View>
             </TouchableOpacity>
-            <Text style={styles.scanLabel}>TAP TO SCAN</Text>
+            <Text style={styles.scanLabel}>TAP TO RECORD 5s</Text>
           </>
         ) : (
           <View style={styles.busyRow}>
             <ActivityIndicator color={theme.colors.primary} size="small" />
             <Text style={styles.busyText}>
-              {isCountingDown ? `Get ready... ${countdown}` : isCapturing ? 'Capturing pose...' : 'Analyzing your form...'}
+              {isCountingDown
+                ? `Get ready... ${countdown}`
+                : isRecording
+                ? `Recording... ${recordProgress}/5s`
+                : isExtractingFrames
+                ? 'Extracting frames...'
+                : 'Analyzing your form...'}
             </Text>
           </View>
         )}

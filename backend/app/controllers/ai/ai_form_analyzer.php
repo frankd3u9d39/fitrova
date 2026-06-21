@@ -57,13 +57,30 @@ $GEMINI_MODELS  = array_unique([
 try {
     $userId       = $_POST['user_id'] ?? 1;
     $exerciseName = $_POST['exercise'] ?? 'Detect automatically';
-    $imageBase64  = null;
-    $mimeType     = 'image/jpeg';
 
-    // --- Input: photo uploaded via multipart/form-data (primary — fast JPEG) ---
-    if (isset($_FILES['image'])) {
-        $uploadErr = $_FILES['image']['error'];
-        if ($uploadErr !== UPLOAD_ERR_OK) {
+    // ── Collect uploaded frames (frame_0, frame_1, frame_2) ──────────────
+    // The frontend extracts 3 JPEG key-frames from the recorded 5-second video
+    // and sends them as individual file fields. Fall back to a single 'image'
+    // field for backward-compat.
+    $frames = [];   // [ ['base64' => '...', 'mime' => 'image/jpeg'], ... ]
+
+    $frameKeys = ['frame_0', 'frame_1', 'frame_2'];
+    foreach ($frameKeys as $key) {
+        if (!isset($_FILES[$key])) continue;
+        $err = $_FILES[$key]['error'];
+        if ($err !== UPLOAD_ERR_OK) continue;
+        $path = $_FILES[$key]['tmp_name'];
+        if (!file_exists($path) || filesize($path) === 0) continue;
+        $frames[] = [
+            'base64' => base64_encode(file_get_contents($path)),
+            'mime'   => $_FILES[$key]['type'] ?: 'image/jpeg',
+        ];
+    }
+
+    // Legacy single-image fallback (still supported)
+    if (empty($frames) && isset($_FILES['image'])) {
+        $err = $_FILES['image']['error'];
+        if ($err !== UPLOAD_ERR_OK) {
             $errMap = [
                 UPLOAD_ERR_INI_SIZE   => 'Image exceeds server upload limit.',
                 UPLOAD_ERR_FORM_SIZE  => 'Image exceeds form size limit.',
@@ -72,56 +89,47 @@ try {
                 UPLOAD_ERR_NO_TMP_DIR => 'Server temp directory is missing.',
                 UPLOAD_ERR_CANT_WRITE => 'Server could not write the uploaded file.',
             ];
-            throw new Exception($errMap[$uploadErr] ?? "Upload failed (code $uploadErr).");
+            throw new Exception($errMap[$err] ?? "Upload failed (code $err).");
         }
-
-        $imagePath = $_FILES['image']['tmp_name'];
-        if (!file_exists($imagePath) || filesize($imagePath) === 0) {
+        $path = $_FILES['image']['tmp_name'];
+        if (!file_exists($path) || filesize($path) === 0) {
             throw new Exception('Uploaded image is empty or not found on the server.');
         }
+        $frames[] = [
+            'base64' => base64_encode(file_get_contents($path)),
+            'mime'   => $_FILES['image']['type'] ?: 'image/jpeg',
+        ];
+    }
 
-        $imageBase64 = base64_encode(file_get_contents($imagePath));
-        $mimeType    = $_FILES['image']['type'] ?: 'image/jpeg';
-
-    // --- Input: video uploaded via multipart/form-data (legacy) ---
-    } elseif (isset($_FILES['video'])) {
-        $uploadErr = $_FILES['video']['error'];
-        if ($uploadErr !== UPLOAD_ERR_OK) {
-            $errMap = [
-                UPLOAD_ERR_INI_SIZE   => 'Video exceeds server upload limit. Record a shorter clip.',
-                UPLOAD_ERR_FORM_SIZE  => 'Video exceeds form size limit.',
-                UPLOAD_ERR_PARTIAL    => 'Upload was interrupted — check your connection.',
-                UPLOAD_ERR_NO_FILE    => 'No video was received by the server.',
-                UPLOAD_ERR_NO_TMP_DIR => 'Server temp directory is missing.',
-                UPLOAD_ERR_CANT_WRITE => 'Server could not write the uploaded file.',
-            ];
-            throw new Exception($errMap[$uploadErr] ?? "Upload failed (code $uploadErr).");
+    // Legacy raw video fallback
+    if (empty($frames) && isset($_FILES['video'])) {
+        $err = $_FILES['video']['error'];
+        if ($err !== UPLOAD_ERR_OK) {
+            throw new Exception("Video upload failed (code $err).");
         }
-
         $videoPath = $_FILES['video']['tmp_name'];
         if (!file_exists($videoPath) || filesize($videoPath) === 0) {
             throw new Exception('Uploaded video is empty or not found on the server.');
         }
-
-        // Gemini inline_data limit is ~20 MB raw
         $fileSizeMB = filesize($videoPath) / (1024 * 1024);
         if ($fileSizeMB > 18) {
-            throw new Exception("Video too large ({$fileSizeMB} MB). Record under 5 seconds at 480p.");
+            throw new Exception("Video too large ({$fileSizeMB} MB).");
         }
+        $frames[] = [
+            'base64' => base64_encode(file_get_contents($videoPath)),
+            'mime'   => 'video/mp4',
+        ];
+    }
 
-        $imageBase64 = base64_encode(file_get_contents($videoPath));
-        $mimeType    = 'video/mp4';
-
-    } else {
-        // --- Input: JSON body or POST field with base64 image ---
+    // JSON body fallback (no file upload)
+    if (empty($frames)) {
         $input = json_decode(file_get_contents('php://input'), true);
-        if ($input) {
-            $imageBase64  = $input['image']   ?? null;
+        if ($input && !empty($input['image'])) {
+            $b64 = $input['image'];
+            if (strpos($b64, ',') !== false) $b64 = explode(',', $b64)[1];
+            $frames[] = ['base64' => $b64, 'mime' => 'image/jpeg'];
             $userId       = $input['user_id'] ?? $userId;
             $exerciseName = $input['exercise'] ?? $exerciseName;
-        }
-        if (!$imageBase64 && isset($_POST['image'])) {
-            $imageBase64 = $_POST['image'];
         }
     }
 
@@ -131,29 +139,39 @@ try {
         $pdo, $userId, 'advanced_premium', 'AI Biomechanics Form Coach', 'form_trial_used'
     );
 
-    if (!$imageBase64) {
-        throw new Exception('No image or video data received. Please try again.');
+    if (empty($frames)) {
+        throw new Exception('No image/video frames received. Please try again.');
     }
 
-    // Strip data-URI prefix if present ("data:image/jpeg;base64,...")
-    if (strpos($imageBase64, ',') !== false) {
-        $imageBase64 = explode(',', $imageBase64)[1];
+    // Strip any data-URI prefix from each frame
+    foreach ($frames as &$f) {
+        if (strpos($f['base64'], ',') !== false) {
+            $f['base64'] = explode(',', $f['base64'])[1];
+        }
     }
+    unset($f);
 
     // ── Build Gemini prompt ──────────────────────────────────────────────
-    $mediaLabel = ($mimeType === 'video/mp4') ? 'video' : 'image';
-    $prompt = "You are an AI Personal Trainer and expert biomechanics coach. Analyze this user's workout {$mediaLabel}.
+    $frameCount  = count($frames);
+    $mediaLabel  = $frameCount > 1 ? "{$frameCount} sequential video frames" : "image";
+    $frameDesc   = $frameCount > 1
+        ? "The frames are in chronological order: Frame 1 = start of movement, Frame 2 = mid-movement, Frame 3 = end/peak of movement."
+        : "";
+
+    $prompt = "You are an AI Personal Trainer and expert biomechanics coach. Analyze the user's workout form from this {$mediaLabel}.
 The expected exercise they should be performing is: \"{$exerciseName}\".
+{$frameDesc}
 
 Your tasks:
-1. Detect what exercise the user is actually performing in this {$mediaLabel} (e.g., 'Jumping Jacks', 'Barbell Bench Press', 'Squats', etc.).
+1. Detect what exercise the user is actually performing (e.g., 'Squats', 'Push-Ups', 'Deadlift', etc.).
 2. Cross-reference the exercise you detect with the expected exercise (\"{$exerciseName}\"):
-   - If the expected exercise is NOT 'Detect automatically' (or empty) and the user is performing a completely different exercise (e.g., doing Jumping Jacks when they should be doing a Barbell Bench Press), you MUST flag this as a critical mismatch.
-   - For an exercise mismatch: Set status to \"IMPROVEMENT_NEEDED\", set the score to 0, set the summary to: \"Wrong exercise detected! You are performing [Detected Exercise], but the selected workout is [Expected Exercise]. Please perform the correct exercise for form checking.\", and list tips explaining this.
-3. If they are performing the correct exercise (or if expected is 'Detect automatically'):
-   - Critically evaluate their body positioning, range of motion, and joint alignment.
-   - If there are flaws (e.g., rounding the back, incorrect elbow/shoulder angles, shallow squat depth, knees caving, bad range of motion, speed too fast/uncontrolled), set status to \"IMPROVEMENT_NEEDED\", deduct score (0-100) based on severity, and provide specific, actionable tips to correct these. Do not be overly lenient or generic.
-   - If their form is excellent, set status to \"GOOD\", score to 85-100, and provide positive reinforcement.
+   - If the expected exercise is NOT 'Detect automatically' and the user is doing a completely different exercise, flag this as a critical mismatch.
+   - For an exercise mismatch: Set status to \"IMPROVEMENT_NEEDED\", score to 0, summary to: \"Wrong exercise detected! You are performing [Detected Exercise], but the selected workout is [Expected Exercise]. Please perform the correct exercise for form checking.\", and list tips explaining this.
+3. If they are performing the correct exercise (or expected is 'Detect automatically'):
+   - Critically evaluate body positioning, range of motion, joint alignment across all frames.
+   - Use the sequence of frames to assess the movement arc, timing, and control.
+   - If there are flaws (e.g., rounding back, incorrect elbow/shoulder angles, shallow depth, knees caving, uncontrolled speed), set status to \"IMPROVEMENT_NEEDED\", deduct score (0-100), and provide specific, actionable coaching tips.
+   - If form is excellent across the full movement, set status to \"GOOD\", score 85-100, and provide positive reinforcement.
 
 Return ONLY valid JSON — no markdown code fences, no leading/trailing comments:
 {
@@ -161,19 +179,24 @@ Return ONLY valid JSON — no markdown code fences, no leading/trailing comments
   \"detected_exercise\": \"Actual name of the exercise you see them doing\",
   \"score\": 0-100,
   \"tips\": [\"Specific coaching tip 1\", \"Specific coaching tip 2\"],
-  \"summary\": \"Encouraging coaching summary explaining if they did the correct exercise and how their form looked\"
+  \"summary\": \"Encouraging coaching summary explaining if they did the correct exercise and how their form looked across the movement\"
 }";
 
+    // Build Gemini parts: text prompt + one inline_data block per frame
+    $parts = [['text' => $prompt]];
+    foreach ($frames as $idx => $frame) {
+        if ($frameCount > 1) {
+            $parts[] = ['text' => "Frame " . ($idx + 1) . ":"];
+        }
+        $parts[] = ['inline_data' => ['mime_type' => $frame['mime'], 'data' => $frame['base64']]];
+    }
+
     $payload = [
-        'contents' => [[
-            'parts' => [
-                ['text' => $prompt],
-                ['inline_data' => ['mime_type' => $mimeType, 'data' => $imageBase64]],
-            ],
-        ]],
+        'contents'         => [['parts' => $parts]],
         'generationConfig' => ['response_mime_type' => 'application/json'],
     ];
     $payloadJson = json_encode($payload);
+
 
     // ── Call Gemini API — try models in order until one succeeds ─────────
     $geminiResponse = null;
