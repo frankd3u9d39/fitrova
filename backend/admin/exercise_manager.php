@@ -427,12 +427,13 @@ if (!function_exists('getWorkoutImage')) {
                                         <th class="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Protein</th>
                                         <th class="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Carbs</th>
                                         <th class="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Fats</th>
+                                        <th class="text-center px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="mealTableBody">
                                     <?php if (empty($nutritionLogs)): ?>
                                         <tr>
-                                            <td colspan="8" class="text-center py-16 text-on-surface-variant text-sm">
+                                            <td colspan="9" class="text-center py-16 text-on-surface-variant text-sm">
                                                 <span class="material-symbols-outlined text-[40px] block mb-2 opacity-30">restaurant_menu</span>
                                                 No meal logs yet. Users' nutrition entries will appear here.
                                             </td>
@@ -480,6 +481,21 @@ if (!function_exists('getWorkoutImage')) {
                                                 <td class="px-4 py-3 text-right text-on-surface-variant text-xs"><?php echo number_format($log['protein'], 1); ?>g</td>
                                                 <td class="px-4 py-3 text-right text-on-surface-variant text-xs"><?php echo number_format($log['carbs'], 1); ?>g</td>
                                                 <td class="px-4 py-3 text-right text-on-surface-variant text-xs"><?php echo number_format($log['fats'], 1); ?>g</td>
+                                                <td class="px-4 py-3 text-center whitespace-nowrap">
+                                                    <button type="button" onclick="viewMealDetails(this)" 
+                                                            data-date="<?php echo htmlspecialchars(date('M j, Y', strtotime($log['logged_date']))); ?>"
+                                                            data-user="<?php echo htmlspecialchars($userName); ?>"
+                                                            data-email="<?php echo htmlspecialchars($log['email'] ?? ''); ?>"
+                                                            data-meal="<?php echo htmlspecialchars($log['meal_name'] ?? ''); ?>"
+                                                            data-type="<?php echo htmlspecialchars($log['meal_type']); ?>"
+                                                            data-calories="<?php echo htmlspecialchars($log['calories']); ?>"
+                                                            data-protein="<?php echo htmlspecialchars($log['protein']); ?>"
+                                                            data-carbs="<?php echo htmlspecialchars($log['carbs']); ?>"
+                                                            data-fats="<?php echo htmlspecialchars($log['fats']); ?>"
+                                                            class="bg-primary/10 text-primary hover:bg-primary hover:text-on-primary px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all hover:scale-105 active:scale-95">
+                                                        View
+                                                    </button>
+                                                </td>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
@@ -783,6 +799,68 @@ if (!function_exists('getWorkoutImage')) {
         function viewAllQueue() {
             alert('AI Verification Queue is fully synced and up-to-date!');
         }
+
+        function viewMealDetails(btn) {
+            const date = btn.getAttribute('data-date');
+            const user = btn.getAttribute('data-user');
+            const email = btn.getAttribute('data-email');
+            const meal = btn.getAttribute('data-meal');
+            const type = btn.getAttribute('data-type');
+            const calories = parseInt(btn.getAttribute('data-calories')) || 0;
+            const protein = parseFloat(btn.getAttribute('data-protein')) || 0;
+            const carbs = parseFloat(btn.getAttribute('data-carbs')) || 0;
+            const fats = parseFloat(btn.getAttribute('data-fats')) || 0;
+
+            // Set text details
+            document.getElementById('mdDate').textContent = date;
+            document.getElementById('mdUserName').textContent = user;
+            document.getElementById('mdUserEmail').textContent = email;
+            document.getElementById('mdMealName').textContent = meal;
+            document.getElementById('mdCalories').textContent = calories.toLocaleString();
+            document.getElementById('mdProtein').textContent = protein.toFixed(1) + 'g';
+            document.getElementById('mdCarbs').textContent = carbs.toFixed(1) + 'g';
+            document.getElementById('mdFats').textContent = fats.toFixed(1) + 'g';
+
+            // User initials
+            const initials = user.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || 'U';
+            document.getElementById('mdUserInitials').textContent = initials;
+
+            // Meal Type badge styling
+            const typeEl = document.getElementById('mdMealType');
+            typeEl.textContent = type;
+            const typeColors = {
+                breakfast: 'bg-amber-100 text-amber-700',
+                lunch: 'bg-green-100 text-green-700',
+                dinner: 'bg-blue-100 text-blue-700',
+                snack: 'bg-purple-100 text-purple-700'
+            };
+            typeEl.className = `inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase mb-2 ${typeColors[type] || 'bg-surface-container text-on-surface-variant'}`;
+
+            // Calculate percentage split
+            const totalGrams = protein + carbs + fats;
+            let protPct = 0, carbPct = 0, fatPct = 0;
+            if (totalGrams > 0) {
+                protPct = Math.round((protein / totalGrams) * 100);
+                carbPct = Math.round((carbs / totalGrams) * 100);
+                fatPct = 100 - protPct - carbPct; // Ensure it adds up to 100
+                if (fatPct < 0) fatPct = 0;
+            }
+
+            document.getElementById('mdProteinPct').textContent = protPct;
+            document.getElementById('mdCarbsPct').textContent = carbPct;
+            document.getElementById('mdFatsPct').textContent = fatPct;
+
+            document.getElementById('mdProteinBar').style.width = protPct + '%';
+            document.getElementById('mdCarbsBar').style.width = carbPct + '%';
+            document.getElementById('mdFatsBar').style.width = fatPct + '%';
+
+            // Open Modal
+            document.getElementById('mealDetailsModal').classList.remove('hidden');
+        }
+
+        function closeMealDetailsModal() {
+            document.getElementById('mealDetailsModal').classList.add('hidden');
+        }
     </script>
 
     <!-- Edit Exercise Modal Component -->
@@ -843,6 +921,91 @@ if (!function_exists('getWorkoutImage')) {
             <div class="flex gap-4 pt-4 border-t border-outline-variant/30">
                 <button type="button" onclick="closeReviewModal()" class="flex-1 bg-surface-container text-on-surface font-bold py-3.5 rounded-2xl text-xs hover:bg-surface-container-high transition-colors uppercase tracking-widest">Reject</button>
                 <button type="button" onclick="approveReview()" class="flex-1 bg-primary text-on-primary font-bold py-3.5 rounded-2xl text-xs hover:bg-primary-fixed transition-colors shadow-lg shadow-primary/20 uppercase tracking-widest">Approve & Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meal Details Modal Component -->
+    <div id="mealDetailsModal" class="fixed inset-0 bg-on-background/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6 transition-all duration-300">
+        <div class="bg-surface-bright w-full max-w-lg p-8 rounded-[2.5rem] shadow-2xl border border-outline/10 relative">
+            <button onclick="closeMealDetailsModal()" class="absolute top-6 right-6 text-on-surface-variant hover:text-on-surface">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+            
+            <h3 class="font-display text-2xl font-extrabold text-on-surface mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-2xl">restaurant_menu</span>
+                Logged Meal Details
+            </h3>
+            
+            <div class="space-y-6">
+                <!-- User Profile & Date -->
+                <div class="flex items-center justify-between pb-4 border-b border-outline/10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span id="mdUserInitials" class="text-sm font-bold text-primary"></span>
+                        </div>
+                        <div>
+                            <p id="mdUserName" class="font-bold text-on-surface text-sm"></p>
+                            <p id="mdUserEmail" class="text-xs text-on-surface-variant"></p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Logged Date</p>
+                        <p id="mdDate" class="text-xs text-on-surface font-semibold"></p>
+                    </div>
+                </div>
+
+                <!-- Meal Title and Type -->
+                <div>
+                    <span id="mdMealType" class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase mb-2"></span>
+                    <h4 id="mdMealName" class="font-headline text-xl font-bold text-on-surface leading-tight"></h4>
+                </div>
+
+                <!-- Macronutrient Grid -->
+                <div class="grid grid-cols-4 gap-4 p-4 bg-surface-container rounded-2xl border border-outline/5 text-center">
+                    <div>
+                        <p class="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Calories</p>
+                        <p class="text-lg font-extrabold text-on-surface" id="mdCalories"></p>
+                        <p class="text-[9px] text-on-surface-variant">kcal</p>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Protein</p>
+                        <p class="text-lg font-extrabold text-emerald-500" id="mdProtein"></p>
+                        <p class="text-[9px] text-on-surface-variant">grams</p>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Carbs</p>
+                        <p class="text-lg font-extrabold text-amber-500" id="mdCarbs"></p>
+                        <p class="text-[9px] text-on-surface-variant">grams</p>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Fats</p>
+                        <p class="text-lg font-extrabold text-red-400" id="mdFats"></p>
+                        <p class="text-[9px] text-on-surface-variant">grams</p>
+                    </div>
+                </div>
+
+                <!-- Macro Progress Visualization -->
+                <div class="space-y-3">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Macronutrient Split</p>
+                    <div class="w-full bg-surface-container h-4 rounded-full overflow-hidden flex">
+                        <div id="mdProteinBar" class="bg-emerald-500 h-full transition-all duration-500"></div>
+                        <div id="mdCarbsBar" class="bg-amber-500 h-full transition-all duration-500"></div>
+                        <div id="mdFatsBar" class="bg-red-400 h-full transition-all duration-500"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-on-surface-variant">
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Protein (<span id="mdProteinPct">0</span>%)</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Carbs (<span id="mdCarbsPct">0</span>%)</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span> Fats (<span id="mdFatsPct">0</span>%)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-outline/10 flex justify-end">
+                <button type="button" onclick="closeMealDetailsModal()" 
+                        class="bg-surface-container text-on-surface font-bold px-6 py-3 rounded-xl text-xs hover:bg-surface-container-high transition-colors uppercase tracking-wider">
+                    Close
+                </button>
             </div>
         </div>
     </div>
