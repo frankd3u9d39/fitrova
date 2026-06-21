@@ -8,7 +8,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import { RootStackParamList } from '../../../navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../../../theme';
 import { nutritionService } from '../../../services/api/nutritionService';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 
 type MealLogRouteProp = RouteProp<RootStackParamList, 'MealLog'>;
 
@@ -36,7 +36,7 @@ export const MealLogScreen = () => {
 
   const handleSave = async () => {
     if (!mealName || !calories) {
-      Alert.alert('Missing Info', 'Please provide at least a meal name and calories.');
+      CustomAlert.alert('Missing Info', 'Please provide at least a meal name and calories.');
       return;
     }
 
@@ -54,12 +54,12 @@ export const MealLogScreen = () => {
       };
 
       await nutritionService.logMeal(payload);
-      Alert.alert('Success', 'Meal logged successfully!', [
+      CustomAlert.alert('Success', 'Meal logged successfully', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (error) {
       console.error('Log error:', error);
-      Alert.alert('Error', 'Failed to log meal. Please try again.');
+      CustomAlert.alert('Error', 'Failed to log meal. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -7,7 +7,6 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import { nutritionService } from '../../../services/api/nutritionService';
 import * as Animatable from 'react-native-animatable';
 import { RootStackParamList } from '../../../navigation/types';
 import { SubscriptionUpgradeModal } from '../../../components/common/SubscriptionUpgradeModal';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 
 const { width } = Dimensions.get('window');
 
@@ -55,7 +55,7 @@ export const FoodResultScreen = () => {
         setPaywallVisible(true);
       } else {
         console.error('Scan error:', error);
-        Alert.alert("Error", "Could not identify meal. Please try again.");
+        CustomAlert.alert("Error", "Could not identify meal. Please try again.");
         navigation.goBack();
       }
     }
@@ -89,7 +89,7 @@ export const FoodResultScreen = () => {
         insight_type: hasPatternAlert ? 'warning' : 'tip'
       });
       
-      Alert.alert("Success", "Meal logged successfully!", [
+      CustomAlert.alert("Success", "Meal logged successfully", [
         { 
           text: "OK", 
           onPress: () => {
@@ -108,7 +108,7 @@ export const FoodResultScreen = () => {
       ]);
     } catch (error) {
       console.error('Save error:', error);
-      Alert.alert("Error", "Failed to save meal.");
+      CustomAlert.alert("Error", "Failed to save meal.");
     } finally {
       setSaving(false);
     }

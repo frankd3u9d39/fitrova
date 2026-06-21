@@ -9,7 +9,6 @@ import {
   TextInput,
   ActivityIndicator,
   ImageBackground,
-  Alert,
   Modal
 } from 'react-native';
 
@@ -25,6 +24,7 @@ import { AICoachModal } from '../../../components/common/AICoachModal';
 import { SubscriptionUpgradeModal } from '../../../components/common/SubscriptionUpgradeModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 
 
 
@@ -136,12 +136,12 @@ export const NutritionScreen = () => {
       };
       await nutritionService.logMeal(payload);
       await fetchNutritionData();
-      Alert.alert('Success', `"${selectedRec.name}" has been logged to your ${selectedMealType}!`);
+      CustomAlert.alert('Success', 'Meal logged successfully');
       setModalVisible(false);
       setSelectedRec(null);
     } catch (error) {
       console.error('Log recommended meal error:', error);
-      Alert.alert('Error', 'Failed to log the recommended meal.');
+      CustomAlert.alert('Error', 'Failed to log the recommended meal.');
     } finally {
       setLoggingMeal(false);
     }
@@ -155,7 +155,7 @@ export const NutritionScreen = () => {
       setNutritionData(data);
     } catch (error) {
       console.error('Fetch error:', error);
-      Alert.alert('Error', 'Failed to load nutrition data');
+      CustomAlert.alert('Error', 'Failed to load nutrition data');
     } finally {
       setLoading(false);
     }
