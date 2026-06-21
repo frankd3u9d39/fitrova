@@ -214,12 +214,17 @@ export const FoodResultScreen = () => {
 
               {result.health_analysis.dietary_imbalances && result.health_analysis.dietary_imbalances.length > 0 && (
                 <View style={styles.imbalancesContainer}>
-                  {result.health_analysis.dietary_imbalances.map((imb: string, idx: number) => (
-                    <View key={idx} style={styles.imbalanceChip}>
-                      <Ionicons name="alert-circle-outline" size={12} color="#DC2626" />
-                      <Text style={styles.imbalanceChipText}>{imb}</Text>
-                    </View>
-                  ))}
+                  {result.health_analysis.dietary_imbalances.map((imb: any, idx: number) => {
+                    if (!imb) return null;
+                    const textVal = typeof imb === 'object' ? (imb.name || imb.description || JSON.stringify(imb)) : String(imb);
+                    if (!textVal.trim()) return null;
+                    return (
+                      <View key={idx} style={styles.imbalanceChip}>
+                        <Ionicons name="alert-circle-outline" size={12} color="#DC2626" />
+                        <Text style={styles.imbalanceChipText}>{textVal.trim()}</Text>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
 
@@ -238,17 +243,23 @@ export const FoodResultScreen = () => {
               {result.health_analysis.healthier_alternatives && result.health_analysis.healthier_alternatives.length > 0 && (
                 <View style={styles.alternativesSection}>
                   <Text style={styles.alternativesTitle}>HEALTHIER MEAL ALTERNATIVES</Text>
-                  {result.health_analysis.healthier_alternatives.map((alt: any, idx: number) => (
-                    <View key={idx} style={styles.alternativeCard}>
-                      <View style={styles.alternativeIconCircle}>
-                        <Ionicons name="arrow-forward-circle" size={20} color="#10B981" />
+                  {result.health_analysis.healthier_alternatives.map((alt: any, idx: number) => {
+                    if (!alt) return null;
+                    const name = typeof alt === 'object' ? (alt.name || '') : String(alt);
+                    const reason = typeof alt === 'object' ? (alt.reason || '') : '';
+                    if (!name.trim()) return null;
+                    return (
+                      <View key={idx} style={styles.alternativeCard}>
+                        <View style={styles.alternativeIconCircle}>
+                          <Ionicons name="arrow-forward-circle" size={20} color="#10B981" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.alternativeName}>{name.trim()}</Text>
+                          {reason.trim() ? <Text style={styles.alternativeReason}>{reason.trim()}</Text> : null}
+                        </View>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.alternativeName}>{alt.name}</Text>
-                        <Text style={styles.alternativeReason}>{alt.reason}</Text>
-                      </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
 
@@ -265,15 +276,21 @@ export const FoodResultScreen = () => {
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>Identified Ingredients</Text>
-          {result.items.map((item: any, index: number) => (
-            <View key={index} style={styles.ingredientItem}>
-              <View>
-                <Text style={styles.ingredientName}>{item.name}</Text>
-                <Text style={styles.ingredientAmount}>{item.amount}</Text>
+          {result.items && Array.isArray(result.items) && result.items.map((item: any, index: number) => {
+            if (!item) return null;
+            const name = typeof item === 'object' ? (item.name || '') : String(item);
+            const amount = typeof item === 'object' ? (item.amount || '') : '';
+            const calories = typeof item === 'object' ? (item.calories !== undefined ? String(item.calories) : '') : '';
+            return (
+              <View key={index} style={styles.ingredientItem}>
+                <View>
+                  {name.trim() ? <Text style={styles.ingredientName}>{name.trim()}</Text> : null}
+                  {amount.trim() ? <Text style={styles.ingredientAmount}>{amount.trim()}</Text> : null}
+                </View>
+                {calories.trim() ? <Text style={styles.ingredientCalories}>{calories.trim()} kcal</Text> : null}
               </View>
-              <Text style={styles.ingredientCalories}>{item.calories} kcal</Text>
-            </View>
-          ))}
+            );
+          })}
 
           <View style={styles.bottomSpacing} />
         </Animatable.View>
