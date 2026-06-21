@@ -35,9 +35,9 @@ export interface AppConfig {
 // Falls back to the auto-detected LAN IP so physical devices always resolve to the dev machine
 const development: AppConfig = {
   env: 'development',
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || `http://${DEV_HOST}/Fitrova/backend`,
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://fitrova-backend.onrender.com',
   youtubeApiKey: process.env.EXPO_PUBLIC_YOUTUBE_API_KEY || 'YOUR_YOUTUBE_API_KEY_HERE',
-  aiServiceUrl: process.env.EXPO_PUBLIC_AI_SERVICE_URL || `http://${DEV_HOST}:5001`,
+  aiServiceUrl: process.env.EXPO_PUBLIC_AI_SERVICE_URL || 'https://ibeh12-fitrova-ai.hf.space',
   googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
   paystackPublicKey: process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_YOUR_KEY',
   loggingEnabled: true,
