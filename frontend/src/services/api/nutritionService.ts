@@ -58,6 +58,14 @@ export interface NutritionData {
   } | null;
 }
 
+const handleResponse = async (response: Response) => {
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    throw new Error(`Server returned an invalid response (HTTP ${response.status})`);
+  }
+  return response.json();
+};
+
 export const nutritionService = {
   getNutritionData: async (userId: number, history: boolean = false): Promise<NutritionData> => {
     try {
@@ -69,7 +77,7 @@ export const nutritionService = {
         body: JSON.stringify({ user_id: userId, history }),
       });
 
-      const result = await response.json();
+      const result = await handleResponse(response);
 
       if (result.status === 'success') {
         return result.data;
@@ -92,7 +100,7 @@ export const nutritionService = {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
+      const result = await handleResponse(response);
 
       if (result.status === 'success') {
         return result.data;
@@ -115,7 +123,7 @@ export const nutritionService = {
         body: JSON.stringify({ image: base64Image, user_id: userId }),
       });
 
-      const result = await response.json();
+      const result = await handleResponse(response);
 
       if (response.status === 403 || result.status === 'subscription_locked') {
         throw result;
@@ -146,7 +154,7 @@ export const nutritionService = {
         body: JSON.stringify({ user_id: userId }),
       });
 
-      const result = await response.json();
+      const result = await handleResponse(response);
 
       if (response.status === 403 || result.status === 'subscription_locked') {
         throw result;
@@ -177,7 +185,7 @@ export const nutritionService = {
         body: JSON.stringify({ user_id: userId }),
       });
 
-      const result = await response.json();
+      const result = await handleResponse(response);
 
       if (result.status === 'success') {
         return result.data;
