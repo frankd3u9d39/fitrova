@@ -82,19 +82,18 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ userId }) => {
 
   const handleDismiss = async () => {
     if (!updateInfo) return;
+    
+    // Dismiss the modal UI immediately to keep the app responsive
+    setVisible(false);
+    
     try {
-      // 1. Save seen status locally
+      // Perform storage and network requests in the background
       await AsyncStorage.setItem('dismissed_update_version', updateInfo.version);
-      
-      // 2. Sync to DB if logged in
       if (userId) {
-        await updateVersionSeen(userId, updateInfo.version);
+        updateVersionSeen(userId, updateInfo.version);
       }
-      
-      setVisible(false);
     } catch (error) {
-      console.warn('Failed to dismiss update:', error);
-      setVisible(false);
+      console.warn('Failed to dismiss update in background:', error);
     }
   };
 
@@ -106,8 +105,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ userId }) => {
       animationType="fade"
       visible={visible}
       onRequestClose={() => {
-        // If force update is active, prevent hardware back button dismissal
-        if (!updateInfo.force_update) {
+        // Allow hardware back button dismissal if force_update is false or in development
+        if (!updateInfo.force_update || __DEV__) {
           handleDismiss();
         }
       }}
@@ -133,10 +132,10 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ userId }) => {
               <Text style={styles.updateButtonText}>Update Now</Text>
             </TouchableOpacity>
 
-            {/* Later Button (Only if force_update is false) */}
-            {!updateInfo.force_update && (
+            {/* Later Button (Only if force_update is false OR if we are in development mode to bypass lockout) */}
+            {(!updateInfo.force_update || __DEV__) && (
               <TouchableOpacity style={styles.laterButton} onPress={handleDismiss} activeOpacity={0.8}>
-                <Text style={styles.laterButtonText}>Later</Text>
+                <Text style={styles.laterButtonText}>Later {__DEV__ ? '(Dev Bypass)' : ''}</Text>
               </TouchableOpacity>
             )}
           </View>
