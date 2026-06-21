@@ -1021,26 +1021,41 @@ $trendsJson = json_encode($statsData['trends']);
             const message = document.getElementById('broadcastMessageInput').value;
             if (!message.trim()) return;
 
-            // Trigger beautiful simulated sending state
             const submitBtn = document.getElementById('broadcastSubmitBtn');
             const originalText = submitBtn.textContent;
             submitBtn.textContent = 'BROADCASTING...';
             submitBtn.disabled = true;
 
-            setTimeout(() => {
-                submitBtn.textContent = 'MESSAGE SENT!';
-                submitBtn.className = 'flex-1 bg-green-500 text-white font-bold py-4 rounded-2xl text-sm transition-all duration-300';
-                
-                setTimeout(() => {
-                    // Reset modal state
-                    closeBroadcastModal();
-                    document.getElementById('broadcastMessageInput').value = '';
-                    submitBtn.textContent = originalText;
-                    submitBtn.disabled = false;
-                    submitBtn.className = 'flex-1 bg-primary text-on-primary font-bold py-4 rounded-2xl text-sm hover:bg-primary-fixed transition-colors shadow-lg shadow-primary/20 uppercase tracking-widest';
-                    alert('Broadcast sent: "' + message + '" has been pushed to all active athlete devices successfully!');
-                }, 1000);
-            }, 1500);
+            fetch('api/send_broadcast.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    submitBtn.textContent = 'MESSAGE SENT!';
+                    submitBtn.className = 'flex-1 bg-green-500 text-white font-bold py-4 rounded-2xl text-sm transition-all duration-300';
+                    
+                    setTimeout(() => {
+                        closeBroadcastModal();
+                        document.getElementById('broadcastMessageInput').value = '';
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                        submitBtn.className = 'flex-1 bg-primary text-on-primary font-bold py-4 rounded-2xl text-sm hover:bg-primary-fixed transition-colors shadow-lg shadow-primary/20 uppercase tracking-widest';
+                        alert('Broadcast sent: "' + message + '" has been pushed to ' + data.recipient_count + ' users successfully!');
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                alert('Failed to send broadcast: ' + error.message);
+            });
         }
 
         function exportFinancials() {
