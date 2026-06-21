@@ -60,8 +60,31 @@ try {
     $imageBase64  = null;
     $mimeType     = 'image/jpeg';
 
-    // --- Input: video uploaded via multipart/form-data ---
-    if (isset($_FILES['video'])) {
+    // --- Input: photo uploaded via multipart/form-data (primary — fast JPEG) ---
+    if (isset($_FILES['image'])) {
+        $uploadErr = $_FILES['image']['error'];
+        if ($uploadErr !== UPLOAD_ERR_OK) {
+            $errMap = [
+                UPLOAD_ERR_INI_SIZE   => 'Image exceeds server upload limit.',
+                UPLOAD_ERR_FORM_SIZE  => 'Image exceeds form size limit.',
+                UPLOAD_ERR_PARTIAL    => 'Upload was interrupted — check your connection.',
+                UPLOAD_ERR_NO_FILE    => 'No image was received by the server.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Server temp directory is missing.',
+                UPLOAD_ERR_CANT_WRITE => 'Server could not write the uploaded file.',
+            ];
+            throw new Exception($errMap[$uploadErr] ?? "Upload failed (code $uploadErr).");
+        }
+
+        $imagePath = $_FILES['image']['tmp_name'];
+        if (!file_exists($imagePath) || filesize($imagePath) === 0) {
+            throw new Exception('Uploaded image is empty or not found on the server.');
+        }
+
+        $imageBase64 = base64_encode(file_get_contents($imagePath));
+        $mimeType    = $_FILES['image']['type'] ?: 'image/jpeg';
+
+    // --- Input: video uploaded via multipart/form-data (legacy) ---
+    } elseif (isset($_FILES['video'])) {
         $uploadErr = $_FILES['video']['error'];
         if ($uploadErr !== UPLOAD_ERR_OK) {
             $errMap = [

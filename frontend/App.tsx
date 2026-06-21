@@ -23,44 +23,68 @@ LogBox.ignoreLogs([
 const originalFetch = global.fetch;
 global.fetch = async (...args: Parameters<typeof fetch>) => {
   const url = typeof args[0] === 'string' ? args[0] : (args[0] as any).url;
-  
+  const options = args[1] as RequestInit | undefined;
+
   if (config.loggingEnabled) {
     console.log(`🌐 [FETCH START]: ${url}`);
   }
 
-  const maxRetries = 3;
+  // Detect file/multipart uploads — these need a long timeout and NO retries
+  const isUpload =
+    options?.body instanceof FormData ||
+    (typeof options?.body === 'string' &&
+      (url as string).includes('ai_form_analyzer'));
+
+  // 120 s for uploads (Gemini can be slow), 30 s for everything else
+  const TIMEOUT_MS = isUpload ? 120_000 : 30_000;
+  const maxRetries = isUpload ? 1 : 3;  // no retry storm for large uploads
   let lastError: Error | null = null;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    // Merge the caller's signal (if any) with ours
+    const fetchArgs: Parameters<typeof fetch> = [
+      args[0],
+      { ...options, signal: controller.signal },
+    ];
+
     try {
       const startTime = Date.now();
-      const response = await originalFetch(...args);
+      const response = await originalFetch(...fetchArgs);
+      clearTimeout(timer);
       const endTime = Date.now();
-      
+
       if (config.loggingEnabled) {
         console.log(`✅ [FETCH SUCCESS]: ${url} (${response.status}) - ${endTime - startTime}ms`);
       }
-      
-      // Always return the response — let each screen decide how to handle
-      // non-2xx status codes (401, 403, 409, etc.) rather than throwing here.
+
       return response;
-    } catch (error) {
-      // Only reaches here on a genuine network failure (no response at all)
+    } catch (error: any) {
+      clearTimeout(timer);
       lastError = error as Error;
-      
+
+      const isAbort = error?.name === 'AbortError';
+
       if (config.loggingEnabled) {
-        console.warn(`⚠️ [FETCH RETRY ${attempt}/${maxRetries}]:`);
-        console.warn(`   URL: ${url}`);
-        console.warn(`   Error:`, error);
+        if (isAbort) {
+          console.warn(`⏱️ [FETCH TIMEOUT]: ${url} (>${TIMEOUT_MS / 1000}s — request aborted)`);
+        } else {
+          console.warn(`⚠️ [FETCH RETRY ${attempt}/${maxRetries}]:`);
+          console.warn(`   URL: ${url}`);
+          console.warn(`   Error:`, error);
+        }
       }
-      
+
+      // Don't retry on timeout or if we've used all attempts
+      if (isAbort || attempt >= maxRetries) break;
+
       // Exponential backoff before next attempt
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-      }
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
   }
-  
+
   if (config.loggingEnabled) {
     console.error(`❌ [FETCH FINAL ERROR]:`);
     console.error(`   URL: ${url}`);
@@ -68,6 +92,7 @@ global.fetch = async (...args: Parameters<typeof fetch>) => {
   }
   throw lastError;
 };
+
 
 // Global error handler
 const setupGlobalErrorHandling = () => {

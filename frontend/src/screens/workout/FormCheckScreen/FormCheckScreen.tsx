@@ -18,8 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
-import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { theme } from '../../../theme';
@@ -34,18 +33,16 @@ export const FormCheckScreen = () => {
   const route = useRoute<any>();
   const routeExercise = route.params?.exercise || 'Detect automatically';
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const cameraRef = useRef<CameraView>(null);
 
   const [facing, setFacing] = useState<'front' | 'back'>('back');
   const [userId, setUserId] = useState<number>(1);
   const [firstName, setFirstName] = useState<string>('User');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [isCountingDown, setIsCountingDown] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(3);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
-  const [capturedVideo, setCapturedVideo] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [paywallData, setPaywallData] = useState<any>(null);
@@ -98,32 +95,23 @@ export const FormCheckScreen = () => {
     }
   }, [isAnalyzing]);
 
-  if (!cameraPermission || !micPermission) {
+  if (!cameraPermission) {
     return <View style={styles.centered}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
   }
 
-  if (!cameraPermission.granted || !micPermission.granted) {
+  if (!cameraPermission.granted) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
           <Ionicons name="camera-outline" size={64} color={theme.colors.primary} />
           <Text style={styles.permissionTitle}>Camera Access Needed</Text>
-          <Text style={styles.permissionText}>We need your camera and microphone to analyze your workout form.</Text>
+          <Text style={styles.permissionText}>We need your camera to analyze your workout form.</Text>
           <TouchableOpacity style={styles.permissionBtn} onPress={async () => {
-            let camRes = cameraPermission;
-            let micRes = micPermission;
-            
-            if (!cameraPermission.granted) {
-              camRes = await requestCameraPermission();
-            }
-            if (!micPermission.granted) {
-              micRes = await requestMicPermission();
-            }
-            
-            if (!camRes.granted || !micRes.granted) {
+            const camRes = await requestCameraPermission();
+            if (!camRes.granted) {
               Alert.alert(
-                'Permissions Required',
-                'Fitrova needs camera and microphone access to check your form. Please enable them in your device settings.',
+                'Permission Required',
+                'Fitrova needs camera access to check your form. Please enable it in your device settings.',
                 [
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Open Settings', onPress: () => Linking.openSettings() }
@@ -131,7 +119,7 @@ export const FormCheckScreen = () => {
               );
             }
           }}>
-            <Text style={styles.permissionBtnText}>Grant Permissions</Text>
+            <Text style={styles.permissionBtnText}>Grant Camera Access</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -150,11 +138,10 @@ export const FormCheckScreen = () => {
   const startAnalysis = () => {
     setAnalysisResult(null);
     setCapturedImage(null);
-    setCapturedVideo(null);
     setIsCountingDown(true);
-    setCountdown(5);
+    setCountdown(3);
 
-    let count = 5;
+    let count = 3;
     const interval = setInterval(() => {
       count -= 1;
       setCountdown(count);
@@ -162,7 +149,7 @@ export const FormCheckScreen = () => {
       if (count === 0) {
         clearInterval(interval);
         setIsCountingDown(false);
-        recordAndAnalyze();
+        captureAndAnalyze();
       }
     }, 1000);
   };
@@ -171,28 +158,31 @@ export const FormCheckScreen = () => {
     Speech.speak(text, { pitch: 1.0, rate: 0.9 });
   };
 
-  const recordAndAnalyze = async () => {
+  // Capture a photo and send as JPEG to Gemini — fast, small, accurate
+  const captureAndAnalyze = async () => {
     if (!cameraRef.current) return;
 
     try {
-      setIsRecording(true);
+      setIsCapturing(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const recordingPromise = cameraRef.current.recordAsync({ 
-        maxDuration: 5
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.7,       // good balance: sharp enough for form, small payload
+        base64: true,
+        skipProcessing: false,
       });
-      const video = await recordingPromise;
-      setIsRecording(false);
+
+      setIsCapturing(false);
+
+      if (!photo?.uri) throw new Error('Failed to capture photo');
+      setCapturedImage(photo.uri);
       setIsAnalyzing(true);
 
-      if (!video?.uri) throw new Error('Failed to capture video');
-
-      setCapturedVideo(video.uri);
-
       const formData = new FormData();
-      formData.append('video', {
-        uri: video.uri,
-        name: 'workout.mp4',
-        type: 'video/mp4',
+      formData.append('image', {
+        uri: photo.uri,
+        name: 'form_check.jpg',
+        type: 'image/jpeg',
       } as any);
       formData.append('user_id', userId.toString());
       formData.append('exercise', routeExercise);
@@ -206,7 +196,6 @@ export const FormCheckScreen = () => {
 
       if (response.status === 403 || result.status === 'subscription_locked') {
         setIsAnalyzing(false);
-        setCapturedVideo(null);
         setCapturedImage(null);
         setPaywallData(result);
         setPaywallVisible(true);
@@ -219,11 +208,14 @@ export const FormCheckScreen = () => {
         speakResult(result.summary);
       }
 
-    } catch (error) {
-      console.error('Analysis error:', error);
-      CustomAlert.alert('Analysis Failed', 'Could not connect to the AI trainer.');
+    } catch (error: any) {
+      console.error('Form analysis error:', error);
+      const msg = error?.name === 'AbortError'
+        ? 'Analysis timed out. Please try again with better lighting.'
+        : 'Could not connect to the AI trainer. Check your connection.';
+      CustomAlert.alert('Analysis Failed', msg);
     } finally {
-      setIsRecording(false);
+      setIsCapturing(false);
       setIsAnalyzing(false);
     }
   };
@@ -233,7 +225,7 @@ export const FormCheckScreen = () => {
     outputRange: [0, height * 0.85],
   });
 
-  const isBusy = isAnalyzing || isCountingDown || isRecording;
+  const isBusy = isAnalyzing || isCountingDown || isCapturing;
 
   // ── RESULTS VIEW ──────────────────────────────────────
   if (analysisResult) {
@@ -282,26 +274,23 @@ export const FormCheckScreen = () => {
   // ── CAMERA VIEW (full screen) ─────────────────────────
   return (
     <View style={styles.fullScreen}>
-      {!capturedVideo && !capturedImage ? (
+      {!capturedImage ? (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: flipAnim }]}>
           <CameraView
             ref={cameraRef}
             style={StyleSheet.absoluteFill}
             facing={facing}
-            mode="video"
           />
         </Animated.View>
       ) : (
-        capturedVideo
-          ? <VideoPlayerView uri={capturedVideo} />
-          : <Image source={{ uri: capturedImage! }} style={StyleSheet.absoluteFill} />
+        <Image source={{ uri: capturedImage }} style={StyleSheet.absoluteFill} />
       )}
 
       {isAnalyzing && (
         <Animated.View style={[styles.scanLine, { transform: [{ translateY }] }]} />
       )}
 
-      {!isBusy && !capturedVideo && !capturedImage && (
+      {!isBusy && !capturedImage && (
         <View style={styles.bodyGuideFrame}>
           <View style={[styles.guideCorner, styles.guideTopLeft]} />
           <View style={[styles.guideCorner, styles.guideTopRight]} />
@@ -348,7 +337,7 @@ export const FormCheckScreen = () => {
             </Text>
             <TouchableOpacity style={styles.scanButton} onPress={startAnalysis}>
               <View style={styles.scanButtonInner}>
-                <Ionicons name="videocam" size={28} color="#fff" />
+                <Ionicons name="camera" size={28} color="#fff" />
               </View>
             </TouchableOpacity>
             <Text style={styles.scanLabel}>TAP TO SCAN</Text>
@@ -357,7 +346,7 @@ export const FormCheckScreen = () => {
           <View style={styles.busyRow}>
             <ActivityIndicator color={theme.colors.primary} size="small" />
             <Text style={styles.busyText}>
-              {isCountingDown ? `Starting in ${countdown}...` : isRecording ? 'Recording 5s clip...' : 'Analyzing your form...'}
+              {isCountingDown ? `Get ready... ${countdown}` : isCapturing ? 'Capturing pose...' : 'Analyzing your form...'}
             </Text>
           </View>
         )}
@@ -702,19 +691,3 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
-
-const VideoPlayerView = ({ uri }: { uri: string }) => {
-  const player = useVideoPlayer(uri, (player) => {
-    player.loop = true;
-    player.play();
-  });
-
-  return (
-    <VideoView
-      style={StyleSheet.absoluteFill}
-      player={player}
-      allowsFullscreen
-      allowsPictureInPicture
-    />
-  );
-};
