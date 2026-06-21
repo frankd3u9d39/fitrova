@@ -238,268 +238,321 @@
 
         .phone-mockup {
             width: 100%;
-            max-width: 380px;
-            background: var(--surface);
-            border: 6px solid #1a2333;
-            border-radius: 40px;
-            box-shadow: var(--card-shadow), 0 0 40px rgba(19, 236, 19, 0.05);
-            padding: 1.5rem;
+            max-width: 300px;
+            background: #f5f5f7;
+            border: 7px solid #222;
+            border-radius: 44px;
+            box-shadow: var(--card-shadow), 0 0 50px rgba(19, 236, 19, 0.08);
             margin: 0 auto;
             position: relative;
             overflow: hidden;
+            font-family: 'Manrope', sans-serif;
         }
 
+        /* Notch */
         .phone-mockup::before {
             content: '';
             position: absolute;
             top: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: 140px;
-            height: 25px;
-            background-color: #1a2333;
-            border-bottom-left-radius: 18px;
-            border-bottom-right-radius: 18px;
-            z-index: 10;
+            width: 100px;
+            height: 22px;
+            background: #222;
+            border-bottom-left-radius: 14px;
+            border-bottom-right-radius: 14px;
+            z-index: 20;
         }
 
-        .phone-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 0.8rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .phone-user {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .phone-avatar {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary) 0%, #00ffcc 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            color: #000;
-            font-size: 0.9rem;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .phone-user-info h4 {
-            font-size: 0.9rem;
-            font-weight: 700;
-        }
-
-        .phone-user-info p {
-            font-size: 0.75rem;
-            color: var(--muted);
-        }
-
-        .phone-status-badge {
-            background-color: rgba(19, 236, 19, 0.1);
-            border: 1px solid rgba(19, 236, 19, 0.2);
-            color: var(--primary);
-            font-size: 0.7rem;
-            font-weight: 700;
-            padding: 0.2rem 0.6rem;
-            border-radius: 99px;
-        }
-
-        /* SVG Circle Progress */
-        .progress-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 1.25rem;
-            margin-bottom: 1.25rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .progress-circle-wrapper {
+        .pm-inner {
+            padding: 2rem 1rem 0;
+            background: #f5f5f7;
             position: relative;
-            width: 80px;
-            height: 80px;
         }
 
-        .progress-circle-bg {
+        /* Greeting */
+        .pm-greeting {
+            margin-bottom: 1.1rem;
+            margin-top: 0.4rem;
+        }
+        .pm-greeting h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #111;
+            margin-bottom: 0.15rem;
+        }
+        .pm-greeting h4 span { color: var(--primary); }
+        .pm-greeting p {
+            font-size: 0.7rem;
+            color: #888;
+            font-weight: 500;
+        }
+        .pm-top-row {
+            display: flex;
+            gap: 0.6rem;
+            margin-bottom: 0.9rem;
+        }
+
+        /* AI Health Score Card */
+        .pm-card {
+            background: #fff;
+            border-radius: 18px;
+            padding: 0.9rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            flex: 1;
+        }
+        .pm-card-label {
+            font-size: 0.58rem;
+            font-weight: 700;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .pm-card-label span { font-size: 0.85rem; }
+        .pm-score-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .pm-ring-wrap {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            flex-shrink: 0;
+        }
+        .pm-ring-wrap svg { display: block; }
+        .pm-ring-bg {
             fill: none;
-            stroke: rgba(255, 255, 255, 0.04);
-            stroke-width: 8;
+            stroke: #eee;
+            stroke-width: 5;
         }
-
-        .progress-circle-val {
+        .pm-ring-val {
             fill: none;
             stroke: var(--primary);
-            stroke-width: 8;
-            stroke-dasharray: 226;
-            stroke-dashoffset: 61; /* 73% */
+            stroke-width: 5;
+            stroke-dasharray: 138;
+            stroke-dashoffset: 35;
             stroke-linecap: round;
             transform: rotate(-90deg);
             transform-origin: 50% 50%;
-            transition: stroke-dashoffset 1s ease;
         }
-
-        .progress-percentage {
+        .pm-ring-num {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-weight: 800;
-            font-size: 1.1rem;
-        }
-
-        .progress-details h5 {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--muted);
-            margin-bottom: 0.25rem;
-        }
-
-        .progress-details p {
-            font-size: 1.1rem;
-            font-weight: 800;
-        }
-
-        .progress-details span {
-            font-size: 0.8rem;
-            color: var(--muted);
-            font-weight: 400;
-        }
-
-        /* Nutrition Bars */
-        .macro-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 1.25rem;
-            margin-bottom: 1.25rem;
-        }
-
-        .macro-header {
+            inset: 0;
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.75rem;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: #111;
         }
-
-        .macro-header h5 {
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-
-        .macro-bar-container {
+        .pm-score-info {
             display: flex;
             flex-direction: column;
-            gap: 0.6rem;
+        }
+        .pm-score-pts {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .pm-score-sub {
+            font-size: 0.6rem;
+            color: #aaa;
         }
 
-        .macro-item {
+        /* Calories card */
+        .pm-cal-card {
+            background: #fff;
+            border-radius: 18px;
+            padding: 0.9rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .pm-cal-card .pm-card-label {
+            width: 100%;
+            justify-content: center;
+            margin-bottom: 0.4rem;
+        }
+        .pm-fire { font-size: 1.4rem; margin-bottom: 0.2rem; }
+        .pm-cal-num {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1;
+        }
+        .pm-cal-sub {
+            font-size: 0.6rem;
+            color: #aaa;
+            margin-top: 0.15rem;
+        }
+
+        /* Workout card */
+        .pm-workout-card {
+            background: #162d24;
+            border-radius: 20px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 0.9rem;
+        }
+        .pm-workout-label {
+            font-size: 0.58rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            margin-bottom: 0.35rem;
+        }
+        .pm-workout-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        .pm-workout-title {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.25;
+            max-width: 140px;
+        }
+        .pm-workout-time {
+            background: rgba(255,255,255,0.12);
+            border-radius: 99px;
+            padding: 0.3rem 0.7rem;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #ddd;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            white-space: nowrap;
+        }
+
+        /* Weight trend */
+        .pm-weight-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.75rem;
+            padding: 0 0.1rem;
+            margin-bottom: 0.7rem;
         }
-
-        .macro-label {
-            width: 60px;
-            color: var(--muted);
-        }
-
-        .macro-bar-bg {
-            flex-grow: 1;
-            height: 6px;
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
-            margin: 0 0.75rem;
-            overflow: hidden;
-        }
-
-        .macro-bar-fill {
-            height: 100%;
-            border-radius: 3px;
-            background-color: var(--primary);
-        }
-
-        .macro-val {
+        .pm-weight-label {
+            font-size: 0.6rem;
             font-weight: 700;
-            width: 65px;
-            text-align: right;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+        }
+        .pm-weight-val {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #111;
+        }
+        .pm-weight-val span { font-size: 0.65rem; color: #888; font-weight: 500; }
+
+        /* Sparkline placeholder */
+        .pm-sparkline {
+            height: 36px;
+            margin: 0 0.1rem 0.8rem;
+            position: relative;
+        }
+        .pm-sparkline svg { width: 100%; height: 100%; }
+
+        /* Day row */
+        .pm-days {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 0.2rem;
+            margin-bottom: 0.8rem;
+        }
+        .pm-day {
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: #bbb;
+            text-align: center;
+        }
+        .pm-day.active {
+            color: var(--primary);
+            font-weight: 800;
         }
 
-        /* AI Coach Tip Card */
-        .coach-card {
-            background: linear-gradient(135deg, rgba(19, 236, 19, 0.1) 0%, rgba(0, 0, 0, 0) 100%);
-            border: 1px solid rgba(19, 236, 19, 0.2);
-            border-radius: 20px;
-            padding: 1.25rem;
+        /* Bottom nav */
+        .pm-nav {
+            background: #111;
+            border-radius: 0 0 36px 36px;
+            padding: 0.7rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
         }
+        .pm-nav-home {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%) translateY(-40%);
+            box-shadow: 0 0 14px rgba(19,236,19,0.5);
+        }
+        .pm-nav-icon {
+            font-size: 1rem;
+            color: #555;
+            padding: 0.3rem;
+        }
+        .pm-nav-right {
+            display: flex;
+            gap: 1.8rem;
+        }
+        .pm-nav-left { width: 44px; }
 
-        .coach-header {
+        /* Floating badges */
+        .floating-feature-badge {
+            position: absolute;
+            background: rgba(13, 19, 33, 0.88);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            padding: 0.6rem 0.9rem;
+            border-radius: 14px;
+            font-size: 0.75rem;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .coach-header h5 {
-            font-size: 0.85rem;
-            font-weight: 800;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .coach-card p {
-            font-size: 0.8rem;
-            color: #cbd5e1;
-            line-height: 1.5;
-        }
-
-        /* floating badge */
-        .floating-feature-badge {
-            position: absolute;
-            background: rgba(13, 19, 33, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            padding: 0.75rem 1rem;
-            border-radius: 16px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
         }
-
         .badge-1 {
-            top: 20%;
-            left: -40px;
+            top: 18%;
+            left: -50px;
             border-color: rgba(19, 236, 19, 0.3);
         }
-
         .badge-2 {
-            bottom: 15%;
-            right: -30px;
+            bottom: 18%;
+            right: -44px;
             border-color: rgba(0, 255, 204, 0.3);
         }
-
         .floating-feature-badge i {
             display: inline-block;
             width: 8px;
             height: 8px;
             border-radius: 50%;
+            flex-shrink: 0;
         }
-
         .badge-1 i { background-color: var(--primary); box-shadow: 0 0 8px var(--primary); }
         .badge-2 i { background-color: #00ffcc; box-shadow: 0 0 8px #00ffcc; }
+
 
         /* Features Section */
         .features-section {
@@ -1006,79 +1059,110 @@
                 </div>
             </div>
 
-            <!-- Dashboard Mockup -->
+            <!-- Dashboard Mockup: Momo Light Theme -->
             <div class="hero-mockup-wrapper">
                 <div class="phone-mockup">
-                    <div class="phone-header">
-                        <div class="phone-user">
-                            <div class="phone-avatar">AR</div>
-                            <div class="phone-user-info">
-                                <h4>Alex Rivera</h4>
-                                <p>Fitrova Athlete</p>
+                    <div class="pm-inner">
+
+                        <!-- Greeting -->
+                        <div class="pm-greeting">
+                            <h4>Good Morning, <span>Momo</span> 👋</h4>
+                            <p>Ready to crush your goals today?</p>
+                        </div>
+
+                        <!-- Top row: AI Health Score + Calories -->
+                        <div class="pm-top-row">
+                            <!-- AI Health Score -->
+                            <div class="pm-card">
+                                <div class="pm-card-label">AI HEALTH SCORE <span>✨</span></div>
+                                <div class="pm-score-row">
+                                    <div class="pm-ring-wrap">
+                                        <svg width="52" height="52" viewBox="0 0 52 52">
+                                            <circle class="pm-ring-bg" cx="26" cy="26" r="22"/>
+                                            <circle class="pm-ring-val" cx="26" cy="26" r="22"
+                                                stroke-dasharray="138"
+                                                stroke-dashoffset="37"
+                                                style="fill:none;stroke:#13ec13;stroke-width:5;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;"/>
+                                        </svg>
+                                        <div class="pm-ring-num">75</div>
+                                    </div>
+                                    <div class="pm-score-info">
+                                        <span class="pm-score-pts">↗ +5 pts</span>
+                                        <span class="pm-score-sub">Out of 100</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Calories -->
+                            <div class="pm-cal-card">
+                                <div class="pm-card-label">CALORIES</div>
+                                <div class="pm-fire">🔥</div>
+                                <div class="pm-cal-num">480</div>
+                                <div class="pm-cal-sub">/ 2,000</div>
                             </div>
                         </div>
-                        <div class="phone-status-badge">AI Active</div>
-                    </div>
 
-                    <!-- Progress Ring -->
-                    <div class="progress-card">
-                        <div class="progress-details">
-                            <h5>Calorie Budget</h5>
-                            <p>1,460 <span>/ 2,000 kcal</span></p>
+                        <!-- Today's Workout -->
+                        <div class="pm-workout-card">
+                            <div class="pm-workout-label">TODAY'S WORKOUT</div>
+                            <div class="pm-workout-row">
+                                <div class="pm-workout-title">Momo's Hypertrophy Muscle Builder</div>
+                                <div class="pm-workout-time">⏱ 50 min</div>
+                            </div>
                         </div>
-                        <div class="progress-circle-wrapper">
-                            <svg width="80" height="80">
-                                <circle class="progress-circle-bg" cx="40" cy="40" r="36" />
-                                <circle class="progress-circle-val" cx="40" cy="40" r="36" id="progressVal" />
+
+                        <!-- Weight Trend -->
+                        <div class="pm-weight-row">
+                            <span class="pm-weight-label">WEIGHT TREND</span>
+                            <span class="pm-weight-val">72.0 <span>kg</span></span>
+                        </div>
+
+                        <!-- Sparkline -->
+                        <div class="pm-sparkline">
+                            <svg viewBox="0 0 240 36" preserveAspectRatio="none">
+                                <polyline
+                                    points="0,28 40,22 80,25 120,18 160,20 200,14 240,10"
+                                    fill="none"
+                                    stroke="#13ec13"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    opacity="0.7"
+                                />
+                                <polyline
+                                    points="0,28 40,22 80,25 120,18 160,20 200,14 240,10 240,36 0,36"
+                                    fill="rgba(19,236,19,0.06)"
+                                    stroke="none"
+                                />
                             </svg>
-                            <div class="progress-percentage">73%</div>
+                        </div>
+
+                        <!-- Day labels -->
+                        <div class="pm-days">
+                            <span class="pm-day">FRI</span>
+                            <span class="pm-day">SAT</span>
+                            <span class="pm-day">SUN</span>
+                            <span class="pm-day">MON</span>
+                            <span class="pm-day">TUE</span>
+                            <span class="pm-day">WED</span>
+                            <span class="pm-day active">THU</span>
+                        </div>
+
+                    </div><!-- /pm-inner -->
+
+                    <!-- Bottom Nav -->
+                    <div class="pm-nav">
+                        <div class="pm-nav-left"></div>
+                        <div class="pm-nav-home">🏠</div>
+                        <div class="pm-nav-right">
+                            <span class="pm-nav-icon">🏋️</span>
+                            <span class="pm-nav-icon">🍴</span>
+                            <span class="pm-nav-icon">👤</span>
                         </div>
                     </div>
 
-                    <!-- Macros Bar -->
-                    <div class="macro-card">
-                        <div class="macro-header">
-                            <h5>Macro Breakdown</h5>
-                            <span style="font-size: 0.75rem; color: var(--primary); font-weight: 700;">Optimal</span>
-                        </div>
-                        <div class="macro-bar-container">
-                            <!-- Protein -->
-                            <div class="macro-item">
-                                <span class="macro-label">Protein</span>
-                                <div class="macro-bar-bg">
-                                    <div class="macro-bar-fill" style="width: 80%; background-color: #13ec13;"></div>
-                                </div>
-                                <span class="macro-val">120g / 150g</span>
-                            </div>
-                            <!-- Carbs -->
-                            <div class="macro-item">
-                                <span class="macro-label">Carbs</span>
-                                <div class="macro-bar-bg">
-                                    <div class="macro-bar-fill" style="width: 72%; background-color: #00ffcc;"></div>
-                                </div>
-                                <span class="macro-val">180g / 250g</span>
-                            </div>
-                            <!-- Fats -->
-                            <div class="macro-item">
-                                <span class="macro-label">Fats</span>
-                                <div class="macro-bar-bg">
-                                    <div class="macro-bar-fill" style="width: 55%; background-color: #ffcc00;"></div>
-                                </div>
-                                <span class="macro-val">44g / 80g</span>
-                            </div>
-                        </div>
-                    </div>
+                </div><!-- /phone-mockup -->
 
-                    <!-- AI Coach Suggestion -->
-                    <div class="coach-card">
-                        <div class="coach-header">
-                            <span style="font-size: 0.8rem;">⚡</span>
-                            <h5>AI Coach Advice</h5>
-                        </div>
-                        <p>"Hey Alex, you need 30g more protein today. Grab a Greek yogurt snack before your upcoming squat session!"</p>
-                    </div>
-                </div>
-                
                 <!-- Floating tags -->
                 <div class="floating-feature-badge badge-1"><i></i> Meal Scan Active</div>
                 <div class="floating-feature-badge badge-2"><i></i> Squat Tracker 98%</div>
