@@ -11,6 +11,9 @@ import { DynamicTabBar } from '../components/navigation/DynamicTabBar';
 
 // Placeholder screen imports
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen/WelcomeScreen';
+import { AnimatedSplashScreen } from '../screens/onboarding/AnimatedSplashScreen/AnimatedSplashScreen';
+import { OnboardingCarousel } from '../components/common/OnboardingCarousel';
+import { UpdateModal } from '../components/common/UpdateModal';
 import { SignUpScreen } from '../screens/onboarding/RegisterScreen/SignUpScreen';
 import { LoginScreen } from '../screens/onboarding/LoginScreen/LoginScreen';
 import { ForgotPasswordScreen } from '../screens/onboarding/LoginScreen/ForgotPasswordScreen';
@@ -80,16 +83,24 @@ const MainTabs = ({ route }: any) => {
 
 export const AppNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [userId, setUserId] = useState<number | undefined>(undefined);
   const [initialRouteName, setInitialRouteName] = useState<'Welcome' | 'Main' | 'Personalization' | 'GoalSetting' | 'Restrictions' | 'SubscriptionSelection'>('Welcome');
   const [initialParams, setInitialParams] = useState<any>(null);
 
   useEffect(() => {
     const checkSession = async () => {
       try {
+        // Check onboarding completion status first
+        const seenOnboarding = await AsyncStorage.getItem('has_seen_onboarding');
+        setShowOnboarding(seenOnboarding !== 'true');
+
         const savedSession = await AsyncStorage.getItem('user_session');
         if (savedSession) {
           const session = JSON.parse(savedSession);
           const { id, firstName, surveyStep, profile } = session;
+          setUserId(id);
           
           if (surveyStep === 'Complete') {
             setInitialRouteName('Main');
@@ -139,10 +150,22 @@ export const AppNavigator = () => {
     checkSession();
   }, []);
 
-  if (isLoading) {
+  if (isLoading || !isAnimationComplete) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <AnimatedSplashScreen 
+        onAnimationComplete={() => setIsAnimationComplete(true)} 
+      />
+    );
+  }
+
+  if (showOnboarding) {
+    return (
+      <View style={{ flex: 1 }}>
+        <OnboardingCarousel 
+          userId={userId} 
+          onComplete={() => setShowOnboarding(false)} 
+        />
+        <UpdateModal userId={userId} />
       </View>
     );
   }
@@ -182,6 +205,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="ChallengeCommunity" component={ChallengeCommunityScreen} />
       </Stack.Navigator>
+      <UpdateModal userId={userId} />
     </NavigationContainer>
   );
 };

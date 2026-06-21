@@ -1,7 +1,13 @@
 import React, { useEffect } from 'react';
 import { LogBox, AppState, AppStateStatus } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 import { AppNavigator } from './src/navigation/AppNavigator';
+
+// Keep the native splash screen visible while loading resources
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* Prevent crash if called in an unsupported environment */
+});
 import { CustomAlertModal } from './src/components/common/CustomAlertModal';
 import { customAlertRef } from './src/components/common/CustomAlert';
 import { config, validateEnvironment } from './src/config';

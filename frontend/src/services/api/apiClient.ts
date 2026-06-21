@@ -33,6 +33,10 @@ const MAPPED_ENDPOINTS: Record<string, string> = {
   'workout/challenge-details': 'app/controllers/workout/challenge_details.php',
   'workout/challenge-chat': 'app/controllers/workout/challenge_chat.php',
   'profile/manage-connections': 'app/controllers/profile/manage_connections.php',
+  'system/app-update': 'app/controllers/system/get_app_update.php',
+  'system/onboarding-slides': 'app/controllers/system/get_onboarding_slides.php',
+  'profile/complete-onboarding': 'app/controllers/profile/complete_onboarding.php',
+  'profile/update-version-seen': 'app/controllers/profile/update_app_version_seen.php',
 };
 
 // Build endpoint URL with versioning or legacy fallback mapping
@@ -95,6 +99,10 @@ export const endpoints = {
 
   // System status / feature flags
   getSystemStatus: buildEndpoint('system/status'),
+  getAppUpdate: buildEndpoint('system/app-update'),
+  getOnboardingSlides: buildEndpoint('system/onboarding-slides'),
+  completeOnboarding: buildEndpoint('profile/complete-onboarding'),
+  updateVersionSeen: buildEndpoint('profile/update-version-seen'),
 
   // Challenge Community and chat
   getChallengeDetails: buildEndpoint('workout/challenge-details'),

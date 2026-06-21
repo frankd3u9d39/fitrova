@@ -59,6 +59,12 @@ $stats = ['ai_generations' => $aiGenerationsToday];
             Analytics
         </a>
         
+        <!-- App Experience -->
+        <a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 <?php echo isActive('app_experience.php', $current_page); ?>" href="app_experience.php">
+            <span class="material-symbols-outlined" <?php echo activeIcon('app_experience.php', $current_page); ?>>phone_iphone</span>
+            App Experience
+        </a>
+        
         <!-- Logout -->
         <a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 text-red-500 hover:bg-red-500/10 hover:text-red-600" href="logout.php">
             <span class="material-symbols-outlined">logout</span>
