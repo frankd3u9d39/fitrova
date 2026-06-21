@@ -32,15 +32,18 @@ global.fetch = async (...args: Parameters<typeof fetch>) => {
   // Detect file/multipart uploads or AI analysis requests — these need a long timeout and NO retries
   const isLongRunning =
     options?.body instanceof FormData ||
-    (typeof options?.body === 'string' &&
-      ((url as string).includes('ai_form_analyzer') || (url as string).includes('youtube_workout_controller')));
+    (url as string).includes('ai_form_analyzer') ||
+    ((url as string).includes('youtube_workout_controller') && (url as string).includes('action=analyze'));
 
   // 120 s for uploads and heavy AI analysis (Gemini/HF can be slow), 30 s for everything else
   const TIMEOUT_MS = isLongRunning ? 120_000 : 30_000;
-  const maxRetries = isLongRunning ? 1 : 3;  // no retry storm for large/heavy requests
+  // maxRetries = 0 → single attempt, no retry; maxRetries = N → up to N+1 attempts
+  const maxRetries = isLongRunning ? 0 : 3;
   let lastError: Error | null = null;
+  let attempt = 0;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  do {
+    attempt++;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -70,20 +73,20 @@ global.fetch = async (...args: Parameters<typeof fetch>) => {
       if (config.loggingEnabled) {
         if (isAbort) {
           console.warn(`⏱️ [FETCH TIMEOUT]: ${url} (>${TIMEOUT_MS / 1000}s — request aborted)`);
-        } else {
+        } else if (attempt <= maxRetries) {
           console.warn(`⚠️ [FETCH RETRY ${attempt}/${maxRetries}]:`);
           console.warn(`   URL: ${url}`);
           console.warn(`   Error:`, error);
         }
       }
 
-      // Don't retry on timeout or if we've used all attempts
-      if (isAbort || attempt >= maxRetries) break;
+      // Don't retry on timeout or if we've exhausted retries
+      if (isAbort || attempt > maxRetries) break;
 
       // Exponential backoff before next attempt
       await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
-  }
+  } while (attempt <= maxRetries);
 
   if (config.loggingEnabled) {
     console.error(`❌ [FETCH FINAL ERROR]:`);

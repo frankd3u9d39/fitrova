@@ -6,3 +6,6 @@ mediapipe==0.10.21
 opencv-python
 yt-dlp
 google-generativeai
+transformers>=4.42.0
+torch
+accelerate

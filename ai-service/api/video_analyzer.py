@@ -8,6 +8,26 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import google.generativeai as genai
 
+# Gemma 2 — loaded lazily on first request to avoid slowing cold start
+_gemma_pipe = None
+
+def get_gemma_pipeline():
+    """Lazy-load the Gemma 2 text-generation pipeline (downloaded once, cached)."""
+    global _gemma_pipe
+    if _gemma_pipe is None:
+        try:
+            from transformers import pipeline
+            _gemma_pipe = pipeline(
+                "text-generation",
+                model="google/gemma-2-2b-it",
+                max_new_tokens=512,
+                do_sample=False,
+            )
+        except Exception as e:
+            print(f"[Gemma load error]: {e}")
+            _gemma_pipe = None
+    return _gemma_pipe
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -238,6 +258,57 @@ def analyze_form():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+@app.route('/api/gemma-coach', methods=['POST'])
+def gemma_coach():
+    """
+    Text-only coaching endpoint powered by Gemma 2 (google/gemma-2-2b-it).
+    Accepts: { "exercise_name": "...", "video_title": "..." }
+    Returns: { "analysis": { exercise, accuracy_score, status, summary, pro_tips, common_mistakes, key_cues } }
+    """
+    data = request.json or {}
+    exercise_name = data.get('exercise_name', 'Workout')
+    video_title   = data.get('video_title', exercise_name)
+
+    pipe = get_gemma_pipeline()
+    if pipe is None:
+        return jsonify({'error': 'Gemma model unavailable'}), 503
+
+    prompt = f"""<start_of_turn>user
+You are an expert fitness coach. Give detailed coaching advice for: {exercise_name}.
+
+Return ONLY valid JSON with no markdown:
+{{"analysis":{{"exercise":"{exercise_name}","accuracy_score":85,"status":"GOOD","summary":"...","pro_tips":["tip1","tip2","tip3"],"common_mistakes":["mistake1","mistake2"],"key_cues":["cue1","cue2"]}}}}
+<end_of_turn>
+<start_of_turn>model
+"""
+
+    try:
+        result = pipe(prompt)
+        raw = result[0]['generated_text']
+        # Extract only the part after <start_of_turn>model
+        if '<start_of_turn>model' in raw:
+            raw = raw.split('<start_of_turn>model')[-1].strip()
+        # Strip markdown fences if present
+        raw = re.sub(r'^```json\s*', '', raw, flags=re.IGNORECASE)
+        raw = re.sub(r'```\s*$', '', raw, flags=re.IGNORECASE).strip()
+
+        # Find first JSON object in output
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if not match:
+            return jsonify({'error': 'No JSON in Gemma output'}), 500
+
+        parsed = json.loads(match.group())
+        # Normalise — Gemma might return inner object directly
+        if 'analysis' not in parsed and 'exercise' in parsed:
+            parsed = {'analysis': parsed}
+
+        return jsonify(parsed), 200
+    except Exception as e:
+        print(f"[Gemma coaching error]: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
