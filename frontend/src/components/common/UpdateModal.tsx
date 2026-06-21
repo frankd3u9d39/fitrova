@@ -135,7 +135,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ userId }) => {
             {/* Later Button (Only if force_update is false OR if we are in development mode to bypass lockout) */}
             {(!updateInfo.force_update || __DEV__) && (
               <TouchableOpacity style={styles.laterButton} onPress={handleDismiss} activeOpacity={0.8}>
-                <Text style={styles.laterButtonText}>Later {__DEV__ ? '(Dev Bypass)' : ''}</Text>
+                <Text style={styles.laterButtonText}>Later</Text>
               </TouchableOpacity>
             )}
           </View>
