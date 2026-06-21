@@ -84,6 +84,7 @@ export const YouTubeAnalysisScreen = () => {
     setAnalyzing(true);
     
     const videoUrl = `https://www.youtube.com/watch?v=${video.id.videoId}`;
+    const videoTitle = video.snippet?.title || searchQuery || 'Workout';
     
     try {
       const response = await fetch(`${API_BASE_URL}/app/controllers/ai/youtube_workout_controller.php?action=analyze`, {
@@ -91,18 +92,21 @@ export const YouTubeAnalysisScreen = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           youtube_url: videoUrl,
-          exercise_name: searchQuery || 'Workout'
+          exercise_name: searchQuery || 'Workout',
+          video_title: videoTitle,
         })
       });
       const data = await response.json();
       if (data.error) {
         setError(data.error);
-      } else {
+      } else if (data.analysis) {
         setAnalysis(data.analysis);
+      } else {
+        setError('Unexpected response from AI coach. Please try again.');
       }
     } catch (err: any) {
       console.error('Analysis error:', err);
-      setError('Connection to AI Service failed. Please ensure the AI backend server is running.');
+      setError('Could not connect to AI coach. Please check your connection.');
     } finally {
       setAnalyzing(false);
     }
@@ -184,30 +188,43 @@ export const YouTubeAnalysisScreen = () => {
                   <View style={[
                     styles.scoreBadge,
                     analysis.status === 'CAUTION' && { backgroundColor: theme.colors.warning },
-                    analysis.status === 'GOOD' && { backgroundColor: theme.colors.secondary }
+                    analysis.status === 'GOOD' && { backgroundColor: theme.colors.secondary },
+                    analysis.status === 'IMPROVEMENT_NEEDED' && { backgroundColor: '#EF4444' },
                   ]}>
-                    <Text style={styles.scoreValue}>{analysis.accuracy_score}%</Text>
+                    <Text style={styles.scoreValue}>{analysis.accuracy_score ?? analysis.score ?? '--'}%</Text>
                     <Text style={styles.scoreLabel}>{analysis.status || 'ACCURACY'}</Text>
                   </View>
-                  <Text style={[styles.exerciseName, { color: colors.text }]}>{analysis.exercise}</Text>
+                  <Text style={[styles.exerciseName, { color: colors.text }]}>{analysis.exercise ?? analysis.detected_exercise ?? 'Workout'}</Text>
                 </View>
 
                 <Text style={[styles.summaryText, { color: colors.textSecondary }]}>{analysis.summary}</Text>
 
                 <Text style={[styles.tipsHeader, { color: colors.text }]}>COACHING TIPS</Text>
-                {analysis.pro_tips.map((tip: string, index: number) => (
+                {(analysis.pro_tips ?? analysis.tips ?? []).map((tip: string, index: number) => (
                   <View key={index} style={styles.tipItem}>
                     <Ionicons name="flash" size={16} color={theme.colors.primary} />
                     <Text style={[styles.tipText, { color: colors.textSecondary }]}>{tip}</Text>
                   </View>
                 ))}
 
+                {(analysis.key_cues?.length > 0) && (
+                  <>
+                    <Text style={[styles.tipsHeader, { color: colors.text, marginTop: 12 }]}>MENTAL CUES</Text>
+                    {analysis.key_cues.map((cue: string, index: number) => (
+                      <View key={index} style={styles.tipItem}>
+                        <Ionicons name="bulb-outline" size={16} color="#F59E0B" />
+                        <Text style={[styles.tipText, { color: colors.textSecondary }]}>{cue}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+
                 <TouchableOpacity 
                   style={styles.mirrorBtn} 
                   onPress={() => navigation.navigate('FormCheck' as any, { 
-                    exercise: analysis.exercise,
+                    exercise: analysis.exercise ?? analysis.detected_exercise ?? 'Workout',
                     source: 'youtube',
-                    targetScore: analysis.accuracy_score
+                    targetScore: analysis.accuracy_score ?? analysis.score ?? 80,
                   })}
                 >
                   <Text style={styles.mirrorBtnText}>NOW YOU TRY IT</Text>
