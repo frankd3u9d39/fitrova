@@ -203,32 +203,68 @@ export const WorkoutScreen = () => {
     }
   }, [loading, isInitialLoad]);
 
+  const WORKOUT_CACHE_KEY = (uid: number) => `workout_cache_${uid}_${new Date().toDateString()}`;
+
   const loadWorkoutData = async (forceRefresh: boolean = false, verifiedUserId?: number) => {
     const activeUserId = verifiedUserId || userId;
-    try {
-      setLoading(true);
-      const todayStr = new Date().toDateString();
+    const todayStr = new Date().toDateString();
+    const cacheKey = WORKOUT_CACHE_KEY(activeUserId);
 
-      // Check session cache first unless forceRefresh is true
+    try {
+      // ── TIER 1: In-memory session cache (instant, no I/O) ─────────────
       if (!forceRefresh && sessionWorkoutCache && sessionCacheUserId === activeUserId && sessionCacheDate === todayStr) {
-        console.log('⚡ Loading workout from memory session cache');
+        console.log('⚡ Workout loaded from memory cache (no fetch needed)');
         setWorkoutData(sessionWorkoutCache);
         setError(null);
+        setLoading(false);
+        setIsInitialLoad(false);
         return;
       }
 
-      console.log(`📡 Fetching workout recommendations (Force: ${forceRefresh})`);
+      // ── TIER 2: AsyncStorage daily cache (fast, survives app restart) ──
+      if (!forceRefresh) {
+        try {
+          const stored = await AsyncStorage.getItem(cacheKey);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            console.log('📦 Workout loaded from AsyncStorage daily cache');
+            setWorkoutData(parsed);
+            setError(null);
+            setLoading(false);
+            setIsInitialLoad(false);
+            // Populate session cache too
+            sessionWorkoutCache = parsed;
+            sessionCacheUserId = activeUserId;
+            sessionCacheDate = todayStr;
+            return;
+          }
+        } catch (cacheErr) {
+          console.warn('AsyncStorage cache read failed:', cacheErr);
+        }
+      }
+
+      // ── TIER 3: Fetch from AI backend ─────────────────────────────────
+      setLoading(true);
+      console.log(`📡 Fetching AI workout (no cache found, Force: ${forceRefresh})`);
       const data = await getWorkoutRecommendations(activeUserId);
       setWorkoutData(data);
-      
-      // Store in memory session cache
+      setError(null);
+
+      // Save to both caches
       sessionWorkoutCache = data;
       sessionCacheUserId = activeUserId;
       sessionCacheDate = todayStr;
-      
-      setError(null);
+      try {
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+        // Clean up yesterday's key (best-effort)
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        await AsyncStorage.removeItem(`workout_cache_${activeUserId}_${yesterday.toDateString()}`);
+      } catch (saveErr) {
+        console.warn('AsyncStorage cache write failed:', saveErr);
+      }
+
     } catch (err) {
-      // Error is already handled in service with fallback data
       console.error('Workout data error:', err);
     } finally {
       setLoading(false);
