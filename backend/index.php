@@ -236,18 +236,50 @@
             animation: float 6s ease-in-out infinite;
         }
 
-        .phone-mockup {
+        .phone-mockup-img {
             width: 100%;
             max-width: 300px;
-            background: #f5f5f7;
-            border: 7px solid #222;
-            border-radius: 44px;
-            box-shadow: var(--card-shadow), 0 0 50px rgba(19, 236, 19, 0.08);
+            display: block;
             margin: 0 auto;
-            position: relative;
-            overflow: hidden;
-            font-family: 'Manrope', sans-serif;
+            border-radius: 44px;
+            box-shadow: var(--card-shadow), 0 0 50px rgba(19, 236, 19, 0.12);
         }
+
+        /* Floating badges */
+        .floating-feature-badge {
+            position: absolute;
+            background: rgba(13, 19, 33, 0.88);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            padding: 0.6rem 0.9rem;
+            border-radius: 14px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+        }
+        .badge-1 {
+            top: 18%;
+            left: -50px;
+            border-color: rgba(19, 236, 19, 0.3);
+        }
+        .badge-2 {
+            bottom: 18%;
+            right: -44px;
+            border-color: rgba(0, 255, 204, 0.3);
+        }
+        .floating-feature-badge i {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .badge-1 i { background-color: var(--primary); box-shadow: 0 0 8px var(--primary); }
+        .badge-2 i { background-color: #00ffcc; box-shadow: 0 0 8px #00ffcc; }
 
         /* Notch */
         .phone-mockup::before {
@@ -1059,109 +1091,13 @@
                 </div>
             </div>
 
-            <!-- Dashboard Mockup: Momo Light Theme -->
+            <!-- Dashboard Mockup: Momo Screenshot -->
             <div class="hero-mockup-wrapper">
-                <div class="phone-mockup">
-                    <div class="pm-inner">
-
-                        <!-- Greeting -->
-                        <div class="pm-greeting">
-                            <h4>Good Morning, <span>Momo</span> 👋</h4>
-                            <p>Ready to crush your goals today?</p>
-                        </div>
-
-                        <!-- Top row: AI Health Score + Calories -->
-                        <div class="pm-top-row">
-                            <!-- AI Health Score -->
-                            <div class="pm-card">
-                                <div class="pm-card-label">AI HEALTH SCORE <span>✨</span></div>
-                                <div class="pm-score-row">
-                                    <div class="pm-ring-wrap">
-                                        <svg width="52" height="52" viewBox="0 0 52 52">
-                                            <circle class="pm-ring-bg" cx="26" cy="26" r="22"/>
-                                            <circle class="pm-ring-val" cx="26" cy="26" r="22"
-                                                stroke-dasharray="138"
-                                                stroke-dashoffset="37"
-                                                style="fill:none;stroke:#13ec13;stroke-width:5;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;"/>
-                                        </svg>
-                                        <div class="pm-ring-num">75</div>
-                                    </div>
-                                    <div class="pm-score-info">
-                                        <span class="pm-score-pts">↗ +5 pts</span>
-                                        <span class="pm-score-sub">Out of 100</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Calories -->
-                            <div class="pm-cal-card">
-                                <div class="pm-card-label">CALORIES</div>
-                                <div class="pm-fire">🔥</div>
-                                <div class="pm-cal-num">480</div>
-                                <div class="pm-cal-sub">/ 2,000</div>
-                            </div>
-                        </div>
-
-                        <!-- Today's Workout -->
-                        <div class="pm-workout-card">
-                            <div class="pm-workout-label">TODAY'S WORKOUT</div>
-                            <div class="pm-workout-row">
-                                <div class="pm-workout-title">Momo's Hypertrophy Muscle Builder</div>
-                                <div class="pm-workout-time">⏱ 50 min</div>
-                            </div>
-                        </div>
-
-                        <!-- Weight Trend -->
-                        <div class="pm-weight-row">
-                            <span class="pm-weight-label">WEIGHT TREND</span>
-                            <span class="pm-weight-val">72.0 <span>kg</span></span>
-                        </div>
-
-                        <!-- Sparkline -->
-                        <div class="pm-sparkline">
-                            <svg viewBox="0 0 240 36" preserveAspectRatio="none">
-                                <polyline
-                                    points="0,28 40,22 80,25 120,18 160,20 200,14 240,10"
-                                    fill="none"
-                                    stroke="#13ec13"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    opacity="0.7"
-                                />
-                                <polyline
-                                    points="0,28 40,22 80,25 120,18 160,20 200,14 240,10 240,36 0,36"
-                                    fill="rgba(19,236,19,0.06)"
-                                    stroke="none"
-                                />
-                            </svg>
-                        </div>
-
-                        <!-- Day labels -->
-                        <div class="pm-days">
-                            <span class="pm-day">FRI</span>
-                            <span class="pm-day">SAT</span>
-                            <span class="pm-day">SUN</span>
-                            <span class="pm-day">MON</span>
-                            <span class="pm-day">TUE</span>
-                            <span class="pm-day">WED</span>
-                            <span class="pm-day active">THU</span>
-                        </div>
-
-                    </div><!-- /pm-inner -->
-
-                    <!-- Bottom Nav -->
-                    <div class="pm-nav">
-                        <div class="pm-nav-left"></div>
-                        <div class="pm-nav-home">🏠</div>
-                        <div class="pm-nav-right">
-                            <span class="pm-nav-icon">🏋️</span>
-                            <span class="pm-nav-icon">🍴</span>
-                            <span class="pm-nav-icon">👤</span>
-                        </div>
-                    </div>
-
-                </div><!-- /phone-mockup -->
+                <img
+                    src="/home.jpg"
+                    alt="Fitrova app dashboard"
+                    class="phone-mockup-img"
+                >
 
                 <!-- Floating tags -->
                 <div class="floating-feature-badge badge-1"><i></i> Meal Scan Active</div>
