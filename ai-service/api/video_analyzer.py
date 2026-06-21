@@ -123,6 +123,53 @@ Respond ONLY with valid JSON — no markdown fences, no extra text:
         }
 
 
+
+def analyze_form_from_frames(frames_b64, exercise_name):
+    """
+    Ask Gemini to produce expert coaching tips from sequential video frames.
+    """
+    image_parts = [{"mime_type": "image/jpeg", "data": img} for img in frames_b64]
+
+    prompt = f"""
+You are an AI Personal Trainer and expert biomechanics coach. Analyze the user's workout form from these sequential video frames.
+The expected exercise they should be performing is: "{exercise_name}".
+The frames are in chronological order: Frame 1 = start of movement, Frame 2 = mid-movement, Frame 3 = end/peak of movement.
+
+Your tasks:
+1. Detect what exercise the user is actually performing (e.g., 'Squats', 'Push-Ups', 'Deadlift', etc.).
+2. Cross-reference the exercise you detect with the expected exercise ("{exercise_name}"):
+   - If the expected exercise is NOT 'Detect automatically' and the user is doing a completely different exercise, flag this as a critical mismatch.
+   - For an exercise mismatch: Set status to "IMPROVEMENT_NEEDED", score to 0, summary to: "Wrong exercise detected! You are performing [Detected Exercise], but the selected workout is [Expected Exercise]. Please perform the correct exercise for form checking.", and list tips explaining this.
+3. If they are performing the correct exercise (or expected is 'Detect automatically'):
+   - Critically evaluate body positioning, range of motion, joint alignment across all frames.
+   - Use the sequence of frames to assess the movement arc, timing, and control.
+   - If there are flaws (e.g., rounding back, incorrect elbow/shoulder angles, shallow depth, knees caving, uncontrolled speed), set status to "IMPROVEMENT_NEEDED", deduct score (0-100), and provide specific, actionable coaching tips.
+   - If form is excellent across the full movement, set status to "GOOD", score 85-100, and provide positive reinforcement.
+
+Return ONLY valid JSON in this format:
+{{
+  "status": "GOOD" or "IMPROVEMENT_NEEDED",
+  "detected_exercise": "Actual name of the exercise you see them doing",
+  "score": 0-100,
+  "tips": ["Specific coaching tip 1", "Specific coaching tip 2"],
+  "summary": "Encouraging coaching summary explaining if they did the correct exercise and how their form looked across the movement"
+}}
+"""
+    contents = [{"role": "user", "parts": [{"text": prompt}] + image_parts}]
+
+    try:
+        response = model.generate_content(contents)
+        text = response.text.strip()
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+        return json.loads(text)
+    except Exception as e:
+        print(f"[Gemini form check analysis error]: {e}")
+        return None
+
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "healthy"}), 200
@@ -159,6 +206,39 @@ def analyze_youtube():
         import traceback
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/analyze-form', methods=['POST'])
+def analyze_form():
+    data = request.json
+    if not data:
+        return jsonify({"error": "No JSON payload provided"}), 400
+
+    frames_b64 = data.get('frames', [])
+    exercise_name = data.get('exercise_name', 'Workout')
+
+    if not frames_b64:
+        return jsonify({"error": "No frames provided"}), 400
+
+    try:
+        # Strip data-URI prefix if present in any of the base64 strings
+        clean_frames = []
+        for f in frames_b64:
+            if "," in f:
+                f = f.split(",")[1]
+            clean_frames.append(f)
+
+        analysis = analyze_form_from_frames(clean_frames, exercise_name)
+        if not analysis:
+            return jsonify({"error": "Failed to analyze form using Gemini"}), 500
+
+        return jsonify({
+            "status": "success",
+            "analysis": analysis
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 7860))

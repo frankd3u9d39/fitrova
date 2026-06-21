@@ -198,58 +198,98 @@ Return ONLY valid JSON — no markdown code fences, no leading/trailing comments
     $payloadJson = json_encode($payload);
 
 
-    // ── Call Gemini API — try models in order until one succeeds ─────────
-    $geminiResponse = null;
-    $httpCode       = 0;
-    $lastError      = '';
-
-    foreach ($GEMINI_MODELS as $model) {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$GEMINI_API_KEY}";
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST,           true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS,     $payloadJson);
-        curl_setopt($ch, CURLOPT_HTTPHEADER,     ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT,        90);  // 90-second cap per model
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-
-        $rawResponse = curl_exec($ch);
-        $curlErr     = curl_error($ch);
-        $httpCode    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($rawResponse === false) {
-            $lastError = "cURL ({$model}): {$curlErr}";
-            continue;
-        }
-        if ($httpCode === 200) {
-            $geminiResponse = $rawResponse;
-            break;
-        }
-        // Try other models for any error (400, 404, 429, 503, etc.)
-        $lastError = "HTTP {$httpCode} ({$model}): " . substr($rawResponse, 0, 200);
-    }
-
     $analysisData = null;
     $analysisText = '';
+    $source       = 'unknown';
 
-    if ($geminiResponse !== null) {
-        try {
-            $result = json_decode($geminiResponse, true);
-            $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            if ($rawText) {
-                $rawText = preg_replace('/^```json\s*/i', '', trim($rawText));
-                $rawText = preg_replace('/```\s*$/i',     '', trim($rawText));
-                $rawText = trim($rawText);
-                $analysisData = json_decode($rawText, true);
-                if ($analysisData) {
-                    $analysisText = $rawText;
-                }
+    // ── TIER 1: Hugging Face Python service ───────────────────────────────
+    $hfFrames = [];
+    foreach ($frames as $f) {
+        $hfFrames[] = $f['base64'];
+    }
+
+    $ch = curl_init('https://ibeh12-fitrova-ai.hf.space/api/analyze-form');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST,           true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS,     json_encode([
+        'frames'        => $hfFrames,
+        'exercise_name' => $exerciseName,
+    ]));
+    curl_setopt($ch, CURLOPT_HTTPHEADER,     ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT,        35);   // HF cold-start can be slow
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 12);
+
+    $hfRaw  = curl_exec($ch);
+    $hfCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $hfErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($hfRaw !== false && $hfCode === 200) {
+        $hfData = json_decode($hfRaw, true);
+        if (isset($hfData['analysis']) && is_array($hfData['analysis'])) {
+            $analysisData = $hfData['analysis'];
+            $analysisText = json_encode($analysisData);
+            $source       = 'huggingface';
+        }
+    }
+
+    if ($analysisData === null) {
+        error_log("⚠️ HF form service failed or returned error (HTTP {$hfCode}, err: {$hfErr}). Falling back to Gemini.");
+    }
+
+    // ── TIER 2: Gemini API — try models in order until one succeeds ─────────
+    if ($analysisData === null) {
+        $geminiResponse = null;
+        $httpCode       = 0;
+        $lastError      = '';
+
+        foreach ($GEMINI_MODELS as $model) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$GEMINI_API_KEY}";
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST,           true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS,     $payloadJson);
+            curl_setopt($ch, CURLOPT_HTTPHEADER,     ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT,        90);  // 90-second cap per model
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+
+            $rawResponse = curl_exec($ch);
+            $curlErr     = curl_error($ch);
+            $httpCode    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($rawResponse === false) {
+                $lastError = "cURL ({$model}): {$curlErr}";
+                continue;
             }
-        } catch (Exception $parseEx) {
-            // Ignore, let fallback handle it
+            if ($httpCode === 200) {
+                $geminiResponse = $rawResponse;
+                break;
+            }
+            // Try other models for any error (400, 404, 429, 503, etc.)
+            $lastError = "HTTP {$httpCode} ({$model}): " . substr($rawResponse, 0, 200);
+        }
+
+        if ($geminiResponse !== null) {
+            try {
+                $result = json_decode($geminiResponse, true);
+                $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                if ($rawText) {
+                    $rawText = preg_replace('/^```json\s*/i', '', trim($rawText));
+                    $rawText = preg_replace('/```\s*$/i',     '', trim($rawText));
+                    $rawText = trim($rawText);
+                    $analysisData = json_decode($rawText, true);
+                    if ($analysisData) {
+                        $analysisText = $rawText;
+                        $source       = 'gemini';
+                    }
+                }
+            } catch (Exception $parseEx) {
+                // Ignore, let fallback handle it
+            }
         }
     }
 
