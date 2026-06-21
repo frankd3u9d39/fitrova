@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -17,6 +18,9 @@ import { notificationService, Notification } from '../../../services/api/notific
 import { AICoachModal } from '../../../components/common/AICoachModal';
 import { RootStackParamList } from '../../../navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Constants from 'expo-constants';
+import { getAppUpdate } from '../../../services/api/systemService';
+import { CustomAlert } from '../../../components/common/CustomAlert';
 
 type NotificationsRouteProp = RouteProp<RootStackParamList, 'Notifications'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -33,6 +37,24 @@ export const NotificationsScreen = () => {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
+
+  const [appUpdateVersion, setAppUpdateVersion] = useState<string>('');
+  const [appUpdateUrl, setAppUpdateUrl] = useState<string>('');
+  const [appUpdateMessage, setAppUpdateMessage] = useState<string>('');
+
+  const isNewerVersion = (current: string, latest: string): boolean => {
+    const curParts = current.replace(/[^0-9.]/g, '').split('.').map(Number);
+    const latParts = latest.replace(/[^0-9.]/g, '').split('.').map(Number);
+    
+    const maxLength = Math.max(curParts.length, latParts.length);
+    for (let i = 0; i < maxLength; i++) {
+      const cur = curParts[i] || 0;
+      const lat = latParts[i] || 0;
+      if (lat > cur) return true;
+      if (cur > lat) return false;
+    }
+    return false;
+  };
 
   const colors = {
     background:    darkTheme ? '#0F172A' : theme.colors.background,
@@ -62,7 +84,34 @@ export const NotificationsScreen = () => {
     if (showIndicator) setLoading(true);
     try {
       const data = await notificationService.getNotifications(userId);
-      setNotifications(data.notifications);
+      let list = [...data.notifications];
+
+      // Fetch latest app update info
+      try {
+        const updateData = await getAppUpdate();
+        const currentVersion = Constants.expoConfig?.version || '1.0.0';
+        if (updateData && updateData.is_active && isNewerVersion(currentVersion, updateData.version)) {
+          setAppUpdateVersion(updateData.version);
+          setAppUpdateUrl(updateData.update_url || '');
+          setAppUpdateMessage(updateData.message || '');
+
+          const readStatus = await AsyncStorage.getItem(`read_update_version_${updateData.version}`);
+          const isRead = readStatus === 'true';
+
+          const updateNotification: Notification = {
+            id: -999,
+            insight_text: updateData.message || `A new version of the app (${updateData.version}) is available. Tap here to update now!`,
+            insight_type: 'warning',
+            is_read: isRead,
+            created_at: new Date().toISOString()
+          };
+          list.unshift(updateNotification);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch/compare app update in notifications screen:', err);
+      }
+
+      setNotifications(list);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -83,6 +132,9 @@ export const NotificationsScreen = () => {
   const handleMarkAllRead = async () => {
     try {
       await notificationService.markAsRead(userId);
+      if (appUpdateVersion) {
+        await AsyncStorage.setItem(`read_update_version_${appUpdateVersion}`, 'true');
+      }
       // Update local state instantly
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (error) {
@@ -91,6 +143,34 @@ export const NotificationsScreen = () => {
   };
 
   const handleNotificationPress = async (item: Notification) => {
+    if (item.id === -999) {
+      // Mark as read locally
+      await AsyncStorage.setItem(`read_update_version_${appUpdateVersion}`, 'true');
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === -999 ? { ...n, is_read: true } : n))
+      );
+
+      CustomAlert.alert(
+        "A New Update Is Here!",
+        `Version ${appUpdateVersion} is available.\n\n${appUpdateMessage || 'Enjoy the latest improvements.'}`,
+        [
+          {
+            text: "Update Now",
+            onPress: () => {
+              const fallbackUrl = 'https://fitrova-backend.onrender.com/download';
+              const storeUrl = appUpdateUrl && appUpdateUrl.trim() !== '' ? appUpdateUrl : fallbackUrl;
+              Linking.openURL(storeUrl).catch(err => console.error("Couldn't load page", err));
+            }
+          },
+          {
+            text: "Later",
+            style: "cancel"
+          }
+        ]
+      );
+      return;
+    }
+
     setSelectedNotification(item);
     setModalVisible(true);
     if (!item.is_read) {
