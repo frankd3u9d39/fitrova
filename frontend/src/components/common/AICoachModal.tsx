@@ -37,7 +37,7 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({ visible, notificatio
         };
       case 'motivation':
         return {
-          title: 'DAILY MOTIVATION',
+          title: 'FITROVA TEAM',
           icon: 'flame',
           iconColor: '#EC4899',
           bgColor: '#FDF2F8',
@@ -73,7 +73,7 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({ visible, notificatio
           <View style={[styles.card, { backgroundColor: '#FFFFFF', borderColor: config.borderColor }]}>
             {/* Modal Glow Header Accent */}
             <View style={[styles.glowHeader, { backgroundColor: config.bgColor }]} />
-            
+
             {/* Premium Icon Badge */}
             <View style={[styles.iconWrapper, { backgroundColor: config.bgColor, borderColor: config.borderColor }]}>
               <Ionicons name={config.icon as any} size={36} color={config.iconColor} />
@@ -82,9 +82,9 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({ visible, notificatio
             {/* Content Container */}
             <View style={styles.content}>
               <Text style={[styles.tag, { color: config.textColor }]}>{config.title}</Text>
-              
+
               <Text style={styles.mainTitle}>Message from AI Coach</Text>
-              
+
               <Text style={styles.bodyText}>
                 {notification.insight_text}
               </Text>
@@ -92,7 +92,7 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({ visible, notificatio
 
             {/* Action Buttons */}
             <View style={styles.actions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.primaryBtn, { backgroundColor: config.btnColor }]}
                 onPress={onDismiss}
                 activeOpacity={0.85}

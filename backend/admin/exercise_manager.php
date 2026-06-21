@@ -31,6 +31,29 @@ $workoutPlans = $pdo->query("
     ORDER BY wp.plan_date DESC, wp.created_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+// Fetch all nutrition logs across all users
+$nutritionLogs = $pdo->query("
+    SELECT nl.id, nl.user_id, nl.meal_name, nl.calories, nl.protein, nl.carbs, nl.fats,
+           nl.meal_type, nl.logged_date, nl.created_at,
+           u.first_name, u.last_name, u.email
+    FROM nutrition_logs nl
+    LEFT JOIN users u ON nl.user_id = u.id
+    ORDER BY nl.logged_date DESC, nl.created_at DESC
+    LIMIT 500
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// Nutrition summary aggregates
+$nutritionStats = $pdo->query("
+    SELECT 
+        COUNT(*) as total_logs,
+        COUNT(DISTINCT user_id) as unique_users,
+        COALESCE(SUM(calories), 0) as total_calories,
+        COALESCE(ROUND(AVG(calories), 0), 0) as avg_calories,
+        COALESCE(ROUND(AVG(protein), 1), 0) as avg_protein,
+        COUNT(CASE WHEN logged_date = CURDATE() THEN 1 END) as logs_today
+    FROM nutrition_logs
+")->fetch(PDO::FETCH_ASSOC);
+
 // Thumbnail matching for workout plans
 if (!function_exists('getWorkoutImage')) {
     function getWorkoutImage($category, $name) {
@@ -338,11 +361,140 @@ if (!function_exists('getWorkoutImage')) {
 
                 <!-- 3. MEAL DATABASE TAB CONTENT -->
                 <div id="mealTabContent" class="space-y-6 hidden">
-                    <div class="bg-surface-bright rounded-2xl p-8 text-center border border-outline/10 card-shadow">
-                        <span class="material-symbols-outlined text-[48px] text-on-surface-variant/30 mb-2">restaurant_menu</span>
-                        <p class="font-headline text-lg font-bold text-on-surface mb-1">Nutrition & Meal Library</p>
-                        <p class="text-xs text-on-surface-variant mb-4">Meal logs and dynamic nutritional databases synced directly from active athlete logging feeds.</p>
-                        <div class="inline-flex px-4 py-2 bg-primary/10 rounded-xl text-primary font-bold text-xs">CONNECTED TO SYSTEM NUTRITION API</div>
+
+                    <!-- Summary Stats Row -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <div class="bg-surface-bright rounded-2xl p-4 border border-outline/10 card-shadow text-center">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Total Logs</p>
+                            <p class="text-2xl font-extrabold text-on-surface"><?php echo number_format($nutritionStats['total_logs']); ?></p>
+                        </div>
+                        <div class="bg-surface-bright rounded-2xl p-4 border border-outline/10 card-shadow text-center">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Active Users</p>
+                            <p class="text-2xl font-extrabold text-primary"><?php echo $nutritionStats['unique_users']; ?></p>
+                        </div>
+                        <div class="bg-surface-bright rounded-2xl p-4 border border-outline/10 card-shadow text-center">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Logged Today</p>
+                            <p class="text-2xl font-extrabold text-secondary"><?php echo $nutritionStats['logs_today']; ?></p>
+                        </div>
+                        <div class="bg-surface-bright rounded-2xl p-4 border border-outline/10 card-shadow text-center">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Total kcal</p>
+                            <p class="text-2xl font-extrabold text-on-surface"><?php echo number_format($nutritionStats['total_calories']); ?></p>
+                        </div>
+                        <div class="bg-surface-bright rounded-2xl p-4 border border-outline/10 card-shadow text-center">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Avg kcal/meal</p>
+                            <p class="text-2xl font-extrabold text-on-surface"><?php echo $nutritionStats['avg_calories']; ?></p>
+                        </div>
+                        <div class="bg-surface-bright rounded-2xl p-4 border border-outline/10 card-shadow text-center">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Avg Protein</p>
+                            <p class="text-2xl font-extrabold text-on-surface"><?php echo $nutritionStats['avg_protein']; ?>g</p>
+                        </div>
+                    </div>
+
+                    <!-- Search & Filter Bar -->
+                    <div class="bg-surface-bright rounded-2xl p-4 border border-outline/10 card-shadow flex flex-wrap gap-3 items-center">
+                        <div class="relative flex-1 min-w-[180px]">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                            <input type="text" id="mealSearch" placeholder="Search by user or meal name…"
+                                class="w-full bg-surface-container/50 border border-outline/20 rounded-xl pl-9 pr-4 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-on-surface-variant/40"
+                                oninput="filterMealTable()">
+                        </div>
+                        <select id="mealTypeFilter" onchange="filterMealTable()"
+                            class="bg-surface-container/50 border border-outline/20 rounded-xl px-4 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/40">
+                            <option value="">All meal types</option>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                            <option value="snack">Snack</option>
+                        </select>
+                        <input type="date" id="mealDateFilter" onchange="filterMealTable()"
+                            class="bg-surface-container/50 border border-outline/20 rounded-xl px-4 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/40">
+                        <span class="text-xs text-on-surface-variant font-semibold ml-auto" id="mealRowCount">
+                            <?php echo count($nutritionLogs); ?> entries
+                        </span>
+                    </div>
+
+                    <!-- Data Table -->
+                    <div class="bg-surface-bright rounded-2xl border border-outline/10 card-shadow overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm" id="mealTable">
+                                <thead>
+                                    <tr class="border-b border-outline/10 bg-surface-container/40">
+                                        <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Date</th>
+                                        <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">User</th>
+                                        <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Meal</th>
+                                        <th class="text-center px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Type</th>
+                                        <th class="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">kcal</th>
+                                        <th class="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Protein</th>
+                                        <th class="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Carbs</th>
+                                        <th class="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Fats</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mealTableBody">
+                                    <?php if (empty($nutritionLogs)): ?>
+                                        <tr>
+                                            <td colspan="8" class="text-center py-16 text-on-surface-variant text-sm">
+                                                <span class="material-symbols-outlined text-[40px] block mb-2 opacity-30">restaurant_menu</span>
+                                                No meal logs yet. Users' nutrition entries will appear here.
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($nutritionLogs as $log): ?>
+                                            <?php
+                                            $mealTypeColors = [
+                                                'breakfast' => 'bg-amber-100 text-amber-700',
+                                                'lunch'     => 'bg-green-100 text-green-700',
+                                                'dinner'    => 'bg-blue-100 text-blue-700',
+                                                'snack'     => 'bg-purple-100 text-purple-700',
+                                            ];
+                                            $typeClass = $mealTypeColors[$log['meal_type']] ?? 'bg-surface-container text-on-surface-variant';
+                                            $userName = trim(($log['first_name'] ?? '') . ' ' . ($log['last_name'] ?? '')) ?: 'User #' . $log['user_id'];
+                                            $initials = strtoupper(substr($log['first_name'] ?? 'U', 0, 1) . substr($log['last_name'] ?? '', 0, 1));
+                                            ?>
+                                            <tr class="meal-row border-b border-outline/5 hover:bg-surface-container/30 transition-colors"
+                                                data-name="<?php echo htmlspecialchars(strtolower($log['meal_name'] . ' ' . $userName)); ?>"
+                                                data-type="<?php echo htmlspecialchars($log['meal_type']); ?>"
+                                                data-date="<?php echo htmlspecialchars($log['logged_date']); ?>">
+                                                <td class="px-4 py-3 text-on-surface-variant text-xs whitespace-nowrap">
+                                                    <?php echo date('M j, Y', strtotime($log['logged_date'])); ?>
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                            <span class="text-[10px] font-bold text-primary"><?php echo htmlspecialchars($initials); ?></span>
+                                                        </div>
+                                                        <div>
+                                                            <p class="font-semibold text-on-surface text-xs leading-tight"><?php echo htmlspecialchars($userName); ?></p>
+                                                            <p class="text-[10px] text-on-surface-variant truncate max-w-[140px]"><?php echo htmlspecialchars($log['email'] ?? ''); ?></p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <p class="font-medium text-on-surface text-xs leading-tight max-w-[180px] truncate"><?php echo htmlspecialchars($log['meal_name'] ?? '—'); ?></p>
+                                                </td>
+                                                <td class="px-4 py-3 text-center">
+                                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase <?php echo $typeClass; ?>">
+                                                        <?php echo htmlspecialchars($log['meal_type'] ?? 'snack'); ?>
+                                                    </span>
+                                                </td>
+                                                <td class="px-4 py-3 text-right font-bold text-on-surface text-xs"><?php echo number_format($log['calories']); ?></td>
+                                                <td class="px-4 py-3 text-right text-on-surface-variant text-xs"><?php echo number_format($log['protein'], 1); ?>g</td>
+                                                <td class="px-4 py-3 text-right text-on-surface-variant text-xs"><?php echo number_format($log['carbs'], 1); ?>g</td>
+                                                <td class="px-4 py-3 text-right text-on-surface-variant text-xs"><?php echo number_format($log['fats'], 1); ?>g</td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php if (!empty($nutritionLogs)): ?>
+                        <div class="px-4 py-3 border-t border-outline/10 flex items-center justify-between">
+                            <p class="text-[10px] text-on-surface-variant">Showing latest 500 entries. Use search/filter to narrow results.</p>
+                            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-xl text-primary font-bold text-[10px] uppercase tracking-wider">
+                                <span class="material-symbols-outlined text-[14px]">restaurant_menu</span>
+                                CONNECTED TO SYSTEM NUTRITION API
+                            </div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -468,6 +620,33 @@ if (!function_exists('getWorkoutImage')) {
                     card.classList.add('hidden');
                 }
             });
+        }
+
+        function filterMealTable() {
+            const search = document.getElementById('mealSearch').value.toLowerCase().trim();
+            const type = document.getElementById('mealTypeFilter').value.toLowerCase();
+            const date = document.getElementById('mealDateFilter').value;
+            const rows = document.querySelectorAll('#mealTableBody .meal-row');
+            let visible = 0;
+            rows.forEach(row => {
+                const name = row.getAttribute('data-name') || '';
+                const rowType = row.getAttribute('data-type') || '';
+                const rowDate = row.getAttribute('data-date') || '';
+                const matchSearch = !search || name.includes(search);
+                const matchType = !type || rowType === type;
+                const matchDate = !date || rowDate === date;
+
+                if (matchSearch && matchType && matchDate) {
+                    row.classList.remove('hidden');
+                    visible++;
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+            const countEl = document.getElementById('mealRowCount');
+            if (countEl) {
+                countEl.textContent = visible + ' entries';
+            }
         }
 
         function toggleWorkoutExercises(id) {
