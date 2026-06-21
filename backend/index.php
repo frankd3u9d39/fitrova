@@ -999,9 +999,9 @@
                 </div>
 
                 <div class="hero-badges">
-                    <div class="hero-badge"><span></span> Gemini 1.5 Pro</div>
-                    <div class="hero-badge"><span></span> Gemma 3 Fallback</div>
-                    <div class="hero-badge"><span></span> Form Analysis</div>
+                    <div class="hero-badge"><span></span> AI Personal Coach</div>
+                    <div class="hero-badge"><span></span> Smart Nutrition Scan</div>
+                    <div class="hero-badge"><span></span> Live Form Analysis</div>
                 </div>
             </div>
 
