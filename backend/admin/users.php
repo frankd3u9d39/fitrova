@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Fetch users directly via SQL
 $users = $pdo->query("
-    SELECT u.id, u.first_name, u.last_name, u.email, up.current_weight, up.target_weight, up.health_score, up.activity_level, up.ai_engine, up.subscription_tier, up.subscription_expiry
+    SELECT u.id, u.first_name, u.last_name, u.email, up.current_weight, up.target_weight, up.health_score, up.activity_level, up.ai_engine, up.subscription_tier, up.subscription_expiry, up.profile_picture
     FROM users u
     LEFT JOIN user_profiles up ON u.id = up.user_id
     ORDER BY u.created_at DESC
@@ -246,9 +246,13 @@ try {
                                 <tr class="user-row hover:bg-surface-container-low/50 transition-colors group cursor-pointer" data-plan="<?php echo $isPro ? 'pro' : 'free'; ?>" data-search="<?php echo strtolower(htmlspecialchars($user['first_name'] . ' ' . $user['last_name'] . ' ' . $user['email'])); ?>">
                                     <td class="p-4 pl-6">
                                         <div class="flex items-center gap-4">
-                                            <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary font-bold text-sm uppercase shrink-0">
-                                                <?php echo substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1); ?>
-                                            </div>
+                                            <?php if (!empty($user['profile_picture'])): ?>
+                                                <img class="w-10 h-10 rounded-full object-cover shrink-0 border border-outline/20 bg-surface-container" src="<?php echo htmlspecialchars($user['profile_picture']); ?>" alt="<?php echo htmlspecialchars($user['first_name']); ?>">
+                                            <?php else: ?>
+                                                <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary font-bold text-sm uppercase shrink-0">
+                                                    <?php echo substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1); ?>
+                                                </div>
+                                            <?php endif; ?>
                                             <div class="flex flex-col">
                                                 <span class="font-bold text-on-surface group-hover:text-primary transition-colors"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></span>
                                                 <span class="text-xs text-on-surface-variant"><?php echo htmlspecialchars($user['email']); ?></span>
