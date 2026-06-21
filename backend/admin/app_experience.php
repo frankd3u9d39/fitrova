@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $version = trim($_POST['version'] ?? '');
             $message = trim($_POST['message'] ?? '');
+            $update_url = trim($_POST['update_url'] ?? '');
             $is_active = isset($_POST['is_active']) ? 1 : 0;
             $force_update = isset($_POST['force_update']) ? 1 : 0;
             $onboarding_enabled = isset($_POST['onboarding_enabled']) ? 'true' : 'false';
@@ -33,17 +34,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update existing record
                 $updateStmt = $pdo->prepare("
                     UPDATE app_updates 
-                    SET version = ?, message = ?, is_active = ?, force_update = ? 
+                    SET version = ?, message = ?, is_active = ?, force_update = ?, update_url = ? 
                     WHERE id = ?
                 ");
-                $updateStmt->execute([$version, $message, $is_active, $force_update, $latestUpdate['id']]);
+                $updateStmt->execute([$version, $message, $is_active, $force_update, $update_url, $latestUpdate['id']]);
             } else {
                 // Insert new record
                 $insertStmt = $pdo->prepare("
-                    INSERT INTO app_updates (version, message, is_active, force_update) 
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO app_updates (version, message, is_active, force_update, update_url) 
+                    VALUES (?, ?, ?, ?, ?)
                 ");
-                $insertStmt->execute([$version, $message, $is_active, $force_update]);
+                $insertStmt->execute([$version, $message, $is_active, $force_update, $update_url]);
             }
             $success_message = "General App settings deployed successfully.";
         } catch (Exception $e) {
@@ -127,7 +128,8 @@ if (!$appUpdate) {
         'version'      => '1.0.0',
         'message'      => 'A new update is here. Update now to enjoy the latest improvements.',
         'is_active'    => 0,
-        'force_update' => 0
+        'force_update' => 0,
+        'update_url'   => ''
     ];
 }
 
@@ -243,6 +245,13 @@ $slides = $slidesStmt ? $slidesStmt->fetchAll(PDO::FETCH_ASSOC) : [];
                         <div class="space-y-1">
                             <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block">Latest App Version</label>
                             <input type="text" name="version" required placeholder="e.g. 1.2.0" value="<?php echo htmlspecialchars($appUpdate['version']); ?>"
+                                class="w-full bg-surface/50 border border-outline/30 rounded-xl p-3 text-on-surface text-sm focus:ring-1 focus:ring-primary outline-none transition-all">
+                        </div>
+
+                        <!-- Update URL Field -->
+                        <div class="space-y-1">
+                            <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block">Update Download URL</label>
+                            <input type="url" name="update_url" placeholder="e.g. https://play.google.com/store/apps/details?id=..." value="<?php echo htmlspecialchars($appUpdate['update_url'] ?? ''); ?>"
                                 class="w-full bg-surface/50 border border-outline/30 rounded-xl p-3 text-on-surface text-sm focus:ring-1 focus:ring-primary outline-none transition-all">
                         </div>
 

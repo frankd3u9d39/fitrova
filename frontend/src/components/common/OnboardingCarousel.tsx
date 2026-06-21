@@ -39,6 +39,7 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({ userId, 
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchSlides = async () => {
@@ -60,30 +61,33 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({ userId, 
     fetchSlides();
   }, []);
 
+  // Auto-scroll logic
+  useEffect(() => {
+    if (slides.length === 0) return;
+
+    const timer = setTimeout(() => {
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < slides.length) {
+        flatListRef.current?.scrollToIndex({
+          index: nextIndex,
+          animated: true,
+        });
+        setCurrentIndex(nextIndex);
+      } else {
+        // Reached last slide: automatically complete onboarding after 3.5 seconds
+        handleFinish();
+      }
+    }, 3500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [slides, currentIndex]);
+
   const handleScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / width);
     setCurrentIndex(index);
-  };
-
-  const handleNext = () => {
-    if (currentIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({
-        index: currentIndex + 1,
-        animated: true,
-      });
-    } else {
-      handleFinish();
-    }
-  };
-
-  const handleBack = () => {
-    if (currentIndex > 0) {
-      flatListRef.current?.scrollToIndex({
-        index: currentIndex - 1,
-        animated: true,
-      });
-    }
   };
 
   const handleFinish = async () => {
@@ -138,13 +142,6 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({ userId, 
 
   return (
     <View style={styles.container}>
-      {/* Top Skip Button */}
-      {currentIndex < slides.length - 1 && (
-        <TouchableOpacity style={styles.skipButton} onPress={handleFinish} activeOpacity={0.7}>
-          <Text style={styles.skipButtonText}>SKIP</Text>
-        </TouchableOpacity>
-      )}
-
       {/* Slide List */}
       <FlatList
         ref={flatListRef}
@@ -157,6 +154,9 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({ userId, 
         onScroll={handleScroll}
         scrollEventThrottle={16}
         style={styles.flatList}
+        getItemLayout={(data, index) => (
+          { length: width, offset: width * index, index }
+        )}
       />
 
       {/* Footer Controls */}
@@ -176,33 +176,15 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({ userId, 
 
         {/* Buttons Row */}
         <View style={styles.buttonRow}>
-          {/* BACK Button */}
-          {currentIndex > 0 ? (
-            <TouchableOpacity style={styles.navButton} onPress={handleBack} activeOpacity={0.7}>
-              <Text style={styles.navButtonText}>BACK</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.navButtonSpacer} />
-          )}
-
-          {/* NEXT / GET STARTED Button */}
-          <TouchableOpacity 
-            style={[
-              styles.actionButton,
-              currentIndex === slides.length - 1 ? styles.getStartedButton : null
-            ]} 
-            onPress={handleNext} 
-            activeOpacity={0.8}
-          >
-            <Text 
-              style={[
-                styles.actionButtonText,
-                currentIndex === slides.length - 1 ? styles.getStartedButtonText : null
-              ]}
+          {currentIndex === slides.length - 1 && (
+            <TouchableOpacity 
+              style={styles.getStartedButton} 
+              onPress={handleFinish} 
+              activeOpacity={0.8}
             >
-              {currentIndex === slides.length - 1 ? 'GET STARTED' : 'NEXT'}
-            </Text>
-          </TouchableOpacity>
+              <Text style={styles.getStartedButtonText}>GET STARTED</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -302,44 +284,28 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'between',
-    alignItems: 'center',
+    height: 50,
     width: '100%',
-  },
-  navButton: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-  },
-  navButtonSpacer: {
-    width: 60, // approximate width of BACK button
-  },
-  navButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.colors.textSecondary,
-    letterSpacing: 0.5,
-  },
-  actionButton: {
-    marginLeft: 'auto',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.xl,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.colors.primary,
-    letterSpacing: 0.5,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   getStartedButton: {
+    width: '100%',
     backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   getStartedButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
     color: theme.colors.black,
+    letterSpacing: 0.5,
   },
 });

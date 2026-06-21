@@ -5,6 +5,7 @@ export interface AppUpdateData {
   is_active: boolean;
   force_update: boolean;
   message: string | null;
+  update_url: string | null;
 }
 
 export interface OnboardingSlideData {

@@ -18,7 +18,7 @@ require_once __DIR__ . '/../../../config/db_config.php';
 try {
     // Fetch the latest active app update record
     $stmt = $pdo->query("
-        SELECT version, is_active, force_update, message 
+        SELECT version, is_active, force_update, message, update_url 
         FROM app_updates 
         WHERE is_active = 1 
         ORDER BY id DESC 
@@ -33,7 +33,8 @@ try {
                 'version'      => $update['version'],
                 'is_active'    => (bool)$update['is_active'],
                 'force_update' => (bool)$update['force_update'],
-                'message'      => $update['message']
+                'message'      => $update['message'],
+                'update_url'   => $update['update_url']
             ]
         ]);
     } else {

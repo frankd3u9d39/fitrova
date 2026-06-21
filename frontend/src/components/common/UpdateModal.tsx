@@ -73,8 +73,10 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ userId }) => {
   }, []);
 
   const handleUpdate = () => {
-    // Open app download page (using a mock website link or App Store/Play Store fallback)
-    const storeUrl = 'https://fitrova-backend.onrender.com/download'; // placeholder download url
+    const fallbackUrl = 'https://fitrova-backend.onrender.com/download';
+    const storeUrl = updateInfo?.update_url && updateInfo.update_url.trim() !== ''
+      ? updateInfo.update_url
+      : fallbackUrl;
     Linking.openURL(storeUrl).catch(err => console.error("Couldn't load page", err));
   };
 
