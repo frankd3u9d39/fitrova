@@ -3,10 +3,14 @@ import { View, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { colors } from '../../../theme';
 
-const AppLogo: React.FC = () => {
+interface AppLogoProps {
+  size?: number;
+}
+
+const AppLogo: React.FC<AppLogoProps> = ({ size = 80 }) => {
   return (
     <View style={styles.container}>
-      <Svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+      <Svg width={size} height={size} viewBox="0 0 80 80" fill="none">
         <Defs>
           <LinearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <Stop offset="0%" stopColor={colors.primary} />

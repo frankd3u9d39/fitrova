@@ -38,8 +38,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
       >
         {/* Top Section - Logo and Branding */}
         <View style={styles.topSection}>
-          <AppLogo />
-          <Text style={styles.appName}>AI FitTracker</Text>
+          <View style={styles.brandContainer}>
+            <AppLogo size={42} />
+            <Text style={styles.appName}>
+              Fitrova<Text style={{ color: colors.primary }}>.</Text>
+            </Text>
+          </View>
           <Text style={styles.tagline}>
             Your Personal AI Coach For Smarter Fitness and{'\n'}nutrition companion
           </Text>
@@ -101,11 +105,17 @@ const styles = StyleSheet.create({
     paddingTop: spacing['2xl'],
     paddingHorizontal: spacing.lg,
   },
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
   appName: {
     fontSize: typography.fontSize['4xl'],
-    fontWeight: typography.fontWeight.bold,
+    fontWeight: typography.fontWeight.heavy,
     color: colors.gray[900],
-    marginTop: spacing.md,
     letterSpacing: -0.5,
   },
   tagline: {
