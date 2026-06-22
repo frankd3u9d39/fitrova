@@ -97,8 +97,11 @@
 </head>
 <body>
 
-<header>
-    <h1>Fitrova<span>.</span></h1>
+<header style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <div style="display: flex; align-items: center; gap: 0.6rem; justify-content: center; margin-bottom: 0.4rem;">
+        <img src="/Logo.png" alt="Fitrova Logo" style="height: 38px; width: auto;">
+        <h1 style="margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -0.04em;">Fitrova<span style="color: var(--primary);">.</span></h1>
+    </div>
     <p>Privacy Policy</p>
 </header>
 
