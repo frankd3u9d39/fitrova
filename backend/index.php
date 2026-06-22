@@ -981,6 +981,64 @@
             100% { transform: translateY(0px); }
         }
 
+        /* Mobile Menu Toggle Button */
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            padding: 0.5rem;
+            z-index: 100;
+            outline: none;
+        }
+
+        /* Mobile Menu Dropdown Container */
+        .mobile-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: rgba(7, 10, 18, 0.98);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            flex-direction: column;
+            gap: 1.25rem;
+            z-index: 99;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transform: translateY(-10px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .mobile-menu.active {
+            display: flex;
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .mobile-menu a {
+            color: var(--muted);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .mobile-menu a:last-of-type {
+            border-bottom: none;
+        }
+
+        .mobile-menu a:hover {
+            color: var(--primary);
+        }
+
         /* Responsive Layouts */
         @media (max-width: 991px) {
             header.hero {
@@ -1020,10 +1078,16 @@
             }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .nav-links {
-                display: none; /* Mobile menu shortcut */
+                display: none;
             }
+            .mobile-menu-toggle {
+                display: block;
+            }
+        }
+
+        @media (max-width: 600px) {
 
             .hero-content h1 {
                 font-size: 2.5rem;
@@ -1063,6 +1127,20 @@
                 <a href="#showcase">Inside the App</a>
                 <a href="/privacy.php">Privacy Policy</a>
                 <a href="#download" class="btn btn-outline" style="padding: 0.5rem 1.25rem;">Get App</a>
+            </div>
+            
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Navigation">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="24" height="24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" id="menuToggleIcon" />
+                </svg>
+            </button>
+
+            <!-- Mobile Menu Dropdown -->
+            <div class="mobile-menu" id="mobileMenu">
+                <a href="#features" onclick="toggleMobileMenu()">Features</a>
+                <a href="#showcase" onclick="toggleMobileMenu()">Inside the App</a>
+                <a href="/privacy.php" onclick="toggleMobileMenu()">Privacy Policy</a>
+                <a href="#download" class="btn btn-outline" style="padding: 0.75rem 1.5rem; width: 100%; text-align: center; margin-top: 0.5rem;" onclick="toggleMobileMenu()">Get App</a>
             </div>
         </nav>
 
@@ -1379,8 +1457,25 @@
             selectedVisual.classList.add('active');
         }
 
-        // Auto transition progress bars inside tab visual 1
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const icon = document.getElementById('menuToggleIcon');
+            const isOpened = menu.classList.toggle('active');
+            
+            if (isOpened) {
+                icon.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+            } else {
+                icon.setAttribute('d', 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5');
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('mobileMenuToggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', toggleMobileMenu);
+            }
+
+            // Auto transition progress bars inside tab visual 1
             setTimeout(() => {
                 const fill0 = document.getElementById('fill-0');
                 if (fill0) fill0.style.width = '88%';
