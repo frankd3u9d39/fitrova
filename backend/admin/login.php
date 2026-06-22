@@ -338,9 +338,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Main Container -->
     <div class="login-card">
         <!-- Branding Logo Header -->
-        <div class="branding">
-            <h1>Fitrova<span>.</span></h1>
-            <p>Admin Gateway</p>
+        <div class="branding" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 0.6rem; justify-content: center;">
+                <img src="/Logo.png" alt="Fitrova Logo" style="height: 38px; width: auto;">
+                <h1 style="margin: 0; font-size: 2.25rem; font-weight: 800; letter-spacing: -0.05em; color: var(--text-main);">Fitrova<span style="color: var(--primary);">.</span></h1>
+            </div>
+            <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.95rem; font-weight: 500;">Admin Gateway</p>
         </div>
 
         <!-- Feedback Messages -->
