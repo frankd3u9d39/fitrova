@@ -99,6 +99,7 @@
             color: var(--text);
             display: flex;
             align-items: center;
+            gap: 0.5rem;
         }
 
         .logo span {
@@ -1053,7 +1054,10 @@
     <div class="container">
         <!-- Navigation -->
         <nav>
-            <a href="#" class="logo" id="navLogo">Fitrova<span>.</span></a>
+            <a href="#" class="logo" id="navLogo">
+                <img src="/Logo.png" alt="Fitrova Logo" style="height: 32px; width: auto;">
+                Fitrova<span>.</span>
+            </a>
             <div class="nav-links">
                 <a href="#features">Features</a>
                 <a href="#showcase">Inside the App</a>
@@ -1322,7 +1326,10 @@
         <div class="container">
             <div class="footer-grid">
                 <div class="footer-brand">
-                    <h3>Fitrova<span>.</span></h3>
+                    <h3 style="display: flex; align-items: center; gap: 0.5rem;">
+                        <img src="/Logo.png" alt="Fitrova Logo" style="height: 24px; width: auto;">
+                        Fitrova<span>.</span>
+                    </h3>
                     <p>Next-generation fitness tracking and dynamic coaching. Empowering you to reach your goals and build lifelong habits with the help of smart, personal guidance.</p>
                 </div>
                 <div class="footer-col">

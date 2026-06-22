@@ -50,12 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password_hash'])) {
-                if (isset($user['is_admin']) && (int)$user['is_admin'] === 1) {
+                if (isset($user['is_admin']) && (int) $user['is_admin'] === 1) {
                     // Authenticate and set session keys
                     $_SESSION['admin_logged_in'] = true;
                     $_SESSION['admin_email'] = $user['email'];
                     $_SESSION['admin_name'] = $user['first_name'] . ' ' . $user['last_name'];
-                    
+
                     header("Location: index.php");
                     exit();
                 } else {
@@ -72,13 +72,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <link rel="icon" type="image/png" href="favicon.png"/>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="icon" type="image/png" href="favicon.png" />
     <title>Fitrova Admin - Nexus Gateway</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
     <style>
         :root {
             --primary: #13ec13;
@@ -155,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 opacity: 0;
                 transform: translateY(20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -242,7 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 0 12px rgba(19, 236, 19, 0.15);
         }
 
-        .form-input:focus + .input-icon {
+        .form-input:focus+.input-icon {
             color: var(--primary);
         }
 
@@ -295,9 +299,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-6px); }
-            75% { transform: translateX(6px); }
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-6px);
+            }
+
+            75% {
+                transform: translateX(6px);
+            }
         }
 
         .error-banner span {
@@ -315,6 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </style>
 </head>
+
 <body>
     <!-- Background Blur Shapes -->
     <div class="glow-spot glow-green"></div>
@@ -325,15 +340,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Branding Logo Header -->
         <div class="branding">
             <h1>Fitrova<span>.</span></h1>
-            <p>Admin Nexus Gateway</p>
+            <p>Admin Gateway</p>
         </div>
 
         <!-- Feedback Messages -->
         <?php if (!empty($error)): ?>
-        <div class="error-banner">
-            <span class="material-symbols-outlined">warning</span>
-            <div><?php echo htmlspecialchars($error); ?></div>
-        </div>
+            <div class="error-banner">
+                <span class="material-symbols-outlined">warning</span>
+                <div><?php echo htmlspecialchars($error); ?></div>
+            </div>
         <?php endif; ?>
 
         <!-- Form Elements -->
@@ -342,7 +357,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <label class="form-label" for="email">Security Identifier (Email)</label>
                 <div class="input-wrapper">
-                    <input class="form-input" id="email" name="email" placeholder="admin@fitrova.com" required type="email" autocomplete="username"/>
+                    <input class="form-input" id="email" name="email" placeholder="admin@fitrova.com" required
+                        type="email" autocomplete="username" />
                     <span class="material-symbols-outlined input-icon">alternate_email</span>
                 </div>
             </div>
@@ -351,7 +367,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <label class="form-label" for="password">Access Token (Password)</label>
                 <div class="input-wrapper">
-                    <input class="form-input" id="password" name="password" placeholder="••••••••" required type="password" autocomplete="current-password"/>
+                    <input class="form-input" id="password" name="password" placeholder="••••••••" required
+                        type="password" autocomplete="current-password" />
                     <span class="material-symbols-outlined input-icon">lock</span>
                 </div>
             </div>
@@ -366,4 +383,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p class="footer-text">SECURE PORTAL &bull; FITROVA NEXUS SYSTEMS &copy; 2026</p>
     </div>
 </body>
+
 </html>
