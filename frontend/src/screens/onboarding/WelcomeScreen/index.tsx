@@ -31,7 +31,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
-      
+
       <LinearGradient
         colors={[colors.gradientStart, colors.gradientEnd]}
         style={styles.gradient}
@@ -41,7 +41,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           <AppLogo />
           <Text style={styles.appName}>AI FitTracker</Text>
           <Text style={styles.tagline}>
-            Your AI-powered fitness and{'\n'}nutrition companion
+            Your Personal AI Coach For Smarter Fitness and{'\n'}nutrition companion
           </Text>
         </View>
 

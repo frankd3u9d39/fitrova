@@ -1069,7 +1069,7 @@
                 <p>Fitrova combines advanced computer vision, state-of-the-art LLMs, and metabolic calculations to bring high-performance athletic coaching straight to your mobile device.</p>
                 
                 <div class="hero-ctas">
-                    <a href="#download" class="btn" id="heroDownloadBtn">Download APK</a>
+                    <a href="/Fitrova.apk" class="btn" id="heroDownloadBtn" download="Fitrova.apk">Download APK</a>
                     <a href="#features" class="btn btn-outline">Explore Features</a>
                 </div>
 
@@ -1289,7 +1289,7 @@
                 <p>Download our secure APK to load the application on your Android device and gain immediate access to advanced automated training models.</p>
                 
                 <div class="download-actions">
-                    <a href="https://expo.dev/accounts/holand455/projects/fitrova/builds/b1ac55bf-2bd2-42ca-bb10-831be7fdf0f8" class="btn" id="apkDownloadLink" target="_blank">Download Android APK</a>
+                    <a href="/Fitrova.apk" class="btn" id="apkDownloadLink" download="Fitrova.apk">Download Android APK</a>
                     <a href="/privacy.php" class="btn btn-outline">Read Privacy Policy</a>
                 </div>
 
@@ -1304,7 +1304,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="color:var(--primary);flex-shrink:0">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Size: ~45 MB
+                        Size: ~111 MB
                     </div>
                     <div class="download-meta-item">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="color:var(--primary);flex-shrink:0">
