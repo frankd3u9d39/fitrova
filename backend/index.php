@@ -221,14 +221,6 @@
             gap: 0.5rem;
         }
 
-        .hero-badge span {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--primary);
-            display: inline-block;
-            box-shadow: 0 0 8px var(--primary);
-        }
 
         /* Mockup Mobile UI */
         .hero-mockup-wrapper {
@@ -896,9 +888,6 @@
             gap: 0.5rem;
         }
 
-        .download-meta-item i {
-            color: var(--primary);
-        }
 
         /* Footer */
         footer {
@@ -1085,9 +1074,26 @@
                 </div>
 
                 <div class="hero-badges">
-                    <div class="hero-badge"><span></span> AI Personal Coach</div>
-                    <div class="hero-badge"><span></span> Smart Nutrition Scan</div>
-                    <div class="hero-badge"><span></span> Live Form Analysis</div>
+                    <div class="hero-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:var(--primary);flex-shrink:0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        AI Personal Coach
+                    </div>
+                    <div class="hero-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:var(--primary);flex-shrink:0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Smart Nutrition Scan
+                    </div>
+                    <div class="hero-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:var(--primary);flex-shrink:0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Live Form Analysis
+                    </div>
                 </div>
             </div>
 
@@ -1100,8 +1106,19 @@
                 >
 
                 <!-- Floating tags -->
-                <div class="floating-feature-badge badge-1"><i></i> Meal Scan Active</div>
-                <div class="floating-feature-badge badge-2"><i></i> Squat Tracker 98%</div>
+                <div class="floating-feature-badge badge-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#13ec13" style="flex-shrink:0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Meal Scan Active
+                </div>
+                <div class="floating-feature-badge badge-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#00ffcc" style="flex-shrink:0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Squat Tracker 98%
+                </div>
             </div>
         </header>
 
@@ -1115,28 +1132,44 @@
             <div class="features-grid">
                 <!-- AI workouts -->
                 <div class="feature-card">
-                    <div class="feature-icon-wrapper">🏋️</div>
+                    <div class="feature-icon-wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="28" height="28">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        </svg>
+                    </div>
                     <h3>AI Workout Generation</h3>
                     <p>Get dynamic workout routines generated on-demand by state-of-the-art language models. Tailored to your fitness levels, equipment availability, and target muscle groups.</p>
                 </div>
 
                 <!-- Form analysis -->
                 <div class="feature-card">
-                    <div class="feature-icon-wrapper">👁️</div>
+                    <div class="feature-icon-wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="28" height="28">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
                     <h3>Pose & Form Tracking</h3>
                     <p>Protect your joints and build solid posture. Fitrova's computer vision engine evaluates critical angles of exercises like squats, providing immediate visual hints.</p>
                 </div>
 
                 <!-- Nutrition -->
                 <div class="feature-card">
-                    <div class="feature-icon-wrapper">🥗</div>
+                    <div class="feature-icon-wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="28" height="28">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                        </svg>
+                    </div>
                     <h3>Smart Nutrition Analyzer</h3>
                     <p>Effortlessly log your food entries and instantly receive complete macronutrient and micronutrient profiles, allowing you to fine-tune your caloric goals.</p>
                 </div>
 
                 <!-- Community -->
                 <div class="feature-card">
-                    <div class="feature-icon-wrapper">👥</div>
+                    <div class="feature-icon-wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="28" height="28">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                        </svg>
+                    </div>
                     <h3>Athlete Connections</h3>
                     <p>Share logs, participate in active monthly workout challenges, climb the regional leaderboard, and follow your workout partners to stay accountable.</p>
                 </div>
@@ -1261,9 +1294,24 @@
                 </div>
 
                 <div class="download-meta">
-                    <div class="download-meta-item"><i>✓</i> Clean APK Build</div>
-                    <div class="download-meta-item"><i>✓</i> Size: ~45 MB</div>
-                    <div class="download-meta-item"><i>✓</i> Android 9.0+ Supported</div>
+                    <div class="download-meta-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="color:var(--primary);flex-shrink:0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Clean APK Build
+                    </div>
+                    <div class="download-meta-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="color:var(--primary);flex-shrink:0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Size: ~45 MB
+                    </div>
+                    <div class="download-meta-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="color:var(--primary);flex-shrink:0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Android 9.0+ Supported
+                    </div>
                 </div>
             </div>
         </section>
