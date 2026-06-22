@@ -1065,8 +1065,8 @@
         <!-- Hero Section -->
         <header class="hero">
             <div class="hero-content">
-                <h1>Your <span>AI-Powered</span><br>Fitness Coach</h1>
-                <p>Fitrova combines advanced computer vision, state-of-the-art LLMs, and metabolic calculations to bring high-performance athletic coaching straight to your mobile device.</p>
+                <h1>Your Personal <span>AI-Powered</span><br>Fitness Coach</h1>
+                <p>Fitrova uses AI to create smarter workouts, track your progress, and help you achieve your fitness goals.</p>
                 
                 <div class="hero-ctas">
                     <a href="/Fitrova.apk" class="btn" id="heroDownloadBtn" download="Fitrova.apk">Download APK</a>
@@ -1126,7 +1126,7 @@
         <section class="features-section" id="features">
             <div class="section-header">
                 <h2>Intelligent Features for <span>Peak Results</span></h2>
-                <p>Fitrova strips away the guesswork. By leveraging deep learning and tailored tracking, we enable smart adjustments for your fitness goals.</p>
+                <p>Fitrova strips away the guesswork. By combining smart tracking with custom feedback, we help you make the right adjustments to reach your fitness goals.</p>
             </div>
 
             <div class="features-grid">
@@ -1138,7 +1138,7 @@
                         </svg>
                     </div>
                     <h3>AI Workout Generation</h3>
-                    <p>Get dynamic workout routines generated on-demand by state-of-the-art language models. Tailored to your fitness levels, equipment availability, and target muscle groups.</p>
+                    <p>Get dynamic workout routines designed specifically for you. Tell the coach your fitness level, available equipment, and target areas, and get an instant custom routine.</p>
                 </div>
 
                 <!-- Form analysis -->
@@ -1149,7 +1149,7 @@
                         </svg>
                     </div>
                     <h3>Pose & Form Tracking</h3>
-                    <p>Protect your joints and build solid posture. Fitrova's computer vision engine evaluates critical angles of exercises like squats, providing immediate visual hints.</p>
+                    <p>Protect your joints and master your posture. Receive immediate visual guidance and coaching tips as you perform exercises like squats to ensure perfect safety and technique.</p>
                 </div>
 
                 <!-- Nutrition -->
@@ -1160,7 +1160,7 @@
                         </svg>
                     </div>
                     <h3>Smart Nutrition Analyzer</h3>
-                    <p>Effortlessly log your food entries and instantly receive complete macronutrient and micronutrient profiles, allowing you to fine-tune your caloric goals.</p>
+                    <p>Effortlessly scan or log your meals and instantly see your daily nutritional breakdown, helping you build healthy eating habits without the hassle.</p>
                 </div>
 
                 <!-- Community -->
@@ -1286,7 +1286,7 @@
         <section class="download-section" id="download">
             <div class="download-card">
                 <h2>Get Fitrova Today</h2>
-                <p>Download our secure APK to load the application on your Android device and gain immediate access to advanced automated training models.</p>
+                <p>Download the app directly to your Android device to start your fitness journey and get instant access to your new personal training coach.</p>
                 
                 <div class="download-actions">
                     <a href="/Fitrova.apk" class="btn" id="apkDownloadLink" download="Fitrova.apk">Download Android APK</a>
@@ -1323,7 +1323,7 @@
             <div class="footer-grid">
                 <div class="footer-brand">
                     <h3>Fitrova<span>.</span></h3>
-                    <p>Next-generation fitness tracking and dynamic coaching. Powering athletic longevity through state-of-the-art artificial intelligence models.</p>
+                    <p>Next-generation fitness tracking and dynamic coaching. Empowering you to reach your goals and build lifelong habits with the help of smart, personal guidance.</p>
                 </div>
                 <div class="footer-col">
                     <h4>Product</h4>
