@@ -274,6 +274,9 @@ Return ONLY valid JSON — no markdown code fences, no leading/trailing comments
             }
             // Try other models for any error (400, 404, 429, 503, etc.)
             $lastError = "HTTP {$httpCode} ({$model}): " . substr($rawResponse, 0, 200);
+            if ($httpCode === 403 || $httpCode === 401) {
+                break;
+            }
         }
 
         if ($geminiResponse !== null) {

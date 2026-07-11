@@ -75,7 +75,7 @@ function isYoutubeVideoAvailable($url) {
     curl_setopt($ch, CURLOPT_URL, $oembedUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Increased timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Reduced timeout for speed
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Added for local dev flexibility
     
     // Add User-Agent to avoid being blocked by YouTube/Google
@@ -94,6 +94,9 @@ function isYoutubeVideoAvailable($url) {
  */
 function searchYouTube($searchTerm, $apiKey) {
     if (empty($searchTerm)) return null;
+    if (empty($apiKey) || $apiKey === 'YOUR_YOUTUBE_API_KEY_HERE') {
+        return null;
+    }
     
     // We fetch up to 3 results to find a working one without too much overhead
     $query = urlencode($searchTerm . " exercise tutorial");
@@ -144,13 +147,10 @@ function findExerciseVideo($exerciseName, $searchTerm, $exerciseVideoMap, $categ
         foreach ($exerciseVideoMap as $entry) {
             foreach ($entry['keywords'] as $keyword) {
                 if (strpos($nameLower, $keyword) !== false) {
-                    $videoUrl = $entry['video'];
-                    if (isYoutubeVideoAvailable($videoUrl)) {
-                        return [
-                            'video' => $videoUrl,
-                            'image' => $entry['image']
-                        ];
-                    }
+                    return [
+                        'video' => $entry['video'],
+                        'image' => $entry['image']
+                    ];
                 }
             }
         }
@@ -776,8 +776,8 @@ function sanitizeAndForceBodyweight(&$workoutData) {
 function callGemini($prompt, $apiKey, $primaryModel = 'gemini-1.5-pro-latest', $temp = 0.7) {
     $logFile = __DIR__ . '/gemini_debug.log';
     
-    // Priority Model from Admin Settings + active fallback models
-    $models = [$primaryModel, 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+    // Limit fallbacks to avoid excessive latency (max 3 models)
+    $models = array_unique([$primaryModel, 'gemini-2.5-flash', 'gemini-1.5-flash']);
     
     foreach ($models as $modelName) {
         $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $modelName . ':generateContent?key=' . $apiKey;
@@ -799,8 +799,8 @@ function callGemini($prompt, $apiKey, $primaryModel = 'gemini-1.5-pro-latest', $
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 45);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15); // Reduced timeout to prevent hangs
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
         curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         
@@ -821,6 +821,11 @@ function callGemini($prompt, $apiKey, $primaryModel = 'gemini-1.5-pro-latest', $
             if (isset($result['candidates'][0]['content']['parts'][0]['text'])) {
                 return $result['candidates'][0]['content']['parts'][0]['text'];
             }
+        }
+
+        // Abort fallback loop immediately if API key itself is blocked or invalid
+        if ($httpCode === 403 || $httpCode === 401) {
+            break;
         }
         
         usleep(200000); 
@@ -1144,8 +1149,8 @@ try {
             $exerciseName = $exercise['name'] ?? 'general exercise';
             $searchTerm = $exercise['search_term'] ?? $exerciseName;
             
-            // Premium AI Coach: Skip curated mapping to fetch direct dynamic AI results & live YouTube API
-            $media = findExerciseVideo($exerciseName, $searchTerm, $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY, $workoutType, true);
+            // Check curated mapping first, fall back to dynamic YouTube API search if not found
+            $media = findExerciseVideo($exerciseName, $searchTerm, $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY, $workoutType, false);
             $exercise['video_url'] = $media['video'];
             $exercise['image_url'] = $media['image'];
 
@@ -1261,8 +1266,8 @@ finalize_response:
             
             // Match videos for upcoming exercises too
             foreach ($upcoming['exercises'] as &$ex) {
-                // Premium AI Coach: Skip curated mapping to fetch direct dynamic AI results & live YouTube API
-                $m = findExerciseVideo($ex['name'], $ex['search_term'] ?? $ex['name'], $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY, 'general', true);
+                // Check curated mapping first, fall back to dynamic YouTube API search if not found
+                $m = findExerciseVideo($ex['name'], $ex['search_term'] ?? $ex['name'], $EXERCISE_VIDEO_MAP, $CATEGORY_FALLBACK_VIDEOS, $YOUTUBE_API_KEY, 'general', false);
                 $ex['video_url'] = $m['video'];
                 $ex['image_url'] = $m['image'];
 

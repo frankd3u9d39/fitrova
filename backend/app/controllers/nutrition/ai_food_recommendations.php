@@ -143,6 +143,9 @@ Return ONLY the JSON array, nothing else.";
             $error_details[] = "Model {$modelName} succeeded with 200 but failed to parse JSON text. Response: " . substr($response, 0, 300);
         } else {
             $error_details[] = "Model {$modelName} failed with code {$httpCode}. Response: " . substr($response, 0, 300);
+            if ($httpCode === 403 || $httpCode === 401) {
+                break;
+            }
         }
     }
 

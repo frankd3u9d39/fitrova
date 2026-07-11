@@ -191,6 +191,9 @@ foreach ($models as $modelName) {
     } else {
         $last_error = "Model {$modelName} failed: HTTP {$httpCode} | {$curlError} | {$response}";
         file_put_contents(__DIR__ . '/../../../storage/logs/gemini_error.log', date('Y-m-d H:i:s') . " - " . $last_error . "\n", FILE_APPEND);
+        if ($httpCode === 403 || $httpCode === 401) {
+            break;
+        }
     }
 }
 

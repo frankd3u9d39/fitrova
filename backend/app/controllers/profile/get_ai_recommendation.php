@@ -98,6 +98,9 @@ foreach ($models as $modelName) {
         }
     } else {
         $error_details[] = "Model {$modelName} failed with code {$httpCode}";
+        if ($httpCode === 403 || $httpCode === 401) {
+            break;
+        }
     }
 }
 
