@@ -1170,13 +1170,14 @@ try {
         // SAVE NEW PLAN TO DATABASE
         try {
             $saveStmt = $pdo->prepare("
-                INSERT INTO workout_plans (user_id, name, workout_type, plan_data, plan_date, is_active)
-                VALUES (?, ?, ?, ?, CURDATE(), 1)
+                INSERT INTO workout_plans (user_id, name, workout_type, duration_minutes, plan_data, plan_date, is_active)
+                VALUES (?, ?, ?, ?, ?, CURDATE(), 1)
             ");
             $saveStmt->execute([
                 $userId,
                 $workoutData['todays_workout']['name'] ?? 'Daily Workout',
                 $workoutData['todays_workout']['type'] ?? 'mixed',
+                intval($workoutData['todays_workout']['duration'] ?? 45),
                 json_encode($workoutData)
             ]);
 
