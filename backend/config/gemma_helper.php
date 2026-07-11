@@ -33,8 +33,8 @@ function callGemma3(string $userPrompt, string $hfToken, int $maxTokens = 600): 
         "Authorization: Bearer {$hfToken}",
     ]);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT,        10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT,        30);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 
     $raw     = curl_exec($ch);
     $code    = curl_getinfo($ch, CURLINFO_HTTP_CODE);

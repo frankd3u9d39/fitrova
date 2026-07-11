@@ -40,7 +40,7 @@ require_once __DIR__ . '/../../../config/gemma_helper.php';
 
 $settingsStmt = $pdo->query(
     "SELECT setting_key, setting_value FROM system_settings
-     WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary')"
+     WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary', 'hf_token')"
 );
 $settings       = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
@@ -300,7 +300,7 @@ Return ONLY valid JSON — no markdown code fences, no leading/trailing comments
     // Fallback for when HF space is down AND Gemini is unavailable.
     if ($analysisData === null) {
         try {
-            $hfToken = getenv('HF_TOKEN');
+            $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
             $gemmaPrompt = "You are an expert biomechanics coach. Analyze a user's {$exerciseName} exercise form.\n\nReturn ONLY valid JSON (no markdown):\n{\n  \"status\": \"GOOD\",\n  \"detected_exercise\": \"{$exerciseName}\",\n  \"score\": 82,\n  \"tips\": [\"Coaching tip 1\", \"Coaching tip 2\", \"Coaching tip 3\"],\n  \"summary\": \"Coaching summary for {$exerciseName}\"\n}";
             $gemmaText = callGemma3($gemmaPrompt, $hfToken, 400);
             $parsed = json_decode($gemmaText, true);

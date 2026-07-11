@@ -20,7 +20,7 @@ loadEnv(__DIR__ . '/../../../.env');
 // ── Fetch Gemini API key + preferred model from DB ────────────────────────
 $settingsStmt = $pdo->query(
     "SELECT setting_key, setting_value FROM system_settings
-     WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary')"
+     WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary', 'hf_token')"
 );
 $settings       = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
@@ -173,7 +173,7 @@ status must be one of: GOOD, CAUTION, IMPROVEMENT_NEEDED";
 
     // ── TIER 2: Gemma 3 via HF Inference Providers API (GPU-backed, fast) ─────
     if ($analysisData === null) {
-        $hfToken = getenv('HF_TOKEN');
+        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
         if ($hfToken) {
             $prompt = "You are an expert fitness coach. Give detailed coaching advice for: {$exercise_name}.\n\nReturn ONLY valid JSON with no markdown:\n{\n  \"analysis\": {\n    \"exercise\": \"{$exercise_name}\",\n    \"accuracy_score\": 85,\n    \"status\": \"GOOD\",\n    \"summary\": \"...\",\n    \"pro_tips\": [\"tip1\", \"tip2\", \"tip3\"],\n    \"common_mistakes\": [\"mistake1\", \"mistake2\"],\n    \"key_cues\": [\"cue1\", \"cue2\"]\n  }\n}";
 
