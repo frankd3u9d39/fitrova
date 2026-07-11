@@ -300,7 +300,7 @@ Return ONLY valid JSON — no markdown code fences, no leading/trailing comments
     // Fallback for when HF space is down AND Gemini is unavailable.
     if ($analysisData === null) {
         try {
-            $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+            $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
             $gemmaPrompt = "You are an expert biomechanics coach. Analyze a user's {$exerciseName} exercise form.\n\nReturn ONLY valid JSON (no markdown):\n{\n  \"status\": \"GOOD\",\n  \"detected_exercise\": \"{$exerciseName}\",\n  \"score\": 82,\n  \"tips\": [\"Coaching tip 1\", \"Coaching tip 2\", \"Coaching tip 3\"],\n  \"summary\": \"Coaching summary for {$exerciseName}\"\n}";
             $gemmaText = callGemma3($gemmaPrompt, $hfToken, 400);
             $parsed = json_decode($gemmaText, true);

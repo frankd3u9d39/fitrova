@@ -173,7 +173,7 @@ status must be one of: GOOD, CAUTION, IMPROVEMENT_NEEDED";
 
     // ── TIER 2: Gemma 3 via HF Inference Providers API (GPU-backed, fast) ─────
     if ($analysisData === null) {
-        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+        $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
         if ($hfToken) {
             $prompt = "You are an expert fitness coach. Give detailed coaching advice for: {$exercise_name}.\n\nReturn ONLY valid JSON with no markdown:\n{\n  \"analysis\": {\n    \"exercise\": \"{$exercise_name}\",\n    \"accuracy_score\": 85,\n    \"status\": \"GOOD\",\n    \"summary\": \"...\",\n    \"pro_tips\": [\"tip1\", \"tip2\", \"tip3\"],\n    \"common_mistakes\": [\"mistake1\", \"mistake2\"],\n    \"key_cues\": [\"cue1\", \"cue2\"]\n  }\n}";
 

@@ -149,7 +149,7 @@ Return ONLY the JSON array, nothing else.";
     if (!$ai_data) {
         // Fallback to Gemma 3
         try {
-            $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+            $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
             if (!empty($hfToken)) {
                 $gemmaText = callGemma3($prompt, $hfToken, 1000);
                 $parsed = json_decode($gemmaText, true);

@@ -197,7 +197,7 @@ foreach ($models as $modelName) {
 if (!$ai_text) {
     // Fallback to Gemma 3 Vision via router
     try {
-        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+        $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
         if (!empty($hfToken)) {
             $payload = json_encode([
                 'model' => 'google/gemma-3-4b-it',

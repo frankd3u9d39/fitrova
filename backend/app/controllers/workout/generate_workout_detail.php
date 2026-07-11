@@ -75,7 +75,7 @@ try {
     
     if (!$aiJson) {
         // Gemini failed or response is empty, attempt Gemma 3 fallback
-        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+        $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
         if (!empty($hfToken)) {
             try {
                 $aiJson = callGemma3($prompt, $hfToken, 1000);

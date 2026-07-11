@@ -1113,7 +1113,7 @@ try {
         error_log("Gemini API call failed: " . $e->getMessage() . ". Attempting Hugging Face Serverless fallback...");
         
         // Load HF token
-        $hfToken = getenv('HF_TOKEN') ?: ($settings['hf_token'] ?? '');
+        $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
         if (!empty($hfToken)) {
             try {
                 // Try Gemma 3 model on Hugging Face Serverless Inference API
