@@ -1094,12 +1094,12 @@ try {
         $prompt .= "ADVANCED: Standard exercise names. search_term = standard name. instructions = 1-2 cues.\n";
     }
 
-    $prompt .= "CRITICAL: You MUST include exactly 5 high-quality, relevant exercises in todays_workout.exercises. Do not generate 3 or 4; there must be exactly 5 exercises. Also, for each upcoming workout in upcoming_workouts, you must include exactly 5 exercises in their exercises array.\n";
+    $prompt .= "CRITICAL: You MUST include exactly 5 high-quality, relevant exercises in todays_workout.exercises. Do not generate 3 or 4; there must be exactly 5 exercises. Do NOT generate the 'exercises' key/array for upcoming_workouts (it will be auto-populated by the backend).\n";
 
     $prompt .= "\nFormat JSON:\n";
     $prompt .= "{\n";
     $prompt .= '  "todays_workout": {"name": "Title", "exercises": [{"name": "Name", "search_term": "query", "sets": 3, "reps": 10, "instructions": "cues"}], "exercises_count": 5, "duration": 50, "difficulty": "beginner", "type": "strength"},';
-    $prompt .= '  "recovery_score": 90, "status": "READY FOR SESSION", "missed_workouts": [], "upcoming_workouts": [{"name": "Upper Body Power", "scheduled_date": "YYYY-MM-DD", "duration": 45, "exercises_count": 5, "exercises": [{"name": "Name", "sets": 3, "reps": 10, "instructions": "cues"}]}]';
+    $prompt .= '  "recovery_score": 90, "status": "READY FOR SESSION", "missed_workouts": [], "upcoming_workouts": [{"name": "Upper Body Power", "scheduled_date": "YYYY-MM-DD", "duration": 45, "exercises_count": 5}]';
     $prompt .= "}\n";
     
     // Call Gemini with dynamic config, falling back to Hugging Face if Gemini fails
@@ -1121,8 +1121,8 @@ try {
         $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
         if (!empty($hfToken)) {
             try {
-                // Try Gemma 3 model on Hugging Face Serverless Inference API
-                $hfResponse = callGemma3($prompt, $hfToken, 1500);
+                // Try Gemma 3 model on Hugging Face Serverless Inference API (optimized to max 800 tokens for speed)
+                $hfResponse = callGemma3($prompt, $hfToken, 800);
                 $hfResponse = preg_replace('/```json\s*/i', '', $hfResponse);
                 $hfResponse = preg_replace('/```\s*$/', '', $hfResponse);
                 $hfResponse = trim($hfResponse);
