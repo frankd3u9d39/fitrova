@@ -22,8 +22,22 @@ function connectDb() {
         echo "[*] Database connected successfully.\n";
         return $conn;
     } catch (PDOException $e) {
-        echo "[-] Database connection failed: " . $e->getMessage() . ". Retrying in 5 seconds...\n";
-        return null;
+        echo "[-] Primary DB connection failed: " . $e->getMessage() . ". Trying Aiven Cloud DB fallback...\n";
+        try {
+            $host = getenv('AIVEN_DB_HOST') ?: 'fitroval-db123-ibehpromise30-af36.g.aivencloud.com';
+            $port = getenv('AIVEN_DB_PORT') ?: '11816';
+            $dbname = getenv('AIVEN_DB_NAME') ?: 'defaultdb';
+            $username = getenv('AIVEN_DB_USER') ?: 'avnadmin';
+            $password = getenv('AIVEN_DB_PASS') ?: 'AVNS_Sz6-RnTLGjBHbi49wvp';
+            $conn = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $username, $password);
+            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            echo "[*] Aiven Cloud Database connected successfully.\n";
+            return $conn;
+        } catch (PDOException $e2) {
+            echo "[-] Aiven Database connection failed: " . $e2->getMessage() . ". Retrying in 5 seconds...\n";
+            return null;
+        }
     }
 }
 

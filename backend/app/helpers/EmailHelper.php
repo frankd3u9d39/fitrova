@@ -52,20 +52,23 @@ class EmailHelper {
     }
 
     private function sendMail($to, $subject, $message) {
-        // 1. Check if we have an HTTP-based email API configured (avoids SMTP port blocking on Render Free Tier)
         $brevoKey = getenv('BREVO_API_KEY');
         $sendgridKey = getenv('SENDGRID_API_KEY');
         $resendKey = getenv('RESEND_API_KEY');
 
-        if (!empty($brevoKey)) {
-            return $this->sendViaBrevo($to, $subject, $message, $brevoKey);
+        // Only try HTTP API if Brevo key is a valid REST API key (not an SMTP password starting with xsmtpsib-)
+        if (!empty($brevoKey) && strpos($brevoKey, 'xsmtpsib-') === false) {
+            $sent = $this->sendViaBrevo($to, $subject, $message, $brevoKey);
+            if ($sent) return true;
         } elseif (!empty($sendgridKey)) {
-            return $this->sendViaSendGrid($to, $subject, $message, $sendgridKey);
+            $sent = $this->sendViaSendGrid($to, $subject, $message, $sendgridKey);
+            if ($sent) return true;
         } elseif (!empty($resendKey)) {
-            return $this->sendViaResend($to, $subject, $message, $resendKey);
+            $sent = $this->sendViaResend($to, $subject, $message, $resendKey);
+            if ($sent) return true;
         }
 
-        // 2. Fallback to direct SMTP socket (works locally but blocked on Render Free Tier)
+        // Always fallback to direct Gmail SMTP socket (using App Password)
         return $this->sendViaSmtp($to, $subject, $message);
     }
 
