@@ -14,10 +14,12 @@ require_once __DIR__ . '/../../../config/db_config.php';
 require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
 require_once __DIR__ . '/../../../config/gemma_helper.php';
+require_once __DIR__ . '/../../../config/deepseek_helper.php';
 
 // Fetch dynamic configuration
-$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
+$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_deepseek_api_key', 'ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
 $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
 $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
 $primaryModel = $settings['ai_model_primary'] ?? '';
 
@@ -69,43 +71,61 @@ Return the result ONLY as a JSON object with this structure:
 $ai_data = null;
 $error_details = [];
 
-foreach ($models as $modelName) {
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$GEMINI_API_KEY}";
-    
-    $payload = [
-        "contents" => [["parts" => [["text" => $prompt]]]],
-        "generationConfig" => ["response_mime_type" => "application/json"]
-    ];
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode === 200) {
-        $result = json_decode($response, true);
-        $ai_text = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
-        if ($ai_text) {
-            $ai_data = json_decode($ai_text, true);
-            if ($ai_data) break;
+// Tier 1: DeepSeek Primary Call
+if (!empty($DEEPSEEK_API_KEY)) {
+    try {
+        $dsText = callDeepSeek($prompt, $DEEPSEEK_API_KEY, 'You are a professional fitness coach.', 0.7, 'deepseek-chat', 600);
+        $parsed = json_decode($dsText, true);
+        if ($parsed && isset($parsed['recommendation'])) {
+            $ai_data = $parsed;
+        } else {
+            $error_details[] = "DeepSeek returned invalid JSON format";
         }
-    } else {
-        $error_details[] = "Model {$modelName} failed with code {$httpCode}";
-        if ($httpCode === 403 || $httpCode === 401) {
-            break;
+    } catch (Exception $dsEx) {
+        $error_details[] = "DeepSeek call failed: " . $dsEx->getMessage();
+    }
+}
+
+// Tier 2: Gemini Fallback
+if (!$ai_data && !empty($GEMINI_API_KEY)) {
+    foreach ($models as $modelName) {
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$GEMINI_API_KEY}";
+        
+        $payload = [
+            "contents" => [["parts" => [["text" => $prompt]]]],
+            "generationConfig" => ["response_mime_type" => "application/json"]
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200) {
+            $result = json_decode($response, true);
+            $ai_text = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            if ($ai_text) {
+                $ai_data = json_decode($ai_text, true);
+                if ($ai_data) break;
+            }
+        } else {
+            $error_details[] = "Model {$modelName} failed with code {$httpCode}";
+            if ($httpCode === 403 || $httpCode === 401) {
+                break;
+            }
         }
     }
 }
 
+// Tier 3: Gemma 3 Fallback
 if (!$ai_data) {
-    // Fallback to Gemma 3
     try {
         $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
         if (!empty($hfToken)) {

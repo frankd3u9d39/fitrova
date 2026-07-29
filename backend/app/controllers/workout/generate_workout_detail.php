@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../../config/db_config.php';
 require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
 require_once __DIR__ . '/../../../config/gemma_helper.php';
+require_once __DIR__ . '/../../../config/deepseek_helper.php';
 
 // Prevent warnings from breaking JSON
 error_reporting(0);
@@ -27,10 +28,9 @@ try {
         throw new Exception('User ID required');
     }
 
-    // AI Configuration (Re-using Gemini logic from main script)
-    // Fetch dynamic configuration
-    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'hf_token')");
+    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_deepseek_api_key', 'ai_gemini_api_key', 'hf_token', 'ai_model_primary')");
     $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    $DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
     $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
     
     $prompt = "Trainer AI. Generate workout plan for '$workoutName'. Strict JSON:\n";
@@ -40,50 +40,49 @@ try {
     $prompt .= '  "duration": 45, "difficulty": "intermediate", "type": "strength"';
     $prompt .= "\n}";
 
-    // Call Gemini (Optimized and simplified)
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $GEMINI_API_KEY;
-    $data = [
-        'contents' => [['parts' => [['text' => $prompt]]]],
-        'generationConfig' => [
-            'temperature' => 0.7,
-            'maxOutputTokens' => 1500,
-            'response_mime_type' => 'application/json'
-        ]
-    ];
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    
-    $response = curl_exec($ch);
-    $curlError = curl_error($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    $aiJson = null;
 
-    if ($response === false) {
-        throw new Exception('cURL Error: ' . $curlError);
+    if (!empty($DEEPSEEK_API_KEY)) {
+        try {
+            $aiJson = callDeepSeek($prompt, $DEEPSEEK_API_KEY, 'You are a professional workout trainer.', 0.7, 'deepseek-chat', 1500);
+        } catch (Exception $dsEx) {
+            error_log("DeepSeek failed in generate_workout_detail: " . $dsEx->getMessage());
+        }
     }
 
-    if ($httpCode !== 200) {
-        throw new Exception('Gemini API error (HTTP ' . $httpCode . '): ' . $response);
+    if (!$aiJson && !empty($GEMINI_API_KEY)) {
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $GEMINI_API_KEY;
+        $data = [
+            'contents' => [['parts' => [['text' => $prompt]]]],
+            'generationConfig' => [
+                'temperature' => 0.7,
+                'maxOutputTokens' => 1500,
+                'response_mime_type' => 'application/json'
+            ]
+        ];
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200) {
+            $result = @json_decode($response, true);
+            $aiJson = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+        }
     }
 
-    $result = @json_decode($response, true);
-    $aiJson = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
-    
     if (!$aiJson) {
-        // Gemini failed or response is empty, attempt Gemma 3 fallback
         $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
         if (!empty($hfToken)) {
-            try {
-                $aiJson = callGemma3($prompt, $hfToken, 1000);
-            } catch (Exception $gemmaEx) {
-                throw new Exception('Gemini failed and Gemma 3 fallback failed: ' . $gemmaEx->getMessage());
-            }
+            $aiJson = callGemma3($prompt, $hfToken, 1000);
         } else {
-            throw new Exception('Gemini failed and Hugging Face token is not configured.');
+            throw new Exception('All AI providers (DeepSeek, Gemini, Gemma 3) were unavailable.');
         }
     }
     

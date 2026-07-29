@@ -18,6 +18,7 @@ require_once __DIR__ . '/../../../config/db_config.php';
 require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
 require_once __DIR__ . '/../../../config/gemma_helper.php';
+require_once __DIR__ . '/../../../config/deepseek_helper.php';
 require_once __DIR__ . '/../../middleware/AISubscriptionGate.php';
 use App\Middleware\AISubscriptionGate;
 
@@ -33,9 +34,10 @@ if (($settings['maintenance_mode'] ?? 'false') === 'true') {
     exit();
 }
 
-$PRIMARY_MODEL = $settings['ai_model_primary'] ?? 'gemini-3.1-flash';
+$PRIMARY_MODEL = $settings['ai_model_primary'] ?? 'deepseek-chat';
 $SYSTEM_PROMPT = $settings['ai_system_prompt'] ?? 'You are a professional fitness trainer. Generate a personalized workout plan.';
 $AI_TEMPERATURE = (float)($settings['ai_temperature'] ?? 0.7);
+$DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
 $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
 $YOUTUBE_API_KEY = $settings['ai_youtube_api_key'] ?? '';
 
@@ -1102,42 +1104,61 @@ try {
     $prompt .= '  "recovery_score": 90, "status": "READY FOR SESSION", "missed_workouts": [], "upcoming_workouts": [{"name": "Upper Body Power", "scheduled_date": "YYYY-MM-DD", "duration": 45, "exercises_count": 5}]';
     $prompt .= "}\n";
     
-    // Call Gemini with dynamic config, falling back to Hugging Face if Gemini fails
+    // Primary AI Generation: DeepSeek -> Gemini -> Hugging Face fallback
     $ai_provider = 'Fitrova Smart Engine';
-    try {
-        $aiResponse = callGemini($prompt, $GEMINI_API_KEY, $PRIMARY_MODEL, $AI_TEMPERATURE);
-        
-        $aiResponse = preg_replace('/```json\s*/i', '', $aiResponse);
-        $aiResponse = preg_replace('/```\s*$/', '', $aiResponse);
-        $aiResponse = trim($aiResponse);
-        $workoutData = json_decode($aiResponse, true);
-        if ($workoutData && isset($workoutData['todays_workout'])) {
-            $ai_provider = 'Google Gemini Pro';
-        }
-    } catch (Exception $e) {
-        error_log("Gemini API call failed: " . $e->getMessage() . ". Attempting Hugging Face Serverless fallback...");
-        
-        // Load HF token
-        $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
-        if (!empty($hfToken)) {
-            try {
-                // Try Gemma 3 model on Hugging Face Serverless Inference API (optimized to max 800 tokens for speed)
-                $hfResponse = callGemma3($prompt, $hfToken, 800);
-                $hfResponse = preg_replace('/```json\s*/i', '', $hfResponse);
-                $hfResponse = preg_replace('/```\s*$/', '', $hfResponse);
-                $hfResponse = trim($hfResponse);
-                $workoutData = json_decode($hfResponse, true);
-                if ($workoutData && isset($workoutData['todays_workout'])) {
-                    $ai_provider = 'Hugging Face (Gemma 3 4B)';
-                } else {
-                    $workoutData = ['error' => true, 'message' => 'Hugging Face returned invalid JSON data.'];
-                }
-            } catch (Exception $hfEx) {
-                error_log("Hugging Face fallback failed: " . $hfEx->getMessage());
-                $workoutData = ['error' => true, 'message' => $hfEx->getMessage()];
+    $workoutData = null;
+
+    if (!empty($DEEPSEEK_API_KEY)) {
+        try {
+            $deepseekModel = (strpos($PRIMARY_MODEL, 'deepseek') !== false) ? $PRIMARY_MODEL : 'deepseek-chat';
+            $dsResponse = callDeepSeek($prompt, $DEEPSEEK_API_KEY, $SYSTEM_PROMPT, $AI_TEMPERATURE, $deepseekModel);
+            $parsedData = json_decode($dsResponse, true);
+            if ($parsedData && isset($parsedData['todays_workout'])) {
+                $workoutData = $parsedData;
+                $ai_provider = 'DeepSeek AI';
             }
-        } else {
-            $workoutData = ['error' => true, 'message' => 'Hugging Face token not configured.'];
+        } catch (Exception $dsEx) {
+            error_log("DeepSeek API call failed: " . $dsEx->getMessage() . ". Falling back to Gemini...");
+        }
+    }
+
+    if (!$workoutData || !isset($workoutData['todays_workout'])) {
+        try {
+            $aiResponse = callGemini($prompt, $GEMINI_API_KEY, 'gemini-1.5-flash', $AI_TEMPERATURE);
+            
+            $aiResponse = preg_replace('/```json\s*/i', '', $aiResponse);
+            $aiResponse = preg_replace('/```\s*$/', '', $aiResponse);
+            $aiResponse = trim($aiResponse);
+            $parsedData = json_decode($aiResponse, true);
+            if ($parsedData && isset($parsedData['todays_workout'])) {
+                $workoutData = $parsedData;
+                $ai_provider = 'Google Gemini Pro';
+            }
+        } catch (Exception $e) {
+            error_log("Gemini API call failed: " . $e->getMessage() . ". Attempting Hugging Face Serverless fallback...");
+            
+            // Load HF token
+            $hfToken = ($settings['hf_token'] ?? '') ?: (getenv('HF_TOKEN') ?: '');
+            if (!empty($hfToken)) {
+                try {
+                    $hfResponse = callGemma3($prompt, $hfToken, 800);
+                    $hfResponse = preg_replace('/```json\s*/i', '', $hfResponse);
+                    $hfResponse = preg_replace('/```\s*$/', '', $hfResponse);
+                    $hfResponse = trim($hfResponse);
+                    $parsedData = json_decode($hfResponse, true);
+                    if ($parsedData && isset($parsedData['todays_workout'])) {
+                        $workoutData = $parsedData;
+                        $ai_provider = 'Hugging Face (Gemma 3 4B)';
+                    } else {
+                        $workoutData = ['error' => true, 'message' => 'Hugging Face returned invalid JSON data.'];
+                    }
+                } catch (Exception $hfEx) {
+                    error_log("Hugging Face fallback failed: " . $hfEx->getMessage());
+                    $workoutData = ['error' => true, 'message' => $hfEx->getMessage()];
+                }
+            } else {
+                $workoutData = ['error' => true, 'message' => 'Hugging Face token not configured.'];
+            }
         }
     }
 

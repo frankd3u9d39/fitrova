@@ -1,4 +1,7 @@
 <?php
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 require_once __DIR__ . '/includes/auth_check.php';
 require_once __DIR__ . '/../config/db_config.php';
 
@@ -9,38 +12,77 @@ try {
     // Already exists
 }
 
+$successMessage = '';
+$errorMessage = '';
+
 // Handle athlete profile edit action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_athlete') {
     try {
+        $userId = intval($_POST['user_id']);
+        $firstName = trim($_POST['first_name'] ?? '');
+        $lastName = trim($_POST['last_name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $healthScore = intval($_POST['health_score'] ?? 0);
+        $currentWeight = !empty($_POST['current_weight']) ? floatval($_POST['current_weight']) : null;
+        $targetWeight = !empty($_POST['target_weight']) ? floatval($_POST['target_weight']) : null;
         $tier = $_POST['subscription_tier'] ?? 'free';
         $expiry = !empty($_POST['subscription_expiry']) ? $_POST['subscription_expiry'] : null;
         
-        // Auto-align expiration date (defaults to +30 days if left blank for active tiers)
         if (($tier === 'premium' || $tier === 'advanced_premium') && !$expiry) {
             $expiry = date('Y-m-d H:i:s', strtotime('+30 days'));
         } elseif ($tier === 'free') {
             $expiry = null;
         }
         
-        // Auto-align ai_engine (legacy compatibility): premium/advanced sets to 'premium', otherwise 'eco'
         $aiEngine = ($tier === 'premium' || $tier === 'advanced_premium') ? 'premium' : 'eco';
         
-        $stmt = $pdo->prepare("
+        // 1. Update identity details in users table
+        $uStmt = $pdo->prepare("UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = ?");
+        $uStmt->execute([$firstName, $lastName, $email, $userId]);
+
+        // 2. Update profile details in user_profiles table
+        $pStmt = $pdo->prepare("
             UPDATE user_profiles 
-            SET health_score = ?, target_weight = ?, ai_engine = ?, subscription_tier = ?, subscription_expiry = ? 
+            SET health_score = ?, current_weight = ?, target_weight = ?, ai_engine = ?, subscription_tier = ?, subscription_expiry = ? 
             WHERE user_id = ?
         ");
-        $stmt->execute([
-            $_POST['health_score'], 
-            $_POST['target_weight'], 
+        $pStmt->execute([
+            $healthScore, 
+            $currentWeight,
+            $targetWeight, 
             $aiEngine, 
             $tier, 
             $expiry, 
-            $_POST['user_id']
+            $userId
         ]);
-        $success = true;
+        $successMessage = "Athlete profile for {$firstName} {$lastName} updated successfully!";
     } catch (PDOException $e) {
+        $errorMessage = "Database Error updating athlete: " . $e->getMessage();
         error_log("Database Error in users.php edit_athlete: " . $e->getMessage());
+    }
+}
+
+// Handle athlete delete action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_athlete') {
+    try {
+        $deleteUserId = intval($_POST['user_id']);
+        
+        // Delete cascading user data
+        try { $pdo->prepare("DELETE FROM weight_history WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
+        try { $pdo->prepare("DELETE FROM workout_plans WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
+        try { $pdo->prepare("DELETE FROM form_check_logs WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
+        try { $pdo->prepare("DELETE FROM payment_transactions WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
+        try { $pdo->prepare("DELETE FROM ai_food_recommendations WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
+        try { $pdo->prepare("DELETE FROM user_profiles WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
+        
+        // Finally delete user account
+        $delUser = $pdo->prepare("DELETE FROM users WHERE id = ?");
+        $delUser->execute([$deleteUserId]);
+
+        $successMessage = "Athlete account deleted successfully!";
+    } catch (PDOException $e) {
+        $errorMessage = "Failed to delete user account: " . $e->getMessage();
+        error_log("Database Error in users.php delete_athlete: " . $e->getMessage());
     }
 }
 
@@ -176,6 +218,18 @@ try {
                     <div class="md:col-span-6 lg:col-span-8 flex flex-col gap-2">
                         <h2 class="font-display text-2xl font-extrabold tracking-tighter text-on-surface">User Management</h2>
                         <p class="font-body text-sm font-medium text-on-surface-variant">Oversee community performance and platform access.</p>
+                        <?php if (!empty($successMessage)): ?>
+                            <div class="mt-2 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-lg">check_circle</span>
+                                <?php echo htmlspecialchars($successMessage); ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($errorMessage)): ?>
+                            <div class="mt-2 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-lg">error</span>
+                                <?php echo htmlspecialchars($errorMessage); ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <div class="md:col-span-6 lg:col-span-4 grid grid-cols-2 gap-4">
                         <div class="bg-surface-bright shadow-2xl rounded-3xl p-5 flex flex-col gap-1 relative overflow-hidden group border border-outline/10 hover:border-primary/20 transition-all duration-300">
@@ -285,10 +339,28 @@ try {
                                             <div class="text-[10px] text-on-surface-variant mt-1 font-semibold">Exp: <?php echo date('Y-m-d', strtotime($subExpiry)); ?></div>
                                         <?php endif; ?>
                                     </td>
+                                    <td class="p-4">
+                                        <span class="text-on-surface-variant font-medium text-xs capitalize"><?php echo htmlspecialchars($user['activity_level'] ?? 'Moderate'); ?></span>
+                                    </td>
                                     <td class="p-4 pr-6 text-right">
-                                        <button onclick="openEditModal(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'], ENT_QUOTES); ?>', <?php echo $user['health_score'] ?: 0; ?>, <?php echo $user['target_weight'] ?: 0; ?>, '<?php echo $user['subscription_tier'] ?: 'free'; ?>', '<?php echo $user['subscription_expiry'] ?: ''; ?>')" class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary-container/50">
-                                            <span class="material-symbols-outlined text-[20px]">edit</span>
-                                        </button>
+                                        <div class="flex items-center justify-end gap-1">
+                                            <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode([
+                                                'id' => $user['id'],
+                                                'first_name' => $user['first_name'],
+                                                'last_name' => $user['last_name'],
+                                                'email' => $user['email'],
+                                                'health_score' => $user['health_score'] ?: 0,
+                                                'current_weight' => $user['current_weight'] ?: '',
+                                                'target_weight' => $user['target_weight'] ?: '',
+                                                'subscription_tier' => $user['subscription_tier'] ?: 'free',
+                                                'subscription_expiry' => $user['subscription_expiry'] ?: ''
+                                            ]), ENT_QUOTES); ?>)" class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary-container/50" title="Edit Athlete Profile">
+                                                <span class="material-symbols-outlined text-[20px]">edit</span>
+                                            </button>
+                                            <button onclick="openDeleteModal(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'], ENT_QUOTES); ?>')" class="text-on-surface-variant hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-red-500/10" title="Delete Athlete Account">
+                                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -461,16 +533,23 @@ try {
         }
 
         // Edit Profile modal handlers
-        function openEditModal(userId, name, healthScore, targetWeight, subscriptionTier, subscriptionExpiry) {
-            document.getElementById('editUserId').value = userId;
-            document.getElementById('editUserName').value = name;
-            document.getElementById('editHealthScore').value = healthScore;
-            document.getElementById('editTargetWeight').value = targetWeight;
-            document.getElementById('editSubscriptionTier').value = subscriptionTier || 'free';
+        function openEditModal(userData) {
+            if (typeof userData === 'string') {
+                try { userData = JSON.parse(userData); } catch(e) {}
+            }
+            document.getElementById('editUserId').value = userData.id || '';
+            document.getElementById('editFirstName').value = userData.first_name || '';
+            document.getElementById('editLastName').value = userData.last_name || '';
+            document.getElementById('editEmail').value = userData.email || '';
+            document.getElementById('editHealthScore').value = userData.health_score !== undefined ? userData.health_score : 0;
+            document.getElementById('editCurrentWeight').value = userData.current_weight || '';
+            document.getElementById('editTargetWeight').value = userData.target_weight || '';
+            document.getElementById('editSubscriptionTier').value = userData.subscription_tier || 'free';
             
             // Format datetime-local value (YYYY-MM-DDTHH:MM)
-            if (subscriptionExpiry && subscriptionExpiry !== '0000-00-00 00:00:00') {
-                let date = new Date(subscriptionExpiry);
+            const expiry = userData.subscription_expiry;
+            if (expiry && expiry !== '0000-00-00 00:00:00') {
+                let date = new Date(expiry);
                 let tzoffset = date.getTimezoneOffset() * 60000;
                 let localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
                 document.getElementById('editSubscriptionExpiry').value = localISOTime;
@@ -485,6 +564,17 @@ try {
             document.getElementById('editModal').classList.add('hidden');
         }
 
+        // Delete Profile modal handlers
+        function openDeleteModal(userId, name) {
+            document.getElementById('deleteUserId').value = userId;
+            document.getElementById('deleteUserName').innerText = name;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+        }
+
         // Auto-fill Subscription Expiration on changing Subscription Tier
         document.addEventListener('DOMContentLoaded', () => {
             const tierSelect = document.getElementById('editSubscriptionTier');
@@ -495,22 +585,17 @@ try {
                     
                     if (expiryInput) {
                         if (tier === 'premium' || tier === 'advanced_premium') {
-                            // If currently empty, set to 30 days from now
                             if (!expiryInput.value) {
                                 const date = new Date();
                                 date.setDate(date.getDate() + 30);
-                                
-                                // Format to YYYY-MM-DDTHH:MM (datetime-local format)
                                 const year = date.getFullYear();
                                 const month = String(date.getMonth() + 1).padStart(2, '0');
                                 const day = String(date.getDate()).padStart(2, '0');
                                 const hours = String(date.getHours()).padStart(2, '0');
                                 const minutes = String(date.getMinutes()).padStart(2, '0');
-                                
                                 expiryInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
                             }
                         } else {
-                            // If switching to free, clear expiration date
                             expiryInput.value = '';
                         }
                     }
@@ -521,7 +606,7 @@ try {
 
     <!-- Edit Profile Modal Component -->
     <div id="editModal" class="fixed inset-0 bg-on-background/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6 transition-all duration-300">
-        <div class="bg-surface-bright w-full max-w-xl p-8 rounded-[2.5rem] shadow-2xl border border-outline/10 relative">
+        <div class="bg-surface-bright w-full max-w-xl p-8 rounded-[2.5rem] shadow-2xl border border-outline/10 relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeEditModal()" class="absolute top-6 right-6 text-on-surface-variant hover:text-on-surface">
                 <span class="material-symbols-outlined text-2xl">close</span>
             </button>
@@ -535,11 +620,31 @@ try {
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">Athlete Name</label>
-                        <input type="text" id="editUserName" readonly class="w-full bg-surface-container/30 border border-outline/30 rounded-2xl p-3 text-on-surface-variant outline-none text-xs font-body cursor-not-allowed">
+                        <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">First Name</label>
+                        <input type="text" name="first_name" id="editFirstName" required class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-3 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 text-xs font-body">
                     </div>
                     <div>
-                        <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">Health Score (0-100)</label>
+                        <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">Last Name</label>
+                        <input type="text" name="last_name" id="editLastName" required class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-3 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 text-xs font-body">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">Email Address</label>
+                    <input type="email" name="email" id="editEmail" required class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-3 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 text-xs font-body">
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">Current Wt (kg)</label>
+                        <input type="number" name="current_weight" id="editCurrentWeight" step="0.1" class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-3 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 text-xs font-body">
+                    </div>
+                    <div>
+                        <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">Target Wt (kg)</label>
+                        <input type="number" name="target_weight" id="editTargetWeight" step="0.1" class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-3 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 text-xs font-body">
+                    </div>
+                    <div>
+                        <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">Health Score</label>
                         <input type="number" name="health_score" id="editHealthScore" min="0" max="100" required class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-3 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 text-xs font-body">
                     </div>
                 </div>
@@ -559,14 +664,35 @@ try {
                     </div>
                 </div>
 
-                <div>
-                    <label class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block mb-1">Target Weight (kg)</label>
-                    <input type="number" name="target_weight" id="editTargetWeight" step="0.1" required class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-3 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 text-xs font-body">
-                </div>
-
                 <div class="flex gap-4 pt-4">
                     <button type="button" onclick="closeEditModal()" class="flex-1 bg-surface-container text-on-surface font-bold py-3.5 rounded-2xl text-xs hover:bg-surface-container-high transition-colors">Cancel</button>
                     <button type="submit" class="flex-1 bg-primary text-on-primary font-bold py-3.5 rounded-2xl text-xs hover:bg-primary-fixed transition-colors shadow-lg shadow-primary/20 uppercase tracking-widest">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Profile Modal Component -->
+    <div id="deleteModal" class="fixed inset-0 bg-on-background/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6 transition-all duration-300">
+        <div class="bg-surface-bright w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl border border-red-500/20 relative">
+            <button onclick="closeDeleteModal()" class="absolute top-6 right-6 text-on-surface-variant hover:text-on-surface">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+            <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mb-4">
+                <span class="material-symbols-outlined text-2xl">warning</span>
+            </div>
+            <h3 class="font-display text-xl font-extrabold text-on-surface mb-2">
+                Delete Athlete Account?
+            </h3>
+            <p class="text-xs text-on-surface-variant leading-relaxed mb-6">
+                Are you sure you want to delete <span id="deleteUserName" class="font-bold text-on-surface">this athlete</span>? This action cannot be undone and will permanently erase their user profile, workout history, weight logs, and payment records.
+            </p>
+            <form action="" method="POST" class="space-y-4">
+                <input type="hidden" name="action" value="delete_athlete">
+                <input type="hidden" name="user_id" id="deleteUserId">
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeDeleteModal()" class="flex-1 bg-surface-container text-on-surface font-bold py-3 rounded-2xl text-xs hover:bg-surface-container-high transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 bg-red-500 text-white font-bold py-3 rounded-2xl text-xs hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20 uppercase tracking-widest">Delete Account</button>
                 </div>
             </form>
         </div>

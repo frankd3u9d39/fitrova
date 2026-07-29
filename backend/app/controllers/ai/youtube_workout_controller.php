@@ -16,16 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../../../config/db_config.php';
 require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
+require_once __DIR__ . '/../../../config/deepseek_helper.php';
 
-// ── Fetch Gemini API key + preferred model from DB ────────────────────────
+// ── Fetch AI API keys + preferred model from DB ────────────────────────
 $settingsStmt = $pdo->query(
     "SELECT setting_key, setting_value FROM system_settings
-     WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary', 'hf_token')"
+     WHERE setting_key IN ('ai_deepseek_api_key', 'ai_gemini_api_key', 'ai_model_primary', 'hf_token')"
 );
-$settings       = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
-$GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
+$settings         = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
+$GEMINI_API_KEY   = $settings['ai_gemini_api_key'] ?? '';
 // Only try top-2 models to keep total latency manageable
-$primary        = $settings['ai_model_primary'] ?? 'gemini-2.0-flash';
+$primary        = $settings['ai_model_primary'] ?? 'deepseek-chat';
 $GEMINI_MODELS  = array_unique([$primary, 'gemini-2.0-flash', 'gemini-1.5-flash']);
 $GEMINI_MODELS  = array_slice($GEMINI_MODELS, 0, 2); // max 2 attempts
 
@@ -123,45 +125,64 @@ Return ONLY valid JSON — no markdown, no code fences:
 
 status must be one of: GOOD, CAUTION, IMPROVEMENT_NEEDED";
 
-        $payload     = [
-            'contents'         => [['parts' => [['text' => $prompt]]]],
-            'generationConfig' => ['temperature' => 0.7, 'maxOutputTokens' => 800],
-        ];
-        $payloadJson = json_encode($payload);
-
-        // Use only the primary model — no multi-model loop to stay under Render's timeout
-        $geminiModel = $GEMINI_MODELS[0] ?? 'gemini-2.0-flash';
-        $geminiUrl   = "https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$GEMINI_API_KEY}";
-
-        $ch = curl_init($geminiUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST,           true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS,     $payloadJson);
-        curl_setopt($ch, CURLOPT_HTTPHEADER,     ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT,        18);   // hard cap — local fallback fires if exceeded
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-
-        $rawResponse = curl_exec($ch);
-        $geminiCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($rawResponse !== false && $geminiCode === 200) {
-            $result  = json_decode($rawResponse, true);
-            $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
-
-            if ($rawText) {
-                $rawText = preg_replace('/^```json\s*/i', '', trim($rawText));
-                $rawText = preg_replace('/```\s*$/i',     '', trim($rawText));
-                $rawText = trim($rawText);
-
-                $parsed = json_decode($rawText, true);
+        // ── Tier 1: DeepSeek Primary ───────────────────────────────────────
+        if (!empty($DEEPSEEK_API_KEY)) {
+            try {
+                $dsText = callDeepSeek($prompt, $DEEPSEEK_API_KEY, 'You are a workout coach.', 0.7, 'deepseek-chat', 1000);
+                $parsed = json_decode($dsText, true);
                 if ($parsed && isset($parsed['analysis'])) {
                     $analysisData = $parsed;
-                    $source       = 'gemini';
+                    $source       = 'deepseek';
                 } elseif ($parsed && isset($parsed['exercise'])) {
                     $analysisData = ['analysis' => $parsed];
-                    $source       = 'gemini';
+                    $source       = 'deepseek';
+                }
+            } catch (Exception $dsEx) {
+                error_log("⚠️ DeepSeek YouTube analysis failed: " . $dsEx->getMessage());
+            }
+        }
+
+        // ── Tier 2: Gemini Fallback ─────────────────────────────────────────
+        if ($analysisData === null && !empty($GEMINI_API_KEY)) {
+            $payload     = [
+                'contents'         => [['parts' => [['text' => $prompt]]]],
+                'generationConfig' => ['temperature' => 0.7, 'maxOutputTokens' => 800],
+            ];
+            $payloadJson = json_encode($payload);
+
+            $geminiModel = $GEMINI_MODELS[0] ?? 'gemini-2.0-flash';
+            $geminiUrl   = "https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$GEMINI_API_KEY}";
+
+            $ch = curl_init($geminiUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST,           true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS,     $payloadJson);
+            curl_setopt($ch, CURLOPT_HTTPHEADER,     ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT,        18);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+
+            $rawResponse = curl_exec($ch);
+            $geminiCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($rawResponse !== false && $geminiCode === 200) {
+                $result  = json_decode($rawResponse, true);
+                $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+                if ($rawText) {
+                    $rawText = preg_replace('/^```json\s*/i', '', trim($rawText));
+                    $rawText = preg_replace('/```\s*$/i',     '', trim($rawText));
+                    $rawText = trim($rawText);
+
+                    $parsed = json_decode($rawText, true);
+                    if ($parsed && isset($parsed['analysis'])) {
+                        $analysisData = $parsed;
+                        $source       = 'gemini';
+                    } elseif ($parsed && isset($parsed['exercise'])) {
+                        $analysisData = ['analysis' => $parsed];
+                        $source       = 'gemini';
+                    }
                 }
             }
         }

@@ -44,6 +44,8 @@
     "typescript": "~5.9.2"
   },
   "scripts": {
+    "start": "expo start",
+    "start:offline": "expo start --offline",
     "android": "expo run:android",
     "ios": "expo run:ios"
   }

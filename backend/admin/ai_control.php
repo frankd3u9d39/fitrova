@@ -540,20 +540,22 @@ if (empty($notifications)) {
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                             <div>
                                 <div class="flex flex-wrap gap-2 mb-2">
-                                    <span class="px-2.5 py-1 rounded-md bg-primary/10 text-primary text-[10px] font-extrabold uppercase tracking-widest border border-primary/20">
-                                        Active: Google Gemini 1.5
-                                    </span>
                                     <?php
                                     $settingsListStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
                                     $allSettings = $settingsListStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                                    $activeProvider = $allSettings['ai_provider'] ?? 'deepseek';
+                                    $activeModel = $allSettings['ai_model_primary'] ?? 'deepseek-chat';
                                     $hfTokenConfigured = !empty(getenv('HF_TOKEN')) || !empty($allSettings['hf_token'] ?? '');
                                     ?>
+                                    <span class="px-2.5 py-1 rounded-md bg-primary/10 text-primary text-[10px] font-extrabold uppercase tracking-widest border border-primary/20">
+                                        Active: <?php echo (strpos($activeModel, 'deepseek') !== false || $activeProvider === 'deepseek') ? 'DeepSeek AI (' . htmlspecialchars($activeModel) . ')' : 'Google Gemini (' . htmlspecialchars($activeModel) . ')'; ?>
+                                    </span>
                                     <span class="px-2.5 py-1 rounded-md <?php echo $hfTokenConfigured ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-slate-700/10 text-slate-400 border-slate-700/20'; ?> text-[10px] font-extrabold uppercase tracking-widest border">
-                                        Fallback: Gemma 2 (<?php echo $hfTokenConfigured ? 'Active' : 'Missing Token'; ?>)
+                                        Fallback: Gemini & Gemma (<?php echo $hfTokenConfigured ? 'Active' : 'Missing HF Token'; ?>)
                                     </span>
                                 </div>
                                 <h3 class="font-display text-xl font-extrabold italic text-white">AI Engine & Token Monitor</h3>
-                                <p class="text-xs text-slate-400 mt-1">Real-time usage analytics for Google Gemini & Hugging Face Serverless fallback</p>
+                                <p class="text-xs text-slate-400 mt-1">Real-time usage analytics for DeepSeek AI, Google Gemini & Hugging Face Serverless fallback</p>
                             </div>
                             <div
                                 class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-full px-3 py-1.5 text-xs text-slate-300">
@@ -610,7 +612,7 @@ if (empty($notifications)) {
                         <h3
                             class="font-headline text-lg font-bold text-on-surface mb-6 flex items-center gap-3 border-b border-outline/20 pb-4">
                             <span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
-                            Gemini Intelligence Settings
+                            DeepSeek &amp; AI Intelligence Settings
                         </h3>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -622,6 +624,22 @@ if (empty($notifications)) {
                                     <?php if ($s['setting_key'] === 'ai_system_prompt'): ?>
                                         <textarea name="settings[<?php echo $s['setting_key']; ?>]" rows="6"
                                             class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-4 text-on-surface focus:ring-2 focus:ring-primary/50 text-sm font-body outline-none transition-all"><?php echo htmlspecialchars($s['setting_value']); ?></textarea>
+                                    <?php elseif ($s['setting_key'] === 'ai_model_primary'): ?>
+                                        <select name="settings[<?php echo $s['setting_key']; ?>]"
+                                            class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-4 text-on-surface focus:ring-2 focus:ring-primary/50 text-sm font-body outline-none transition-all">
+                                            <option value="deepseek-chat" <?php echo $s['setting_value'] === 'deepseek-chat' ? 'selected' : ''; ?>>⚡ DeepSeek Chat (V3 - Fast &amp; Smart)</option>
+                                            <option value="deepseek-reasoner" <?php echo $s['setting_value'] === 'deepseek-reasoner' ? 'selected' : ''; ?>>🧠 DeepSeek Reasoner (R1 - Deep Logic)</option>
+                                            <option value="gemini-3.1-flash-lite" <?php echo $s['setting_value'] === 'gemini-3.1-flash-lite' ? 'selected' : ''; ?>>✨ Google Gemini 3.1 Flash Lite</option>
+                                            <option value="gemini-1.5-flash" <?php echo $s['setting_value'] === 'gemini-1.5-flash' ? 'selected' : ''; ?>>✨ Google Gemini 1.5 Flash</option>
+                                            <option value="google/gemma-3-4b-it" <?php echo $s['setting_value'] === 'google/gemma-3-4b-it' ? 'selected' : ''; ?>>🤗 Hugging Face Gemma 3 4B</option>
+                                        </select>
+                                    <?php elseif ($s['setting_key'] === 'ai_provider'): ?>
+                                        <select name="settings[<?php echo $s['setting_key']; ?>]"
+                                            class="w-full bg-surface-container/50 border border-outline/30 rounded-2xl p-4 text-on-surface focus:ring-2 focus:ring-primary/50 text-sm font-body outline-none transition-all">
+                                            <option value="deepseek" <?php echo $s['setting_value'] === 'deepseek' ? 'selected' : ''; ?>>🚀 DeepSeek AI (Primary)</option>
+                                            <option value="gemini" <?php echo $s['setting_value'] === 'gemini' ? 'selected' : ''; ?>>✨ Google Gemini (Fallback/Primary)</option>
+                                            <option value="gemma" <?php echo $s['setting_value'] === 'gemma' ? 'selected' : ''; ?>>🤗 Hugging Face Gemma (Fallback)</option>
+                                        </select>
                                     <?php else: ?>
                                         <input type="text" name="settings[<?php echo $s['setting_key']; ?>]"
                                             value="<?php echo htmlspecialchars($s['setting_value']); ?>"

@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../../config/db_config.php';
 require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
 require_once __DIR__ . '/../../../config/gemma_helper.php';
+require_once __DIR__ . '/../../../config/deepseek_helper.php';
 
 try {
     $input = json_decode(file_get_contents('php://input'), true);
@@ -36,17 +37,19 @@ try {
     $cacheStmt->execute([$userId, $today]);
     $cached = $cacheStmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($cached) {
-        $cachedData = json_decode($cached['recommendations_json'], true);
-        if ($cachedData) {
-            echo json_encode(['status' => 'success', 'data' => $cachedData]);
-            exit();
-        }
+    if ($cached && !empty($cached['recommendations_json'])) {
+        echo json_encode([
+            'status' => 'success',
+            'data' => json_decode($cached['recommendations_json'], true),
+            'cached' => true
+        ]);
+        exit();
     }
 
-    // Fetch dynamic configuration for AI
-    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
+    // Fetch dynamic configuration
+    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_deepseek_api_key', 'ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
     $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    $DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
     $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
     $primaryModel = $settings['ai_model_primary'] ?? '';
 
@@ -113,38 +116,56 @@ Return ONLY the JSON array, nothing else.";
     $ai_data = null;
     $error_details = [];
 
-    foreach ($models as $modelName) {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$GEMINI_API_KEY}";
-        
-        $payload = [
-            "contents" => [["parts" => [["text" => $prompt]]]],
-            "generationConfig" => ["response_mime_type" => "application/json"]
-        ];
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode === 200) {
-            $result = json_decode($response, true);
-            $ai_text = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
-            if ($ai_text) {
-                $ai_data = json_decode($ai_text, true);
-                if ($ai_data) break;
+    // Tier 1: DeepSeek Primary
+    if (!empty($DEEPSEEK_API_KEY)) {
+        try {
+            $dsText = callDeepSeek($prompt, $DEEPSEEK_API_KEY, 'You are a professional nutrition coach.', 0.7, 'deepseek-chat', 1500);
+            $parsed = json_decode($dsText, true);
+            if (is_array($parsed)) {
+                $ai_data = $parsed;
+            } else {
+                $error_details[] = "DeepSeek returned non-array JSON structure";
             }
-            $error_details[] = "Model {$modelName} succeeded with 200 but failed to parse JSON text. Response: " . substr($response, 0, 300);
-        } else {
-            $error_details[] = "Model {$modelName} failed with code {$httpCode}. Response: " . substr($response, 0, 300);
-            if ($httpCode === 403 || $httpCode === 401) {
-                break;
+        } catch (Exception $dsEx) {
+            $error_details[] = "DeepSeek nutrition call failed: " . $dsEx->getMessage();
+        }
+    }
+
+    // Tier 2: Gemini Fallback
+    if (!$ai_data && !empty($GEMINI_API_KEY)) {
+        foreach ($models as $modelName) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$GEMINI_API_KEY}";
+            
+            $payload = [
+                "contents" => [["parts" => [["text" => $prompt]]]],
+                "generationConfig" => ["response_mime_type" => "application/json"]
+            ];
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $result = json_decode($response, true);
+                $ai_text = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                if ($ai_text) {
+                    $ai_data = json_decode($ai_text, true);
+                    if ($ai_data) break;
+                }
+                $error_details[] = "Model {$modelName} succeeded with 200 but failed to parse JSON text. Response: " . substr($response, 0, 300);
+            } else {
+                $error_details[] = "Model {$modelName} failed with code {$httpCode}. Response: " . substr($response, 0, 300);
+                if ($httpCode === 403 || $httpCode === 401) {
+                    break;
+                }
             }
         }
     }
