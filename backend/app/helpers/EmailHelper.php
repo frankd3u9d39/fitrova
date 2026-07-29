@@ -18,17 +18,12 @@ class EmailHelper {
         $this->username = $smtpUser;
         $this->password = $smtpPass;
         
-        echo "    [DEBUG] Connecting to SMTP as: " . $this->username . "\n";
-        
         if ($senderEmail) {
             $this->username = $senderEmail;
         }
     }
 
     public function sendVerificationCode($toEmail, $code) {
-        // [DEV DEBUG] Print the code to the terminal for easy testing
-        echo "    [DEBUG] Verification code for $toEmail is: $code\n";
-
         $subject = "Your Fitrova Verification Code";
         $message = "
             <html>
@@ -194,12 +189,10 @@ class EmailHelper {
             $resp = $this->getResponse($socket);
             if ($this->getResponseCode($resp) !== 220) return false;
 
-            echo "    [SMTP] SENDING: EHLO\n";
             fwrite($socket, "EHLO " . $this->host . "\r\n");
             $resp = $this->getResponse($socket);
             if ($this->getResponseCode($resp) !== 250) return false;
 
-            echo "    [SMTP] SENDING: AUTH LOGIN\n";
             fwrite($socket, "AUTH LOGIN\r\n");
             $resp = $this->getResponse($socket);
             if ($this->getResponseCode($resp) !== 334) return false;
@@ -212,17 +205,14 @@ class EmailHelper {
             $resp = $this->getResponse($socket);
             if ($this->getResponseCode($resp) !== 235) return false;
 
-            echo "    [SMTP] SENDING: MAIL FROM\n";
             fwrite($socket, "MAIL FROM: <" . $this->username . ">\r\n");
             $resp = $this->getResponse($socket);
             if ($this->getResponseCode($resp) !== 250) return false;
 
-            echo "    [SMTP] SENDING: RCPT TO\n";
             fwrite($socket, "RCPT TO: <" . $to . ">\r\n");
             $resp = $this->getResponse($socket);
             if ($this->getResponseCode($resp) !== 250) return false;
 
-            echo "    [SMTP] SENDING: DATA\n";
             fwrite($socket, "DATA\r\n");
             $resp = $this->getResponse($socket);
             if ($this->getResponseCode($resp) !== 354) return false;
@@ -231,7 +221,6 @@ class EmailHelper {
             $resp = $this->getResponse($socket);
             if ($this->getResponseCode($resp) !== 250) return false;
 
-            echo "    [SMTP] SENDING: QUIT\n";
             fwrite($socket, "QUIT\r\n");
             fclose($socket);
             return true;
@@ -245,7 +234,6 @@ class EmailHelper {
         $response = "";
         while ($str = fgets($socket, 515)) {
             $response .= $str;
-            echo "    [SMTP] " . trim($str) . "\n"; // DEBUG LOG
             if (substr($str, 3, 1) == " ") break;
         }
         return $response;
