@@ -89,9 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $pdo->prepare("DELETE FROM personal_records WHERE user_id = ?")->execute([$deleteUserId]);
             $pdo->prepare("DELETE FROM ai_insights WHERE user_id = ?")->execute([$deleteUserId]);
             $pdo->prepare("DELETE FROM challenge_messages WHERE user_id = ?")->execute([$deleteUserId]);
-            $pdo->prepare("DELETE FROM pending_verifications WHERE user_id = ?")->execute([$deleteUserId]);
+            if (!empty($targetEmail)) {
+                $pdo->prepare("DELETE FROM pending_verifications WHERE email = ?")->execute([$targetEmail]);
+            }
             $pdo->prepare("DELETE FROM user_challenges WHERE user_id = ?")->execute([$deleteUserId]);
-            $pdo->prepare("DELETE FROM user_connections WHERE user_id = ? OR connected_user_id = ?")->execute([$deleteUserId, $deleteUserId]);
+            $pdo->prepare("DELETE FROM user_connections WHERE requester_id = ? OR receiver_id = ?")->execute([$deleteUserId, $deleteUserId]);
             $pdo->prepare("DELETE FROM user_profiles WHERE user_id = ?")->execute([$deleteUserId]);
             $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$deleteUserId]);
 
