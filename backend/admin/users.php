@@ -67,20 +67,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     try {
         $deleteUserId = intval($_POST['user_id']);
         
-        // Delete cascading user data
-        try { $pdo->prepare("DELETE FROM weight_history WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
-        try { $pdo->prepare("DELETE FROM workout_plans WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
-        try { $pdo->prepare("DELETE FROM form_check_logs WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
-        try { $pdo->prepare("DELETE FROM payment_transactions WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
-        try { $pdo->prepare("DELETE FROM ai_food_recommendations WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
-        try { $pdo->prepare("DELETE FROM user_profiles WHERE user_id = ?")->execute([$deleteUserId]); } catch (PDOException $e) {}
-        
-        // Finally delete user account
-        $delUser = $pdo->prepare("DELETE FROM users WHERE id = ?");
-        $delUser->execute([$deleteUserId]);
+        // Prevent deleting active logged in admin account
+        $checkUser = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $checkUser->execute([$deleteUserId]);
+        $targetEmail = $checkUser->fetchColumn();
 
-        $successMessage = "Athlete account deleted successfully!";
+        if ($targetEmail && strtolower($targetEmail) === strtolower($_SESSION['admin_email'] ?? '')) {
+            $errorMessage = "Security Error: You cannot delete your own active admin account!";
+        } else {
+            // Disable Foreign Key checks temporarily to prevent constraint crashes
+            $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+
+            $pdo->prepare("DELETE FROM weight_history WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM workout_plans WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM workout_logs WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM nutrition_logs WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM form_check_logs WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM payment_transactions WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM ai_food_recommendations WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM user_achievements WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM personal_records WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM ai_insights WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM challenge_messages WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM pending_verifications WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM user_challenges WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM user_connections WHERE user_id = ? OR connected_user_id = ?")->execute([$deleteUserId, $deleteUserId]);
+            $pdo->prepare("DELETE FROM user_profiles WHERE user_id = ?")->execute([$deleteUserId]);
+            $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$deleteUserId]);
+
+            // Re-enable Foreign Key checks
+            $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+
+            $successMessage = "Athlete account deleted successfully!";
+        }
     } catch (PDOException $e) {
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
         $errorMessage = "Failed to delete user account: " . $e->getMessage();
         error_log("Database Error in users.php delete_athlete: " . $e->getMessage());
     }
