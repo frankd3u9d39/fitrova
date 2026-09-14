@@ -121,8 +121,25 @@ Return ONLY the JSON array, nothing else.";
         try {
             $dsText = callDeepSeek($prompt, $DEEPSEEK_API_KEY, 'You are a professional nutrition coach.', 0.7, 'deepseek-chat', 1500);
             $parsed = json_decode($dsText, true);
-            if (is_array($parsed)) {
+
+            // deepseek_helper.php sets response_format=json_object, which forces
+            // DeepSeek to return a top-level JSON *object* even though this prompt
+            // asks for a bare array — so the model sometimes wraps the array in an
+            // envelope (e.g. {"type":"json_object","content":[...]}) to satisfy both.
+            // is_array() alone can't tell the two shapes apart (PHP has no separate
+            // "object" type), so check the actual shape before trusting it.
+            if (is_array($parsed) && isset($parsed[0]['name'])) {
                 $ai_data = $parsed;
+            } elseif (is_array($parsed)) {
+                foreach (['content', 'recommendations', 'meals', 'data', 'items'] as $envelopeKey) {
+                    if (isset($parsed[$envelopeKey]) && is_array($parsed[$envelopeKey]) && isset($parsed[$envelopeKey][0]['name'])) {
+                        $ai_data = $parsed[$envelopeKey];
+                        break;
+                    }
+                }
+                if (!$ai_data) {
+                    $error_details[] = "DeepSeek returned JSON that isn't a recognizable meal list: " . substr($dsText, 0, 200);
+                }
             } else {
                 $error_details[] = "DeepSeek returned non-array JSON structure";
             }
