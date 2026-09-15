@@ -257,6 +257,68 @@ export const getRoutineLibrary = async (userId: number): Promise<any[]> => {
     return [];
   }
 };
+export interface PreviousExerciseSet {
+  set_number: number;
+  weight_kg: number | null;
+  reps: number | null;
+  is_pr: boolean;
+}
+
+export interface ExerciseHistory {
+  last_session_date: string | null;
+  previous_sets: PreviousExerciseSet[];
+  best_weight_kg: number | null;
+}
+
+export const getExerciseHistory = async (userId: number, exerciseName: string): Promise<ExerciseHistory> => {
+  try {
+    const response = await fetch(
+      `${AI_SERVICE_URL}/app/controllers/workout/get_exercise_history.php?user_id=${userId}&exercise_name=${encodeURIComponent(exerciseName)}`
+    );
+    const result = await response.json();
+    if (!response.ok || result.status !== 'success') {
+      throw new Error(result.message || 'Failed to fetch exercise history');
+    }
+    return result.data;
+  } catch (error) {
+    console.warn('⚠️ Could not load previous exercise history:', error);
+    return { last_session_date: null, previous_sets: [], best_weight_kg: null };
+  }
+};
+
+export interface LoggedSetResult {
+  is_pr: boolean;
+  previous_best: number | null;
+  weight_kg: number | null;
+  reps: number | null;
+  set_number: number;
+}
+
+export const logExerciseSet = async (
+  userId: number,
+  exerciseName: string,
+  setNumber: number,
+  weightKg: number | null,
+  reps: number | null
+): Promise<LoggedSetResult> => {
+  const response = await fetch(`${AI_SERVICE_URL}/app/controllers/workout/log_exercise_set.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId,
+      exercise_name: exerciseName,
+      set_number: setNumber,
+      weight_kg: weightKg,
+      reps,
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok || result.status !== 'success') {
+    throw new Error(result.message || 'Failed to log set');
+  }
+  return result.data;
+};
+
 export const generateWorkoutDetails = async (userId: number, workoutName: string): Promise<Workout | null> => {
   try {
     const response = await fetch(`${AI_SERVICE_URL}/app/controllers/workout/generate_workout_detail.php`, {

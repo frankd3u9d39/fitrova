@@ -11,7 +11,8 @@ import {
   ScrollView,
   Dimensions,
   Platform,
-  StatusBar
+  StatusBar,
+  TextInput
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -21,20 +22,25 @@ import { WebView } from 'react-native-webview';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/types';
-import { completeWorkout } from '../../../services/api/workoutService';
+import { completeWorkout, getExerciseHistory, logExerciseSet, ExerciseHistory } from '../../../services/api/workoutService';
 import { theme } from '../../../theme';
+import { iosLight } from '../../../theme/ios';
 import { Svg, Circle } from 'react-native-svg';
 
+// iOS-token-backed palette — same key names the screen already uses
+// throughout, so every existing COLORS.X reference below just picks up
+// the app's real design system instead of this screen's old one-off
+// Material-3-flavored greens.
 const COLORS = {
-  PRIMARY: '#006D33',
-  PRIMARY_CONTAINER: '#00D46A',
-  ON_PRIMARY_CONTAINER: '#00210B',
-  BACKGROUND: '#F8F9FA',
-  SURFACE: '#FFFFFF',
-  OUTLINE: '#6C7B6C',
-  OUTLINE_VARIANT: '#BBCBB9',
-  TEXT: '#191C1D',
-  TEXT_VARIANT: '#3C4A3D',
+  PRIMARY: iosLight.tintDark,
+  PRIMARY_CONTAINER: iosLight.tint,
+  ON_PRIMARY_CONTAINER: '#FFFFFF',
+  BACKGROUND: iosLight.groupedBackground,
+  SURFACE: iosLight.secondaryGroupedBackground,
+  OUTLINE: iosLight.secondaryLabel,
+  OUTLINE_VARIANT: iosLight.separator,
+  TEXT: iosLight.label,
+  TEXT_VARIANT: iosLight.secondaryLabel,
 };
 
 
@@ -66,7 +72,14 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
   const [isRestMode, setIsRestMode] = useState(false);
   const [restTimeLeft, setRestTimeLeft] = useState(30); // 30s default
   const [activeTab, setActiveTab] = useState<'How To' | 'Tips'>('How To');
-  
+
+  // Real set logging — weight/reps per set, prefilled from the last time
+  // this exercise was performed, with PR detection against personal_records.
+  const [exerciseHistory, setExerciseHistory] = useState<ExerciseHistory | null>(null);
+  const [setLogs, setSetLogs] = useState<{ weight: string; reps: string; logged: boolean; isPr: boolean }[]>([]);
+  const [loggingSetIndex, setLoggingSetIndex] = useState<number | null>(null);
+  const [prToast, setPrToast] = useState<string | null>(null);
+
   // Guard against missing workout or exercises data
   if (!workout || !workout.exercises) {
     return (
@@ -91,10 +104,72 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
   // Reset timer whenever the exercise changes
   useEffect(() => {
     setIsTimerRunning(false);
-    setVideoError(false); 
+    setVideoError(false);
     const fallback = typeof currentExercise !== 'string' && currentExercise.duration ? currentExercise.duration : 60;
     setTimeLeft(fallback);
   }, [currentIndex, currentExercise]);
+
+  // Load this exercise's history and reset the set-logging rows whenever
+  // the exercise changes, prefilling weight/reps from the last session.
+  useEffect(() => {
+    const exerciseName = typeof currentExercise === 'string' ? currentExercise : currentExercise.name;
+    const rawSets = typeof currentExercise !== 'string' ? parseInt(String(currentExercise.sets ?? '3'), 10) : 3;
+    const setCount = Math.min(Math.max(Number.isFinite(rawSets) && rawSets > 0 ? rawSets : 3, 1), 8);
+
+    setSetLogs(Array.from({ length: setCount }, () => ({ weight: '', reps: '', logged: false, isPr: false })));
+    setExerciseHistory(null);
+
+    let cancelled = false;
+    getExerciseHistory(userId, exerciseName).then((history) => {
+      if (cancelled) return;
+      setExerciseHistory(history);
+      setSetLogs((prev) => prev.map((row, i) => {
+        const prior = history.previous_sets.find((s) => s.set_number === i + 1);
+        if (!prior) return row;
+        return {
+          ...row,
+          weight: prior.weight_kg !== null ? String(prior.weight_kg) : row.weight,
+          reps: prior.reps !== null ? String(prior.reps) : row.reps,
+        };
+      }));
+    });
+
+    return () => { cancelled = true; };
+  }, [currentIndex]);
+
+  const updateSetField = (index: number, field: 'weight' | 'reps', value: string) => {
+    setSetLogs((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value, logged: false } : r)));
+  };
+
+  const handleLogSet = async (index: number) => {
+    const exerciseName = typeof currentExercise === 'string' ? currentExercise : currentExercise.name;
+    const row = setLogs[index];
+    const weightNum = row.weight.trim() !== '' ? parseFloat(row.weight) : null;
+    const repsNum = row.reps.trim() !== '' ? parseInt(row.reps, 10) : null;
+
+    if (weightNum === null && repsNum === null) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
+    setLoggingSetIndex(index);
+    try {
+      const result = await logExerciseSet(userId, exerciseName, index + 1, weightNum, repsNum);
+      setSetLogs((prev) => prev.map((r, i) => (i === index ? { ...r, logged: true, isPr: result.is_pr } : r)));
+      if (result.is_pr) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setPrToast(`New PR! ${weightNum}kg`);
+        setTimeout(() => setPrToast(null), 2500);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (e) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      CustomAlert.alert('Could not log set', 'Please check your connection and try again.');
+    } finally {
+      setLoggingSetIndex(null);
+    }
+  };
 
   // Handle countdown interval
   useEffect(() => {
@@ -227,11 +302,32 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const adjustRest = (delta: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRestTimeLeft((prev) => Math.max(0, prev + delta));
+  };
+
   const renderRestView = () => (
     <View style={[styles.restContainer, { paddingTop: insets.top }]}>
       <View style={styles.restHeader}>
         <Text style={styles.restLabel}>TAKE A BREATH</Text>
-        <Text style={styles.restTimer}>{`${restTimeLeft}s`}</Text>
+        <View style={styles.restTimerRow}>
+          <TouchableOpacity
+            style={styles.restAdjustBtn}
+            onPress={() => adjustRest(-15)}
+            accessibilityLabel="Subtract 15 seconds"
+          >
+            <Text style={styles.restAdjustText}>−15</Text>
+          </TouchableOpacity>
+          <Text style={styles.restTimer}>{`${restTimeLeft}s`}</Text>
+          <TouchableOpacity
+            style={styles.restAdjustBtn}
+            onPress={() => adjustRest(15)}
+            accessibilityLabel="Add 15 seconds"
+          >
+            <Text style={styles.restAdjustText}>+15</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.upNextCard}>
         <Text style={styles.upNextLabel}>UP NEXT</Text>
@@ -388,6 +484,67 @@ export const ActiveWorkoutScreen = ({ route, navigation }: Props) => {
               </View>
             </View>
           </View>
+        </View>
+
+        {/* Log Your Sets — real weight/reps logging, prefilled from last session */}
+        <View style={styles.logSetsCard}>
+          <View style={styles.logSetsHeader}>
+            <Text style={styles.logSetsTitle}>LOG YOUR SETS</Text>
+            {exerciseHistory?.best_weight_kg != null && (
+              <Text style={styles.logSetsBest}>PR {exerciseHistory.best_weight_kg}kg</Text>
+            )}
+          </View>
+          {exerciseHistory?.last_session_date && (
+            <Text style={styles.logSetsLastTime}>
+              Last time: {new Date(exerciseHistory.last_session_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </Text>
+          )}
+
+          {setLogs.map((row, index) => (
+            <View key={index} style={styles.setRow}>
+              <View style={styles.setNumberBadge}>
+                <Text style={styles.setNumberText}>{index + 1}</Text>
+              </View>
+              <TextInput
+                style={styles.setInput}
+                placeholder="kg"
+                placeholderTextColor={COLORS.OUTLINE}
+                keyboardType="decimal-pad"
+                value={row.weight}
+                onChangeText={(v) => updateSetField(index, 'weight', v)}
+              />
+              <Text style={styles.setInputSeparator}>×</Text>
+              <TextInput
+                style={styles.setInput}
+                placeholder="reps"
+                placeholderTextColor={COLORS.OUTLINE}
+                keyboardType="number-pad"
+                value={row.reps}
+                onChangeText={(v) => updateSetField(index, 'reps', v)}
+              />
+              <TouchableOpacity
+                style={[styles.setLogBtn, row.logged && styles.setLogBtnDone]}
+                onPress={() => handleLogSet(index)}
+                disabled={loggingSetIndex === index}
+                accessibilityLabel={`Log set ${index + 1}`}
+              >
+                {loggingSetIndex === index ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : row.logged ? (
+                  <Ionicons name={row.isPr ? 'trophy' : 'checkmark'} size={18} color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.setLogBtnText}>Log</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          {prToast && (
+            <View style={styles.prToast}>
+              <Ionicons name="trophy" size={16} color="#FFFFFF" />
+              <Text style={styles.prToastText}>{prToast}</Text>
+            </View>
+          )}
         </View>
 
         {/* Instructions Section */}
@@ -625,6 +782,111 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.PRIMARY,
   },
+  logSetsCard: {
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 32,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.OUTLINE_VARIANT,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+    marginBottom: 24,
+  },
+  logSetsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logSetsTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.OUTLINE,
+    letterSpacing: 1,
+  },
+  logSetsBest: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.PRIMARY,
+  },
+  logSetsLastTime: {
+    fontSize: 12,
+    color: COLORS.OUTLINE,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  setRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+  },
+  setNumberBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 109, 51, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  setNumberText: {
+    color: COLORS.PRIMARY,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  setInput: {
+    flex: 1,
+    minWidth: 0,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.OUTLINE_VARIANT,
+    backgroundColor: COLORS.BACKGROUND,
+    paddingHorizontal: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.TEXT,
+    textAlign: 'center',
+  },
+  setInputSeparator: {
+    color: COLORS.OUTLINE,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  setLogBtn: {
+    width: 52,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.PRIMARY_CONTAINER,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  setLogBtnDone: {
+    backgroundColor: COLORS.PRIMARY,
+  },
+  setLogBtnText: {
+    color: COLORS.ON_PRIMARY_CONTAINER,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  prToast: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.PRIMARY,
+    borderRadius: 14,
+    paddingVertical: 10,
+  },
+  prToastText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 0.3,
+  },
   instructionsCard: {
     backgroundColor: COLORS.SURFACE,
     borderRadius: 32,
@@ -794,10 +1056,33 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 10,
   },
+  restTimerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
   restTimer: {
     color: COLORS.PRIMARY,
-    fontSize: 80,
-    fontWeight: '900',
+    fontSize: 72,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+    minWidth: 140,
+    textAlign: 'center',
+  },
+  restAdjustBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.BACKGROUND,
+    borderWidth: 1,
+    borderColor: COLORS.OUTLINE_VARIANT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  restAdjustText: {
+    color: COLORS.TEXT,
+    fontSize: 13,
+    fontWeight: '700',
   },
   upNextCard: {
     backgroundColor: COLORS.BACKGROUND,
