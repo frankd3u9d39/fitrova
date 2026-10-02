@@ -1,13 +1,29 @@
 <?php
+/**
+ * Upserts the Gemini API key + primary model into system_settings.
+ *
+ * Usage (run once from backend/):
+ *   php scripts/update_gemini_key.php "AIzaSy-your-new-key" [model]
+ *
+ * The key is passed as a CLI argument rather than hardcoded here — a
+ * previous version of this script had a live key committed directly in
+ * the file, which Google's leak scanners detected and auto-revoked.
+ * See scripts/set_agent_router_key.php for the same pattern.
+ */
+
 require_once __DIR__ . '/../config/db_config.php';
 
-$newKey = 'AIzaSyBQ8TYJ0rdLdklnK9zi2T0U8RVFDp8wmJI';
-$newModel = 'gemini-3.1-flash-lite'; 
+$newKey = $argv[1] ?? null;
+if (!$newKey) {
+    fwrite(STDERR, "Usage: php scripts/update_gemini_key.php \"AIzaSy-your-new-key\" [model]\n");
+    exit(1);
+}
+
+$newModel = $argv[2] ?? 'gemini-3.1-flash-lite';
 
 try {
-    // Check if keys exist
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM system_settings WHERE setting_key = ?");
-    
+
     // Update or Insert Gemini API Key
     $stmt->execute(['ai_gemini_api_key']);
     if ($stmt->fetchColumn() > 0) {
@@ -20,7 +36,7 @@ try {
         echo "Inserted ai_gemini_api_key.\n";
     }
 
-    // Update Primary Model to Flash for speed
+    // Update Primary Model
     $stmt->execute(['ai_model_primary']);
     if ($stmt->fetchColumn() > 0) {
         $updateStmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'ai_model_primary'");
@@ -31,8 +47,7 @@ try {
         $insertStmt->execute([$newModel]);
         echo "Inserted ai_model_primary as $newModel.\n";
     }
-
 } catch (PDOException $e) {
-    echo "Error: " . $e->getMessage() . "\n";
+    fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
+    exit(1);
 }
-?>

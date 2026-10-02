@@ -19,6 +19,7 @@ require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
 require_once __DIR__ . '/../../../config/gemma_helper.php';
 require_once __DIR__ . '/../../../config/deepseek_helper.php';
+require_once __DIR__ . '/../../../config/agent_router_helper.php';
 require_once __DIR__ . '/../../middleware/AISubscriptionGate.php';
 use App\Middleware\AISubscriptionGate;
 
@@ -38,6 +39,7 @@ $PRIMARY_MODEL = $settings['ai_model_primary'] ?? 'deepseek-chat';
 $SYSTEM_PROMPT = $settings['ai_system_prompt'] ?? 'You are a professional fitness trainer. Generate a personalized workout plan.';
 $AI_TEMPERATURE = (float)($settings['ai_temperature'] ?? 0.7);
 $DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
+$AGENT_ROUTER_API_KEY = $settings['ai_agent_router_api_key'] ?? (getenv('AGENT_ROUTER_API_KEY') ?: '');
 $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
 $YOUTUBE_API_KEY = $settings['ai_youtube_api_key'] ?? '';
 
@@ -1104,11 +1106,24 @@ try {
     $prompt .= '  "recovery_score": 90, "status": "READY FOR SESSION", "missed_workouts": [], "upcoming_workouts": [{"name": "Upper Body Power", "scheduled_date": "YYYY-MM-DD", "duration": 45, "exercises_count": 5}]';
     $prompt .= "}\n";
     
-    // Primary AI Generation: DeepSeek -> Gemini -> Hugging Face fallback
+    // Primary AI Generation: Agent Router -> DeepSeek -> Gemini -> Hugging Face fallback
     $ai_provider = 'Fitrova Smart Engine';
     $workoutData = null;
 
-    if (!empty($DEEPSEEK_API_KEY)) {
+    if (!empty($AGENT_ROUTER_API_KEY)) {
+        try {
+            $arResponse = callAgentRouter($prompt, $AGENT_ROUTER_API_KEY, $PRIMARY_MODEL, 2048, $AI_TEMPERATURE);
+            $parsedData = json_decode($arResponse, true);
+            if ($parsedData && isset($parsedData['todays_workout'])) {
+                $workoutData = $parsedData;
+                $ai_provider = 'Agent Router AI';
+            }
+        } catch (Exception $arEx) {
+            error_log("Agent Router call failed: " . $arEx->getMessage() . ". Falling back to DeepSeek...");
+        }
+    }
+
+    if ((!$workoutData || !isset($workoutData['todays_workout'])) && !empty($DEEPSEEK_API_KEY)) {
         try {
             $deepseekModel = (strpos($PRIMARY_MODEL, 'deepseek') !== false) ? $PRIMARY_MODEL : 'deepseek-chat';
             $dsResponse = callDeepSeek($prompt, $DEEPSEEK_API_KEY, $SYSTEM_PROMPT, $AI_TEMPERATURE, $deepseekModel);

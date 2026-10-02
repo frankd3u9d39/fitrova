@@ -34,10 +34,29 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    if (php_sapi_name() === 'cli') {
-        die("Database connection failed: " . $e->getMessage() . "\n");
+    if (getenv('AIVEN_DB_HOST')) {
+        try {
+            $aivenHost = getenv('AIVEN_DB_HOST');
+            $aivenPort = getenv('AIVEN_DB_PORT') ?: '11816';
+            $aivenDbname = getenv('AIVEN_DB_NAME') ?: 'defaultdb';
+            $aivenUsername = getenv('AIVEN_DB_USER') ?: 'avnadmin';
+            $aivenPassword = getenv('AIVEN_DB_PASS') ?: '';
+            $pdo = new PDO("mysql:host=$aivenHost;port=$aivenPort;dbname=$aivenDbname;charset=utf8mb4", $aivenUsername, $aivenPassword);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        } catch (PDOException $e2) {
+            if (php_sapi_name() === 'cli') {
+                die("Database connection failed: " . $e2->getMessage() . "\n");
+            }
+            echo json_encode(["status" => "error", "message" => "Database connection failed"]);
+            exit();
+        }
+    } else {
+        if (php_sapi_name() === 'cli') {
+            die("Database connection failed: " . $e->getMessage() . "\n");
+        }
+        echo json_encode(["status" => "error", "message" => "Database connection failed"]);
+        exit();
     }
-    echo json_encode(["status" => "error", "message" => "Database connection failed"]);
-    exit();
 }
 ?>

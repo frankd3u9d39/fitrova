@@ -15,13 +15,15 @@ require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
 require_once __DIR__ . '/../../../config/gemma_helper.php';
 require_once __DIR__ . '/../../../config/deepseek_helper.php';
+require_once __DIR__ . '/../../../config/agent_router_helper.php';
 
 // Fetch dynamic configuration
-$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_deepseek_api_key', 'ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
+$settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_agent_router_api_key', 'ai_deepseek_api_key', 'ai_gemini_api_key', 'ai_model_primary', 'hf_token')");
 $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$AGENT_ROUTER_API_KEY = $settings['ai_agent_router_api_key'] ?? (getenv('AGENT_ROUTER_API_KEY') ?: '');
 $DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
 $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
-$primaryModel = $settings['ai_model_primary'] ?? '';
+$primaryModel = $settings['ai_model_primary'] ?? 'claude-opus-5';
 
 // Build models fallback list with modern, active models
 $models = [];
@@ -71,8 +73,23 @@ Return the result ONLY as a JSON object with this structure:
 $ai_data = null;
 $error_details = [];
 
-// Tier 1: DeepSeek Primary Call
-if (!empty($DEEPSEEK_API_KEY)) {
+// Tier 0: Agent Router Primary Call
+if (!empty($AGENT_ROUTER_API_KEY)) {
+    try {
+        $arText = callAgentRouter($prompt, $AGENT_ROUTER_API_KEY, $primaryModel, 600, 0.7);
+        $parsed = json_decode($arText, true);
+        if ($parsed && isset($parsed['recommendation'])) {
+            $ai_data = $parsed;
+        } else {
+            $error_details[] = "Agent Router returned invalid JSON format";
+        }
+    } catch (Exception $arEx) {
+        $error_details[] = "Agent Router call failed: " . $arEx->getMessage();
+    }
+}
+
+// Tier 1: DeepSeek Secondary Call
+if (!$ai_data && !empty($DEEPSEEK_API_KEY)) {
     try {
         $dsText = callDeepSeek($prompt, $DEEPSEEK_API_KEY, 'You are a professional fitness coach.', 0.7, 'deepseek-chat', 600);
         $parsed = json_decode($dsText, true);

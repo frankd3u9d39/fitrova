@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
+import { useTheme } from '../theme/ThemeProvider';
 import { DynamicTabBar } from '../components/navigation/DynamicTabBar';
 
 // Placeholder screen imports
@@ -48,6 +49,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const MainTabs = ({ route }: any) => {
   const firstName = route.params?.firstName || 'User';
   const userId = route.params?.userId || 1;
+  const { colors } = useTheme();
 
   return (
     <Tab.Navigator
@@ -55,6 +57,7 @@ const MainTabs = ({ route }: any) => {
       tabBar={(props) => <DynamicTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: colors.groupedBackground },
       }}
     >
       <Tab.Screen 
@@ -82,6 +85,7 @@ const MainTabs = ({ route }: any) => {
 };
 
 export const AppNavigator = () => {
+  const { colors } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -177,7 +181,7 @@ export const AppNavigator = () => {
         initialRouteName={initialRouteName}
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: theme.colors.background },
+          contentStyle: { backgroundColor: colors.groupedBackground },
         }}
       >
         <Stack.Screen name="Welcome" component={WelcomeScreen} />

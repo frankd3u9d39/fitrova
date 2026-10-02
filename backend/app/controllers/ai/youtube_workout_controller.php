@@ -17,13 +17,15 @@ require_once __DIR__ . '/../../../config/db_config.php';
 require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
 require_once __DIR__ . '/../../../config/deepseek_helper.php';
+require_once __DIR__ . '/../../../config/agent_router_helper.php';
 
 // ── Fetch AI API keys + preferred model from DB ────────────────────────
 $settingsStmt = $pdo->query(
     "SELECT setting_key, setting_value FROM system_settings
-     WHERE setting_key IN ('ai_deepseek_api_key', 'ai_gemini_api_key', 'ai_model_primary', 'hf_token')"
+     WHERE setting_key IN ('ai_agent_router_api_key', 'ai_deepseek_api_key', 'ai_gemini_api_key', 'ai_model_primary', 'hf_token')"
 );
 $settings         = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$AGENT_ROUTER_API_KEY = $settings['ai_agent_router_api_key'] ?? (getenv('AGENT_ROUTER_API_KEY') ?: '');
 $DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
 $GEMINI_API_KEY   = $settings['ai_gemini_api_key'] ?? '';
 // Only try top-2 models to keep total latency manageable
@@ -125,8 +127,25 @@ Return ONLY valid JSON — no markdown, no code fences:
 
 status must be one of: GOOD, CAUTION, IMPROVEMENT_NEEDED";
 
-        // ── Tier 1: DeepSeek Primary ───────────────────────────────────────
-        if (!empty($DEEPSEEK_API_KEY)) {
+        // ── Tier 0: Agent Router Primary ──────────────────────────────────
+        if (!empty($AGENT_ROUTER_API_KEY)) {
+            try {
+                $arText = callAgentRouter($prompt, $AGENT_ROUTER_API_KEY, $primary, 1000, 0.7);
+                $parsed = json_decode($arText, true);
+                if ($parsed && isset($parsed['analysis'])) {
+                    $analysisData = $parsed;
+                    $source       = 'agentrouter';
+                } elseif ($parsed && isset($parsed['exercise'])) {
+                    $analysisData = ['analysis' => $parsed];
+                    $source       = 'agentrouter';
+                }
+            } catch (Exception $arEx) {
+                error_log("⚠️ Agent Router YouTube analysis failed: " . $arEx->getMessage());
+            }
+        }
+
+        // ── Tier 1: DeepSeek Secondary ─────────────────────────────────────
+        if ($analysisData === null && !empty($DEEPSEEK_API_KEY)) {
             try {
                 $dsText = callDeepSeek($prompt, $DEEPSEEK_API_KEY, 'You are a workout coach.', 0.7, 'deepseek-chat', 1000);
                 $parsed = json_decode($dsText, true);

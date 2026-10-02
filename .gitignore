@@ -12,6 +12,7 @@ yarn-debug.log*
 yarn-error.log*
 .sqlite
 *.db
+*.docx
 
 # Environment variables
 .env
@@ -23,6 +24,7 @@ yarn-error.log*
 # IDEs and OS files
 .vscode/
 .idea/
+.claude/
 .DS_Store
 Thumbs.db
 

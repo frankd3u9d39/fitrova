@@ -11,6 +11,7 @@ import { notificationService, Notification } from '../../../services/api/notific
 import { AICoachModal } from '../../../components/common/AICoachModal';
 import LottieView from 'lottie-react-native';
 import { localNotificationService } from '../../../services/notifications/localNotificationService';
+import { useTheme } from '../../../theme/ThemeProvider';
 
 type DashboardRouteProp = RouteProp<MainTabParamList, 'Home'>;
 
@@ -32,21 +33,22 @@ export const DashboardScreen = () => {
   const [latestNotification, setLatestNotification] = useState<Notification | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showAIPromptModal, setShowAIPromptModal] = useState(false);
-  const [darkTheme, setDarkTheme] = useState(false);
-
 
   // Get userId from route params or use default, then update dynamically from AsyncStorage session
   const [userId, setUserId] = useState<number>(route.params?.userId || 1);
 
-  // Dynamic theme palette
+  // Real app-wide theme (system appearance + persisted preference), replacing
+  // the old per-screen dark-mode boolean that nothing ever actually toggled.
+  const { colors: ios, scheme } = useTheme();
+  const darkTheme = scheme === 'dark';
   const colors = {
-    background: darkTheme ? '#0F172A' : '#F9FAFB',
-    cardBg: darkTheme ? '#1E293B' : '#FFFFFF',
-    text: darkTheme ? '#F8FAFC' : '#1F2937',
-    textSecondary: darkTheme ? '#94A3B8' : '#6B7280',
-    border: darkTheme ? '#334155' : '#E5E7EB',
-    surface: darkTheme ? '#1E293B' : '#FFFFFF',
-    barEmpty: darkTheme ? 'rgba(51,65,85,0.6)' : 'rgba(229,231,235,0.3)',
+    background: ios.groupedBackground,
+    cardBg: ios.secondaryGroupedBackground,
+    text: ios.label,
+    textSecondary: ios.secondaryLabel,
+    border: ios.separator,
+    surface: ios.secondaryGroupedBackground,
+    barEmpty: ios.fill,
   };
 
   const getGreeting = () => {
@@ -81,15 +83,6 @@ export const DashboardScreen = () => {
         }
 
         if (!isMounted) return;
-
-        // Load dark mode preference
-        try {
-          const saved = await AsyncStorage.getItem(`user_prefs_${activeUserId}`);
-          if (saved) {
-            const prefs = JSON.parse(saved);
-            if (prefs.darkTheme !== undefined) setDarkTheme(prefs.darkTheme);
-          }
-        } catch (e) { }
 
         // Fetch data
         loadDashboardData(activeUserId);
@@ -339,11 +332,11 @@ export const DashboardScreen = () => {
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity
-              style={[styles.bellButton, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+              style={[styles.bellButton, { backgroundColor: ios.fill }]}
               onPress={() => navigation.navigate('Notifications', { userId })}
-              activeOpacity={0.7}
+              activeOpacity={0.6}
             >
-              <Ionicons name="notifications-outline" size={24} color={colors.text} />
+              <Ionicons name="notifications-outline" size={20} color={colors.text} />
               {unreadCount > 0 && (
                 <View style={styles.badgeContainer}>
                   <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -795,14 +788,21 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
   greeting: {
-    ...theme.typography.h2,
+    fontFamily: 'System',
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '700',
+    letterSpacing: 0.36,
     marginBottom: 4,
   },
   nameHighlight: {
     color: theme.colors.primary,
   },
   subtitle: {
-    ...theme.typography.body,
+    fontFamily: 'System',
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '400',
     color: theme.colors.textSecondary,
   },
   statsRow: {
@@ -812,10 +812,14 @@ const styles = StyleSheet.create({
   },
   statCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
+    borderRadius: 18,
     padding: theme.spacing.lg,
     flex: 1,
-    ...theme.shadows.md,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 1,
   },
   healthCard: {
     flex: 1.2, // slightly wider
@@ -1109,16 +1113,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   bellButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     position: 'relative',
-    ...theme.shadows.sm,
   },
   badgeContainer: {
     position: 'absolute',

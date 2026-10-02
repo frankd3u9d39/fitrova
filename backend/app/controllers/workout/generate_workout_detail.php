@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../../config/env_loader.php';
 loadEnv(__DIR__ . '/../../../.env');
 require_once __DIR__ . '/../../../config/gemma_helper.php';
 require_once __DIR__ . '/../../../config/deepseek_helper.php';
+require_once __DIR__ . '/../../../config/agent_router_helper.php';
 
 // Prevent warnings from breaking JSON
 error_reporting(0);
@@ -28,10 +29,12 @@ try {
         throw new Exception('User ID required');
     }
 
-    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_deepseek_api_key', 'ai_gemini_api_key', 'hf_token', 'ai_model_primary')");
+    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('ai_agent_router_api_key', 'ai_deepseek_api_key', 'ai_gemini_api_key', 'hf_token', 'ai_model_primary')");
     $settings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    $AGENT_ROUTER_API_KEY = $settings['ai_agent_router_api_key'] ?? (getenv('AGENT_ROUTER_API_KEY') ?: '');
     $DEEPSEEK_API_KEY = $settings['ai_deepseek_api_key'] ?? (getenv('DEEPSEEK_API_KEY') ?: '');
     $GEMINI_API_KEY = $settings['ai_gemini_api_key'] ?? '';
+    $PRIMARY_MODEL = $settings['ai_model_primary'] ?? 'claude-opus-5';
     
     $prompt = "Trainer AI. Generate workout plan for '$workoutName'. Strict JSON:\n";
     $prompt .= "{\n";
@@ -42,7 +45,15 @@ try {
 
     $aiJson = null;
 
-    if (!empty($DEEPSEEK_API_KEY)) {
+    if (!empty($AGENT_ROUTER_API_KEY)) {
+        try {
+            $aiJson = callAgentRouter($prompt, $AGENT_ROUTER_API_KEY, $PRIMARY_MODEL, 1500, 0.7);
+        } catch (Exception $arEx) {
+            error_log("Agent Router failed in generate_workout_detail: " . $arEx->getMessage());
+        }
+    }
+
+    if (!$aiJson && !empty($DEEPSEEK_API_KEY)) {
         try {
             $aiJson = callDeepSeek($prompt, $DEEPSEEK_API_KEY, 'You are a professional workout trainer.', 0.7, 'deepseek-chat', 1500);
         } catch (Exception $dsEx) {

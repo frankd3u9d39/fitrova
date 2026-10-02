@@ -12,6 +12,7 @@ import { CustomAlertModal } from './src/components/common/CustomAlertModal';
 import { customAlertRef } from './src/components/common/CustomAlert';
 import { config, validateEnvironment } from './src/config';
 import { localNotificationService } from './src/services/notifications/localNotificationService';
+import { ThemeProvider } from './src/theme/ThemeProvider';
 
 LogBox.ignoreLogs([
   'SafeAreaView has been deprecated',
@@ -157,8 +158,10 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AppNavigator />
-      <CustomAlertModal ref={customAlertRef} />
+      <ThemeProvider>
+        <AppNavigator />
+        <CustomAlertModal ref={customAlertRef} />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

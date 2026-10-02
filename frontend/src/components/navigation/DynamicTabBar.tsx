@@ -1,23 +1,31 @@
-import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const TAB_BAR_WIDTH = SCREEN_WIDTH - 40;
 const TAB_BAR_HEIGHT = 65;
 const CORNER_RADIUS = 20;
 const PADDING_H = 20;
 
 export const DynamicTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
+  // Read window width reactively (not once at module load) — on web the
+  // viewport can still be settling (or get resized) after this module first
+  // evaluates, so a stale captured width silently desyncs the SVG background
+  // and active-tab indicator from the real flexbox-laid-out buttons.
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const TAB_BAR_WIDTH = SCREEN_WIDTH - 40;
   const tabWidth = (TAB_BAR_WIDTH - PADDING_H * 2) / state.routes.length;
 
   // Use React Native's built-in Animated to completely avoid react-native-reanimated native crashes
   const slideAnim = useRef(new Animated.Value(state.index)).current;
   const pathRef = useRef<any>(null);
+  // On native, the path is morphed imperatively via setNativeProps (below) for 60fps
+  // without re-rendering. That same call throws on web (`setNativeProps` doesn't map
+  // cleanly onto the DOM), so web instead drives the same `d` string through state.
+  const [webPathD, setWebPathD] = useState('');
 
   // Icon animations array
   const iconAnims = useRef(state.routes.map((_, i) => new Animated.Value(i === state.index ? 1 : 0))).current;
@@ -74,21 +82,26 @@ export const DynamicTabBar = ({ state, descriptors, navigation }: BottomTabBarPr
     const listener = slideAnim.addListener(({ value }) => {
       const centerX = PADDING_H + (value + 0.5) * tabWidth;
       const d = generatePath(centerX);
-      if (pathRef.current) {
+      if (Platform.OS === 'web') {
+        setWebPathD(d);
+      } else if (pathRef.current) {
         pathRef.current.setNativeProps({ d });
       }
     });
 
     // Set initial path
     const initialCenterX = PADDING_H + (state.index + 0.5) * tabWidth;
-    if (pathRef.current) {
-      pathRef.current.setNativeProps({ d: generatePath(initialCenterX) });
+    const initialD = generatePath(initialCenterX);
+    if (Platform.OS === 'web') {
+      setWebPathD(initialD);
+    } else if (pathRef.current) {
+      pathRef.current.setNativeProps({ d: initialD });
     }
 
     return () => {
       slideAnim.removeListener(listener);
     };
-  }, []);
+  }, [tabWidth]);
 
   const getIconName = (routeName: string, focused: boolean): keyof typeof Ionicons.glyphMap => {
     const icons: Record<string, { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap }> = {
@@ -108,7 +121,7 @@ export const DynamicTabBar = ({ state, descriptors, navigation }: BottomTabBarPr
   return (
     <View style={styles.container}>
       <Svg width={TAB_BAR_WIDTH} height={TAB_BAR_HEIGHT} style={styles.svgBackground}>
-        <AnimatedPath ref={pathRef} fill="#1F2937" />
+        <AnimatedPath ref={pathRef} d={Platform.OS === 'web' ? webPathD : undefined} fill="#1F2937" />
       </Svg>
 
       <Animated.View
